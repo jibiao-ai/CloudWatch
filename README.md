@@ -63,7 +63,7 @@ pm2 start ecosystem.config.cjs      # 或直接运行 bin/cloudwatch-api
 `GET /api/audit-logs[/{id}]` · `GET /api/audit-logs/export`（xlsx）· `POST /api/audit-logs/clean`。
 字段校验失败：HTTP 400 / code 40001 / `data.fields`。
 
-**数据表**：`roles · users · sessions · settings · assets · alert_channels · audit_logs · metric_samples · inspection_results · alert_events · system_meta · schema_migrations`。
+**数据表**：`system_meta · roles · users · user_roles · sessions · login_failures · settings · alert_channels · assets · audit_logs · metric_samples · inspection_results · alert_events · schema_migrations`。
 
 ## 技术栈（锁定）
 
