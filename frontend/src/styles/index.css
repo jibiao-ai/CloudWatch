@@ -35,7 +35,6 @@
   --shadow-sm: 0 1px 2px rgb(20 24 34 / 0.06);
   --shadow-md: 0 4px 14px rgb(20 24 34 / 0.08);
   --shadow-lg: 0 18px 48px rgb(20 24 34 / 0.18);
-  --glass: 255 255 255;
   --scrim: 15 18 26;
   color-scheme: light;
 }
@@ -60,7 +59,6 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
   --shadow-lg: 0 22px 56px rgb(0 0 0 / 0.65);
-  --glass: 22 25 33;
   --scrim: 0 0 0;
   color-scheme: dark;
 }
@@ -83,9 +81,11 @@ body {
 ::-webkit-scrollbar-thumb { background: rgb(var(--c-border-strong)); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* 可见 focus 环（无障碍） */
+/* 铁律：输入类控件聚焦不得出现彩色高亮（ring / 彩色边框 / outline），仅允许中性色边框变化；
+   键盘焦点环只保留给按钮、链接等非输入控件。 */
 :focus { outline: none; }
 :focus-visible { outline: 2px solid rgb(var(--c-primary)); outline-offset: 2px; border-radius: var(--radius-sm); }
+input:focus-visible, textarea:focus-visible, select:focus-visible, .field:focus-visible { outline: none; }
 
 input, textarea { color: rgb(var(--c-text)); }
 input::placeholder, textarea::placeholder { color: rgb(var(--c-text-subtle)); }
@@ -95,23 +95,21 @@ input:-webkit-autofill {
 }
 
 @layer components {
-  .glass {
-    background: rgb(var(--glass) / 0.78);
-    backdrop-filter: blur(16px) saturate(140%);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid rgb(var(--c-border-strong) / 0.6);
+  /* 铁律：禁止毛玻璃 —— 浮层/卡片一律实色 bg-card + border + shadow，不得使用半透明 + backdrop-blur */
+  .surface {
+    @apply bg-card border border-line-strong;
   }
   .card {
     @apply bg-card border border-line rounded-lg shadow-sm;
   }
-  .card-glass {
-    @apply glass rounded-lg shadow-md;
+  .card-pop {
+    @apply surface rounded-lg shadow-md;
   }
   .field {
     @apply w-full h-9 px-3 rounded-md bg-card border border-line-strong text-sm text-fg transition
-      hover:border-fg-subtle focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-muted;
+      hover:border-fg-subtle focus:border-fg-subtle focus:ring-0 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-muted;
   }
-  .field-error { @apply border-danger focus:border-danger focus:ring-danger/20; }
+  .field-error { @apply border-danger; }
   textarea.field { @apply h-auto py-2; }
   .label { @apply block text-[13px] font-medium text-fg mb-1.5; }
   .hint { @apply text-xs text-fg-muted mt-1; }

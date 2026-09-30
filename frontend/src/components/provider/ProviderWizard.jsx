@@ -13,7 +13,7 @@ import { providerApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 
 /**
- * ProviderWizard —— 平台新增 / 编辑分步向导（毛玻璃卡片）：
+ * ProviderWizard —— 平台新增 / 编辑分步向导（实色卡片）：
  * ① 基本信息 ② 五端点配置 ③ 认证信息 ④ 资源类型约定 ⑤ 高级
  * 规则：不允许后台填写参数 —— 所有参数在向导内填写；密码保存后一律显示 ******，任何位置不回显。
  */

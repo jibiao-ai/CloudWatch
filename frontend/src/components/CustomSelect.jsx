@@ -169,7 +169,7 @@ export default function CustomSelect({
         onKeyDown={onKeyDown}
         onClick={() => !disabled && setOpen((o) => !o)}
         className={`group flex items-center gap-1.5 w-full ${h} px-2.5 py-1 rounded-md bg-card border transition cursor-pointer select-none
-          ${error ? 'border-danger' : open ? 'border-primary ring-2 ring-primary/20' : 'border-line-strong hover:border-fg-subtle'}
+          ${error ? 'border-danger' : open ? 'border-fg-subtle' : 'border-line-strong hover:border-fg-subtle'}
           ${disabled ? 'opacity-60 cursor-not-allowed bg-muted' : ''} ${className}`}
       >
         <div className="flex-1 min-w-0 flex flex-wrap gap-1 items-center">
@@ -199,7 +199,7 @@ export default function CustomSelect({
         <Portal>
           <div
             ref={panel}
-            className="fixed z-[300] card-glass !rounded-lg animate-fade-in overflow-hidden flex flex-col shadow-lg"
+            className="fixed z-[300] card-pop !rounded-lg animate-fade-in overflow-hidden flex flex-col shadow-lg"
             style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: Math.min(pos.maxH, 320) }}
             onKeyDown={onKeyDown}
           >

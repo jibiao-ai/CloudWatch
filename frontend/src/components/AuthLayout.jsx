@@ -37,7 +37,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
           <p className="mt-4 text-[15px] opacity-85 leading-relaxed">{brand.subtitle}。统一纳管多套 OpenStack / 私有云，资源视图、巡检、监控、容量与告警一站式呈现。</p>
           <div className="mt-10 grid grid-cols-2 gap-4 max-w-md">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-xl bg-primary-on/10 backdrop-blur-sm border border-primary-on/15 px-4 py-3.5">
+              <div key={s.label} className="rounded-xl bg-primary-on/10 border border-primary-on/15 px-4 py-3.5">
                 <div className="flex items-center gap-2 text-xs opacity-80"><s.icon size={14} /> {s.label}</div>
                 <div className="mt-1 text-2xl font-semibold tabular-nums">{s.value == null ? '—' : formatNumber(s.value)}</div>
               </div>
@@ -54,7 +54,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-[420px] animate-pop-in">
             <div className="lg:hidden mb-8"><Logo size={40} src={brand.logoUrl} name={brand.platformName} subtitle={brand.subtitle} /></div>
-            <div className="card-glass !rounded-2xl p-8">
+            <div className="card-pop !rounded-2xl p-8">
               <h1 className="text-xl font-semibold text-fg">{title}</h1>
               {subtitle && <p className="text-[13px] text-fg-muted mt-1.5">{subtitle}</p>}
               <div className="mt-6">{children}</div>

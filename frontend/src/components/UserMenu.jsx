@@ -42,7 +42,7 @@ export default function UserMenu() {
       </button>
       {open && pos && (
         <Portal>
-          <div ref={panel} role="menu" className="fixed z-[300] w-56 card-glass !rounded-xl p-1.5 animate-fade-in" style={{ top: pos.top, right: pos.right }}>
+          <div ref={panel} role="menu" className="fixed z-[300] w-56 card-pop !rounded-xl p-1.5 animate-fade-in" style={{ top: pos.top, right: pos.right }}>
             <div className="px-3 py-2.5 mb-1 border-b border-line">
               <div className="text-sm font-medium text-fg truncate">{user?.name}</div>
               <div className="text-xs text-fg-muted truncate">{user?.email || user?.username}</div>

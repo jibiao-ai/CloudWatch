@@ -4,7 +4,7 @@ import React from 'react';
 export default function ChartTooltip({ active, payload, label, labelFormatter, valueFormatter = (v) => v }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass rounded-lg px-3 py-2 shadow-md text-xs min-w-[140px]">
+    <div className="surface rounded-lg px-3 py-2 shadow-md text-xs min-w-[140px]">
       <div className="text-fg-muted mb-1.5">{labelFormatter ? labelFormatter(label) : label}</div>
       {payload.map((p) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-4 py-0.5">

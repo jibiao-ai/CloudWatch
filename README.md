@@ -59,10 +59,17 @@ npm run lint:rules          # 规则扫描（见下）
 2. 删除 `frontend/src/services/mock/`（统一开关，代码里以 `TODO(mock)` 标记）。
 3. 接口契约见 `frontend/src/services/api.js`（统一响应 `{code,message,data}`；401 自动刷新一次；导出返回 Blob）。
 
+## 铁律（评审 / CI 必查，`lint:rules` 自动阻断）
+
+1. 所有参数必须在页面录入，禁止写进后端配置文件。
+2. 禁止硬编码颜色、禁止 `dark:` 前缀，颜色一律走 CSS Variables，主色运行时可配置。
+3. **禁止毛玻璃风格**：不得使用 `glass` / `backdrop-blur` / `backdrop-filter` / 半透明浮层底色；弹窗、下拉、用户菜单、Toast、图表 Tooltip、登录卡片、KPI 卡片一律实色 `bg-card + border + shadow`（`.surface` / `.card-pop`）。（此条取代早期“毛玻璃”要求）
+4. **输入框聚焦无彩色高亮**：`input / textarea / CustomSelect 触发器 / SearchInput / PasswordInput / SecretInput / 分页跳转 / Checkbox` 聚焦时禁止 `ring`、彩色边框、`outline`，仅允许中性色边框加深；登录页及所有页面统一使用 `.field`。键盘焦点环只保留给按钮、链接等非输入控件。
+
 ## 规范自检（`npm run lint:rules`）
 
 自动扫描并阻断：原生 `<select>` · `window.confirm/alert/prompt` · 硬编码颜色（`#fff` / `bg-white` / `gray-*`…）· `dark:` 前缀 ·
-`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行。当前 **86 个文件全部通过**。
+`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行 · **毛玻璃类名/`backdrop-*`** · **输入聚焦彩色 ring / 彩色边框**。当前 **86 个文件全部通过**。
 
 ## 关键设计说明
 

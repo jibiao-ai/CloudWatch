@@ -4,7 +4,7 @@ import Portal from './Portal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 /**
- * Modal —— 通用弹窗（Portal + 毛玻璃 + 弹性动画）
+ * Modal —— 通用弹窗（Portal + 实色卡片 + 弹性动画）
  * 属性：open / title / subtitle / onClose / width(px|string) / footer(节点) / closeOnMask(默认 true) / children
  * 用法：<Modal open title="新增用户" onClose={...} footer={<>...</>}>表单</Modal>
  */
@@ -26,7 +26,7 @@ export default function Modal({ open, title, subtitle, onClose, width = 560, foo
   return (
     <Portal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div className="absolute inset-0 animate-fade-in backdrop-blur-[3px]" style={{ background: 'rgb(var(--scrim) / 0.5)' }} onMouseDown={closeOnMask ? onClose : undefined} />
+        <div className="absolute inset-0 animate-fade-in" style={{ background: 'rgb(var(--scrim) / 0.5)' }} onMouseDown={closeOnMask ? onClose : undefined} />
         <div
           ref={ref}
           role="dialog"
@@ -34,7 +34,7 @@ export default function Modal({ open, title, subtitle, onClose, width = 560, foo
           aria-label={typeof title === 'string' ? title : undefined}
           tabIndex={-1}
           style={{ width, maxWidth: '100%' }}
-          className="relative glass rounded-2xl shadow-lg animate-pop-in flex flex-col max-h-[90vh]"
+          className="relative surface rounded-2xl shadow-lg animate-pop-in flex flex-col max-h-[90vh]"
         >
           <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
             <div className="min-w-0">

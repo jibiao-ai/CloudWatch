@@ -25,7 +25,7 @@ function ToastItem({ t }) {
   }, [t.id, t.duration, t.type, dismiss]);
   const { icon: Icon, cls } = META[t.type] || META.info;
   return (
-    <div role={t.type === 'error' ? 'alert' : 'status'} className="glass rounded-lg shadow-lg animate-toast-in w-[340px] max-w-[92vw] flex gap-3 p-3.5 pr-2.5">
+    <div role={t.type === 'error' ? 'alert' : 'status'} className="surface rounded-lg shadow-lg animate-toast-in w-[340px] max-w-[92vw] flex gap-3 p-3.5 pr-2.5">
       <Icon size={20} className={`${cls} shrink-0 mt-0.5`} />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium text-fg break-words">{t.title}</div>

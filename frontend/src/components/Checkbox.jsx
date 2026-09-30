@@ -12,7 +12,7 @@ export default function Checkbox({ checked, indeterminate, onChange, disabled, l
     <label className={`inline-flex items-center gap-2 select-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}>
       <span className="relative inline-flex">
         <input ref={ref} type="checkbox" className="peer sr-only" checked={!!checked} disabled={disabled} aria-label={aria || (typeof label === 'string' ? label : undefined)} onChange={(e) => onChange?.(e.target.checked)} />
-        <span className={`w-4 h-4 rounded border flex items-center justify-center transition peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${on ? 'bg-primary border-primary text-primary-on' : 'bg-card border-line-strong'}`}>
+        <span className={`w-4 h-4 rounded border flex items-center justify-center transition ${on ? 'bg-primary border-primary text-primary-on' : 'bg-card border-line-strong'}`}>
           {indeterminate ? <Minus size={12} strokeWidth={3} /> : checked ? <Check size={12} strokeWidth={3} /> : null}
         </span>
       </span>

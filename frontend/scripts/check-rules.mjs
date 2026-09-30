@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * FE-7 禁用项扫描：npm run lint:rules
+ * 铁律（含 v2 新增）：禁止毛玻璃（glass/backdrop-blur/backdrop-filter）；输入类控件聚焦禁止彩色高亮（focus:ring / 彩色 focus 边框 / outline）
  * 检查：原生 <select> / window.confirm|alert|prompt / 硬编码颜色 / dark: 前缀 / emoji 图标 /
  *       role === 'admin' 硬编码 / 页面里直接 fetch|axios / 页面文件行数
  */
@@ -21,6 +22,8 @@ const rules = [
   { name: 'dark: 前缀', re: /\bdark:[a-z]/, only: /\.jsx?$/ },
   { name: "role === 'admin' 硬编码", re: /role\s*===?\s*['"]admin['"]/, only: /\.jsx?$/ },
   { name: '页面/组件里直接 fetch/axios', re: /\b(fetch\(|axios\.)/, only: /\.jsx?$/, allow: ['services/api.js', 'services/mock/'] },
+  { name: '铁律：禁止毛玻璃(glass/card-glass/backdrop-blur/backdrop-filter)', re: /\b(card-)?glass\b|backdrop-(blur|filter|saturate|brightness)|backdrop-filter/, only: /\.(jsx?|css)$/, skip: (l) => /铁律/.test(l) },
+  { name: '铁律：输入聚焦禁止彩色高亮(focus:ring / focus:border-primary|danger / peer-focus ring / outline-primary)', re: /(focus|focus-visible|focus-within|peer-focus(-visible)?):(ring(?!-0)|border-(primary|danger|success|warning|info)|outline-(primary|danger))/, only: /\.(jsx?|css)$/ },
   { name: 'emoji 当图标', re: /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u, only: /\.jsx?$/, skip: (l) => /[✓×]|▾|▸/.test(l) && !/[\u{1F300}-\u{1FAFF}]/u.test(l) },
 ];
 let bad = 0;

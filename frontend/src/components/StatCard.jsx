@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** StatCard —— KPI 卡片（毛玻璃风格）。属性：icon / label / value / hint / tone('primary'|'success'|'warning'|'danger'|'info') / onClick */
+/** StatCard —— KPI 卡片（实色卡片）。属性：icon / label / value / hint / tone('primary'|'success'|'warning'|'danger'|'info') / onClick */
 const TONE = { primary: 'bg-primary-soft text-primary-text', success: 'bg-success-soft text-success', warning: 'bg-warning-soft text-warning', danger: 'bg-danger-soft text-danger', info: 'bg-info-soft text-info' };
 export default function StatCard({ icon: Icon, label, value, hint, tone = 'primary' }) {
   return (

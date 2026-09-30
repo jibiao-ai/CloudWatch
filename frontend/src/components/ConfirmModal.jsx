@@ -24,8 +24,8 @@ export default function ConfirmModal({ open, title, description, impactList = []
   return (
     <Portal>
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-        <div className="absolute inset-0 animate-fade-in backdrop-blur-[4px]" style={{ background: 'rgb(var(--scrim) / 0.55)' }} onMouseDown={() => !loading && onCancel?.()} />
-        <div ref={ref} role="alertdialog" aria-modal="true" aria-label={title} tabIndex={-1} className="relative glass rounded-2xl shadow-lg w-[460px] max-w-full animate-pop-in p-6">
+        <div className="absolute inset-0 animate-fade-in" style={{ background: 'rgb(var(--scrim) / 0.55)' }} onMouseDown={() => !loading && onCancel?.()} />
+        <div ref={ref} role="alertdialog" aria-modal="true" aria-label={title} tabIndex={-1} className="relative surface rounded-2xl shadow-lg w-[460px] max-w-full animate-pop-in p-6">
           <div className="flex gap-4">
             <div className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center ${danger ? 'bg-danger-soft text-danger' : 'bg-primary-soft text-primary-text'}`}>
               <Icon size={22} />

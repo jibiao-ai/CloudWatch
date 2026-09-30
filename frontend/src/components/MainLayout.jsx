@@ -72,7 +72,7 @@ export default function MainLayout() {
         </Portal>
       )}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-14 shrink-0 bg-card/90 backdrop-blur border-b border-line flex items-center gap-3 px-4">
+        <header className="h-14 shrink-0 bg-card border-b border-line flex items-center gap-3 px-4">
           {mode === 'drawer' && (
             <button type="button" className="btn-icon -ml-2" aria-label="打开菜单" onClick={() => setMobileOpen(true)}><Menu size={19} /></button>
           )}

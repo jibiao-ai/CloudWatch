@@ -6,6 +6,11 @@
  *  2. 禁止用 Tailwind 的 dark: 前缀替代变量 —— 统一走 CSS Variables，保证主色可配置；
  *  3. 图表 stroke/fill/网格/轴 必须来自 getChartPalette()，主题/主色变化后同步刷新；
  *  4. 主色不写死在 tailwind 配置里，运行时通过 applyBrandColor() 写入 :root。
+ *  5. 【铁律】禁止毛玻璃：不得使用 glass / backdrop-blur / backdrop-filter / 半透明浮层底色，
+ *     弹窗、下拉、菜单、Toast、Tooltip、卡片一律实色 bg-card + border + shadow（.surface / .card-pop）。
+ *  6. 【铁律】输入类控件（input / textarea / 自定义下拉触发器 / 搜索框 / 密码框 / 分页跳转框 / Checkbox）
+ *     聚焦时禁止彩色高亮（focus:ring、彩色边框、outline），只允许中性色边框变化；所有页面统一走 .field。
+ *     （无障碍折中：键盘焦点环仅保留给按钮、链接等非输入控件。）
  */
 
 export const DEFAULT_PRIMARY = '#C6242A';
