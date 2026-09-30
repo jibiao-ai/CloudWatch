@@ -189,7 +189,6 @@ export const auditApi = {
 };
 export const domainApi = {
   getDomainConfig: () => get('/domain-config'),
-  listContainers: (socket) => get('/domain-config/containers', { socket }, { skipErrorToast: true }),
   createMapping: (data) => post('/domain-config/mappings', data),
   updateMapping: (id, data) => put(`/domain-config/mappings/${id}`, data),
   deleteMapping: (id) => del(`/domain-config/mappings/${id}`),

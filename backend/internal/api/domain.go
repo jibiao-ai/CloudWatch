@@ -185,17 +185,3 @@ func (s *Server) verifyMapping(w http.ResponseWriter, r *http.Request, p *auth.P
 	httpx.OK(w, res)
 	return nil
 }
-
-func (s *Server) listContainers(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-	cs, err := s.Hosts.Containers(ctx, r.URL.Query().Get("socket"))
-	if err != nil {
-		if _, ok := err.(*httpx.HTTPError); ok {
-			return err
-		}
-		return httpx.Err(502, err.Error())
-	}
-	httpx.OK(w, map[string]any{"list": cs})
-	return nil
-}

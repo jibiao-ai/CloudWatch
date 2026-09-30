@@ -108,7 +108,6 @@ func (s *Server) Handler() http.Handler {
 
 	// 域名配置
 	mux.Handle("GET /api/domain-config", s.guard("domain:view", s.getDomain))
-	mux.Handle("GET /api/domain-config/containers", s.guard("domain:view", s.listContainers))
 	mux.Handle("POST /api/domain-config/mappings", s.guard("domain:update", s.saveMapping(false)))
 	mux.Handle("PUT /api/domain-config/mappings/{id}", s.guard("domain:update", s.saveMapping(true)))
 	mux.Handle("DELETE /api/domain-config/mappings/{id}", s.guard("domain:update", s.deleteMapping))

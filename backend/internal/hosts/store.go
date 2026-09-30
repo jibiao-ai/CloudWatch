@@ -168,9 +168,6 @@ func (s *Store) GetSync(ctx context.Context) (Sync, error) {
 	if c.DNSUpstreams == nil {
 		c.DNSUpstreams = []string{}
 	}
-	if c.DockerContainers == nil {
-		c.DockerContainers = []string{}
-	}
 	return c, err
 }
 

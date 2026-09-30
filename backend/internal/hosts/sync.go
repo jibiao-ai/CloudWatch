@@ -7,24 +7,25 @@ import (
 	"strings"
 )
 
+// LocalHostsPath 本机 hosts 文件固定为 /etc/hosts（不再提供路径配置）。
+const LocalHostsPath = "/etc/hosts"
+
 // Sync 同步配置（页面录入并存库，不走环境变量）。
+// 本机 hosts 固定 /etc/hosts；Docker 注入固定作用于「所有运行中的容器」，因此只保留开关与 socket。
 type Sync struct {
-	LocalEnabled     bool     `json:"localEnabled"`
-	LocalPath        string   `json:"localPath"`
-	DNSEnabled       bool     `json:"dnsEnabled"`
-	DNSListen        string   `json:"dnsListen"`
-	DNSUpstreams     []string `json:"dnsUpstreams"`
-	DockerEnabled    bool     `json:"dockerEnabled"`
-	DockerSocket     string   `json:"dockerSocket"`
-	DockerMode       string   `json:"dockerMode"` // all | selected
-	DockerContainers []string `json:"dockerContainers"`
+	LocalEnabled  bool     `json:"localEnabled"`
+	DNSEnabled    bool     `json:"dnsEnabled"`
+	DNSListen     string   `json:"dnsListen"`
+	DNSUpstreams  []string `json:"dnsUpstreams"`
+	DockerEnabled bool     `json:"dockerEnabled"`
+	DockerSocket  string   `json:"dockerSocket"`
 }
 
 func DefaultSync() Sync {
 	return Sync{
-		LocalEnabled: true, LocalPath: "/etc/hosts",
-		DNSListen: "0.0.0.0:53", DNSUpstreams: []string{},
-		DockerSocket: "/var/run/docker.sock", DockerMode: "selected", DockerContainers: []string{},
+		LocalEnabled: true,
+		DNSListen:    "0.0.0.0:53", DNSUpstreams: []string{},
+		DockerSocket: "/var/run/docker.sock",
 	}
 }
 
@@ -65,13 +66,6 @@ func normAddr(a string, defPort string) (string, bool) {
 // NormalizeSync 校验同步配置。
 func NormalizeSync(s *Sync) FieldErrors {
 	e := FieldErrors{}
-	s.LocalPath = strings.TrimSpace(s.LocalPath)
-	if s.LocalPath == "" {
-		s.LocalPath = "/etc/hosts"
-	}
-	if !ValidatePath(s.LocalPath) {
-		e["localPath"] = "需为绝对路径，且文件名为 hosts 或以 .hosts 结尾（如 /etc/hosts）"
-	}
 	if strings.TrimSpace(s.DNSListen) == "" {
 		s.DNSListen = "0.0.0.0:53"
 	}
@@ -99,23 +93,6 @@ func NormalizeSync(s *Sync) FieldErrors {
 	}
 	if !validSocket(s.DockerSocket) {
 		e["dockerSocket"] = "需为绝对路径的 unix socket，如 /var/run/docker.sock"
-	}
-	if s.DockerMode != "all" && s.DockerMode != "selected" {
-		e["dockerMode"] = "注入范围只能是「全部运行中容器」或「指定容器」"
-	}
-	seen := map[string]bool{}
-	cs := []string{}
-	for _, c := range s.DockerContainers {
-		c = strings.TrimSpace(strings.TrimPrefix(c, "/"))
-		if c == "" || seen[c] {
-			continue
-		}
-		seen[c] = true
-		cs = append(cs, c)
-	}
-	s.DockerContainers = cs
-	if s.DockerEnabled && s.DockerMode == "selected" && len(cs) == 0 && e["dockerMode"] == "" {
-		e["dockerContainers"] = "请至少选择一个容器，或将注入范围改为「全部运行中容器」"
 	}
 	return e
 }

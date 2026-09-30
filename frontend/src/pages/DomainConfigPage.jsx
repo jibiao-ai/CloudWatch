@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Copy, Plus, RefreshCw } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import Tabs from '../components/Tabs';
+import TabPager from '../components/TabPager';
 import LoadingButton from '../components/LoadingButton';
 import ConfirmModal from '../components/ConfirmModal';
 import EmptyState from '../components/EmptyState';
@@ -16,6 +18,9 @@ import { useAsync } from '../hooks/useAsync';
 import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { copyText } from '../utils/download';
+
+const TAB_ID = 'domain-tab';
+const TABS = ['mappings', 'sync', 'report'];
 
 /** 报告中有失败通道时给出可读提示 */
 const failedText = (rep) => ['local', 'dns', 'docker'].filter((k) => rep?.[k]?.status === 'failed').map((k) => `${{ local: '本机 hosts', dns: '内置 DNS', docker: 'Docker' }[k]}：${rep[k].message}`).join('；');
@@ -36,6 +41,10 @@ export default function DomainConfigPage() {
   const [toggling, setToggling] = useState(null);
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [syncDirty, setSyncDirty] = useState(false);
+  const [tab, setTab] = useState(() => { const h = window.location.hash.slice(1); return TABS.includes(h) ? h : 'mappings'; });
+  const onSyncDirty = useCallback((v) => setSyncDirty(v), []);
+  useEffect(() => { window.history.replaceState(null, '', `#${tab}`); }, [tab]);
   useEffect(() => { if (data) setState(data); }, [data]);
 
   const patch = (p) => setState((s) => ({ ...s, ...p }));
@@ -93,24 +102,36 @@ export default function DomainConfigPage() {
     return (await copyText(lines.join('\n'))) ? toast.success('已复制全部 hosts 记录', `${lines.length} 条`) : toast.error('复制失败');
   };
 
+  const items = [
+    { key: 'mappings', label: '域名配置', count: state?.mappings.length },
+    { key: 'sync', label: '同步方式', dot: syncDirty },
+    { key: 'report', label: '最近一次同步' },
+  ];
+
   return (
     <div>
-      <PageHeader title="域名配置" description="录入云平台控制台 IP 与根域名，自动生成 keystone / nova / neutron / cinder / glance 等组件的 hosts 记录，并同步到本机与 Docker 容器"
+      <PageHeader title="域名配置" description="录入云平台控制台 IP 与根域名，自动生成 keystone / nova / neutron / cinder / glance 等组件的 hosts 记录，并同步到本机 /etc/hosts 与所有 Docker 容器"
         actions={<>
-          {state && <button type="button" className="btn-default" onClick={copyAll}><Copy size={15} /> 复制全部 hosts</button>}
+          {state && tab === 'mappings' && <button type="button" className="btn-default" onClick={copyAll}><Copy size={15} /> 复制全部 hosts</button>}
           {canUpdate && <LoadingButton icon={RefreshCw} loading={applying} onClick={apply}>立即同步</LoadingButton>}
-          {canUpdate && <button type="button" className="btn-primary" onClick={() => { setErrs({}); setModal({ open: true, item: null }); }}><Plus size={15} /> 新增映射</button>}
+          {canUpdate && tab === 'mappings' && <button type="button" className="btn-primary" onClick={() => { setErrs({}); setModal({ open: true, item: null }); }}><Plus size={15} /> 新增映射</button>}
         </>} />
       {loading && !state ? <Skeleton.Chart height={300} /> : error && !state ? <div className="card"><ErrorState error={error} onRetry={reload} /></div> : state && (
         <div className="space-y-4">
-          {state.mappings.length === 0 ? (
-            <div className="card"><EmptyState title="还没有域名映射" description="点击「新增映射」，填写控制台 IP 与根域名，例如 192.168.27.150 与 openstack.svc.cluster.local" /></div>
-          ) : state.mappings.map((m) => (
-            <MappingCard key={m.id} m={m} canUpdate={canUpdate} canVerify={canVerify} toggling={toggling === m.id}
-              onToggle={(v) => toggle(m, v)} onEdit={() => { setErrs({}); setModal({ open: true, item: m }); }} onDelete={() => setDel(m)} />
-          ))}
-          <SyncPanel sync={state.sync} dnsAddr={state.dnsAddr} canUpdate={canUpdate} errors={syncErrs} saving={syncSaving} onSave={saveSync} />
-          <ReportPanel report={state.report} />
+          <Tabs idPrefix={TAB_ID} items={items} value={tab} onChange={setTab} />
+          <div id={`${TAB_ID}-panel`} role="tabpanel" aria-labelledby={`${TAB_ID}-${tab}`}>
+            <div hidden={tab !== 'mappings'} className="space-y-4">
+              {state.mappings.length === 0 ? (
+                <div className="card"><EmptyState title="还没有域名映射" description="点击「新增映射」，填写控制台 IP 与根域名，例如 192.168.27.150 与 openstack.svc.cluster.local" /></div>
+              ) : state.mappings.map((m) => (
+                <MappingCard key={m.id} m={m} canUpdate={canUpdate} canVerify={canVerify} toggling={toggling === m.id}
+                  onToggle={(v) => toggle(m, v)} onEdit={() => { setErrs({}); setModal({ open: true, item: m }); }} onDelete={() => setDel(m)} />
+              ))}
+            </div>
+            <div hidden={tab !== 'sync'}><SyncPanel sync={state.sync} dnsAddr={state.dnsAddr} canUpdate={canUpdate} errors={syncErrs} saving={syncSaving} onSave={saveSync} onDirty={onSyncDirty} /></div>
+            <div hidden={tab !== 'report'}><ReportPanel report={state.report} /></div>
+          </div>
+          <TabPager items={items} value={tab} onChange={setTab} />
         </div>
       )}
       <MappingModal open={modal.open} initial={modal.item} errors={errs} saving={saving} onSubmit={submit} onClose={() => setModal({ open: false, item: null })} />

@@ -2,10 +2,10 @@ package hosts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -103,20 +103,20 @@ func (m *Manager) Apply(ctx context.Context, by, trigger string) (*Report, error
 
 	// 1) 本机 hosts
 	if cfg.LocalEnabled {
-		if ch, err := WriteLocal(cfg.LocalPath, block); err != nil {
+		if ch, err := WriteLocal(LocalHostsPath, block); err != nil {
 			rep.Local = Channel{Status: "failed", Message: err.Error()}
 		} else {
-			msg := fmt.Sprintf("已写入 %s（%d 条）", cfg.LocalPath, len(table))
+			msg := fmt.Sprintf("已写入 %s（%d 条）", LocalHostsPath, len(table))
 			if !ch {
-				msg = fmt.Sprintf("%s 已是最新（%d 条）", cfg.LocalPath, len(table))
+				msg = fmt.Sprintf("%s 已是最新（%d 条）", LocalHostsPath, len(table))
 			}
 			rep.Local = Channel{Status: "ok", Message: msg, Changed: ch}
 		}
 	} else {
 		rep.Local = Channel{Status: "disabled", Message: "未启用"}
-		if ValidatePath(cfg.LocalPath) {
-			if ch, err := WriteLocal(cfg.LocalPath, ""); err == nil && ch {
-				rep.Local = Channel{Status: "disabled", Message: "已关闭，并清除 " + cfg.LocalPath + " 中的受管段", Changed: true}
+		if true {
+			if ch, err := WriteLocal(LocalHostsPath, ""); err == nil && ch {
+				rep.Local = Channel{Status: "disabled", Message: "已关闭，并清除 " + LocalHostsPath + " 中的受管段", Changed: true}
 			}
 		}
 	}
@@ -188,29 +188,6 @@ func (m *Manager) DNSAddr() string {
 	return m.dns.Addr()
 }
 
-func (m *Manager) selectTargets(cs []Container, cfg Sync) (targets []Container, missing []string) {
-	if cfg.DockerMode == "all" {
-		return cs, nil
-	}
-	want := map[string]bool{}
-	for _, n := range cfg.DockerContainers {
-		want[n] = true
-	}
-	for _, c := range cs {
-		if want[c.Name] || want[c.ID] || want[short(c.ID)] {
-			targets = append(targets, c)
-			delete(want, c.Name)
-			delete(want, c.ID)
-			delete(want, short(c.ID))
-		}
-	}
-	for n := range want {
-		missing = append(missing, n)
-	}
-	sort.Strings(missing)
-	return
-}
-
 func (m *Manager) applyDocker(ctx context.Context, cfg Sync, block string) Channel {
 	if !cfg.DockerEnabled {
 		if m.watchCtx != nil {
@@ -230,32 +207,33 @@ func (m *Manager) applyDocker(ctx context.Context, cfg Sync, block string) Chann
 	if err != nil {
 		return Channel{Status: "failed", Message: err.Error()}
 	}
-	targets, missing := m.selectTargets(cs, cfg)
 	ch := Channel{Status: "ok"}
 	fail := 0
-	for _, c := range targets {
+	for _, c := range cs {
 		ic, cancel := context.WithTimeout(ctx, 20*time.Second)
 		method, err := d.Inject(ic, c.ID, block)
 		cancel()
 		t := Target{Name: c.Name, ID: short(c.ID), Status: "ok", Method: method}
-		if err != nil {
+		switch {
+		case errors.Is(err, ErrHostNetwork) && cfg.LocalEnabled:
+			t.Method = "共用宿主机 hosts"
+		case errors.Is(err, ErrHostNetwork):
+			t.Status, t.Error = "failed", "host 网络容器共用宿主机 hosts，请开启「本机 hosts」"
+			fail++
+		case err != nil:
 			t.Status, t.Error = "failed", err.Error()
 			fail++
 		}
 		ch.Targets = append(ch.Targets, t)
 	}
-	for _, n := range missing {
-		ch.Targets = append(ch.Targets, Target{Name: n, Status: "failed", Error: "容器未运行或不存在"})
-		fail++
-	}
 	switch {
 	case len(ch.Targets) == 0:
-		ch.Message = "没有匹配的运行中容器（新启动的容器会被自动注入）"
+		ch.Message = "当前没有运行中的容器（新启动的容器会被自动注入）"
 	case fail > 0:
 		ch.Status = "failed"
 		ch.Message = fmt.Sprintf("%d 个容器成功，%d 个失败", len(ch.Targets)-fail, fail)
 	default:
-		ch.Message = fmt.Sprintf("已注入 %d 个容器；新启动的容器会被自动注入", len(ch.Targets))
+		ch.Message = fmt.Sprintf("已注入全部 %d 个运行中的容器；新启动的容器会被自动注入", len(ch.Targets))
 	}
 	return ch
 }
@@ -282,14 +260,13 @@ func (m *Manager) ensureWatch(cfg Sync) {
 		if err != nil || !cur.DockerEnabled {
 			return
 		}
-		if cur.DockerMode == "selected" && !contains(cur.DockerContainers, name) && !contains(cur.DockerContainers, id) && !contains(cur.DockerContainers, short(id)) {
-			return
-		}
 		ms, err := m.Store.List(c)
 		if err != nil {
 			return
 		}
-		if method, err := d.Inject(c, id, Block(ms)); err != nil {
+		if method, err := d.Inject(c, id, Block(ms)); err != nil && errors.Is(err, ErrHostNetwork) {
+			return
+		} else if err != nil {
 			log.Printf("hosts: 新容器 %s 注入失败: %v", name, err)
 		} else {
 			log.Printf("hosts: 新容器 %s 已注入域名（%s）", name, method)
@@ -297,31 +274,7 @@ func (m *Manager) ensureWatch(cfg Sync) {
 	})
 }
 
-func contains(l []string, s string) bool {
-	for _, x := range l {
-		if x == s {
-			return true
-		}
-	}
-	return false
-}
-
 /* ---------------- 状态 / 容器列表 / 校验 ---------------- */
-
-// Containers 列出 Docker 中运行的容器（供页面勾选）。
-func (m *Manager) Containers(ctx context.Context, sock string) ([]Container, error) {
-	if sock == "" {
-		c, err := m.Store.GetSync(ctx)
-		if err != nil {
-			return nil, err
-		}
-		sock = c.DockerSocket
-	}
-	if !validSocket(sock) {
-		return nil, FieldsErr(FieldErrors{"sync.dockerSocket": "socket 路径不合法"})
-	}
-	return NewDocker(sock).Running(ctx)
-}
 
 type Item struct {
 	Key     string `json:"key"`
@@ -367,14 +320,14 @@ func (m *Manager) Verify(ctx context.Context, id string) (*VerifyResult, error) 
 	case !cfg.LocalEnabled:
 		add(Item{Key: "local", Label: "本机 hosts", Skipped: true, OK: true, Message: "未启用本机 hosts 同步"})
 	default:
-		ok, err := LocalInSync(cfg.LocalPath, block)
+		ok, err := LocalInSync(LocalHostsPath, block)
 		switch {
 		case err != nil:
 			add(Item{Key: "local", Label: "本机 hosts", Error: err.Error()})
 		case !ok:
-			add(Item{Key: "local", Label: "本机 hosts", Error: cfg.LocalPath + " 中的受管段与配置不一致，请点击「立即同步」"})
+			add(Item{Key: "local", Label: "本机 hosts", Error: LocalHostsPath + " 中的受管段与配置不一致，请点击「立即同步」"})
 		default:
-			add(Item{Key: "local", Label: "本机 hosts", OK: true, Message: fmt.Sprintf("%s 已包含 %d 条记录", cfg.LocalPath, len(mp.Hosts))})
+			add(Item{Key: "local", Label: "本机 hosts", OK: true, Message: fmt.Sprintf("%s 已包含 %d 条记录", LocalHostsPath, len(mp.Hosts))})
 		}
 	}
 
@@ -415,9 +368,16 @@ func (m *Manager) Verify(ctx context.Context, id string) (*VerifyResult, error) 
 		if err != nil {
 			add(Item{Key: "docker", Label: "Docker 容器", Error: err.Error()})
 		} else {
-			targets, _ := m.selectTargets(cs, cfg)
+			targets := cs
 			var bad []string
 			for _, c := range targets {
+				if d.IsHostNetwork(ctx, c.ID) {
+					// host 网络容器共用宿主机 hosts：开启「本机 hosts」即视为覆盖，否则记为异常
+					if !cfg.LocalEnabled {
+						bad = append(bad, c.Name+": host 网络容器需开启「本机 hosts」")
+					}
+					continue
+				}
 				ok, err := d.ContainerHasBlock(ctx, c.ID, block)
 				if err != nil {
 					bad = append(bad, c.Name+": "+err.Error())

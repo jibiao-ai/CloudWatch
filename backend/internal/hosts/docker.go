@@ -119,6 +119,9 @@ func (d *Docker) Running(ctx context.Context) ([]Container, error) {
 	return out, nil
 }
 
+// ErrHostNetwork host 网络模式的容器与宿主机共用 /etc/hosts，无需（也不能）单独注入。
+var ErrHostNetwork = errors.New("host 网络模式的容器共用宿主机 hosts")
+
 // Inject 把受管段写入容器的 /etc/hosts。依次尝试：
 //  1. 宿主机直写：后端与 Docker 同机时，直接改 inspect 返回的 HostsPath（不依赖容器内任何命令）；
 //  2. docker exec：以 root 在容器内用 sh+awk 幂等替换（适用于后端本身运行在容器里、仅挂载了 docker.sock 的情形）；
@@ -134,7 +137,7 @@ func (d *Docker) Inject(ctx context.Context, id, block string) (string, error) {
 		return "", err
 	}
 	if info.HostConfig.NetworkMode == "host" {
-		return "", errors.New("host 网络模式的容器共用宿主机 hosts，请在「本机 hosts」中同步")
+		return "", ErrHostNetwork
 	}
 	var errs []string
 	if p := info.HostsPath; p != "" {
@@ -257,6 +260,15 @@ func (d *Docker) archiveInject(ctx context.Context, id, block string) error {
 		return fmt.Errorf("写入失败(%d) %s", r2.StatusCode, strings.TrimSpace(string(b)))
 	}
 	return nil
+}
+
+// IsHostNetwork 容器是否使用 host 网络模式（查询失败时按非 host 处理，交给后续检查报错）。
+func (d *Docker) IsHostNetwork(ctx context.Context, id string) bool {
+	var info struct{ HostConfig struct{ NetworkMode string } }
+	if err := d.json(ctx, "GET", "/containers/"+id+"/json", nil, nil, &info); err != nil {
+		return false
+	}
+	return info.HostConfig.NetworkMode == "host"
 }
 
 // ContainerHasBlock 检查容器 hosts 是否已含期望的受管段（GET archive，只读）。
