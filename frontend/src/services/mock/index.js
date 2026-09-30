@@ -393,6 +393,24 @@ on('put', '/users/status', ({ body, ctx }) => {
   save();
   return null;
 }, { need: 'user:toggle' });
+/** 删除用户：不能删自己、不能删光超级管理员；同时清理其登录凭据与会话（审计记录保留） */
+const removeUsers = (ids, ctx) => {
+  const targets = db.users.filter((u) => ids.includes(u.id));
+  if (!targets.length) fail(404, '用户不存在');
+  if (targets.some((u) => u.id === ctx.user.id)) fail(400, '不能删除自己');
+  const supers = db.users.filter((u) => u.status === 'active' && isSuper(u));
+  if (supers.length && supers.every((s) => ids.includes(s.id))) fail(400, '不能删除最后一个超级管理员');
+  targets.forEach((u) => {
+    delete db.passwords[u.username];
+    Object.keys(db.sessions).forEach((k) => { if (db.sessions[k] === u.id) delete db.sessions[k]; });
+  });
+  db.users = db.users.filter((u) => !ids.includes(u.id));
+  pushAudit(ctx, 'user', 'delete', targets.length === 1 ? targets[0].username : `${targets.length} 个用户（${targets.map((u) => u.username).join('、')}）`, { body: { ids }, link: '/system/users' });
+  save();
+  return { removed: targets.length };
+};
+on('post', '/users/batch-delete', ({ body, ctx }) => removeUsers(Array.isArray(body.ids) ? body.ids : [], ctx), { need: 'user:delete' });
+on('delete', '/users/:id', ({ params, ctx }) => removeUsers([params.id], ctx), { need: 'user:delete' });
 on('put', '/users/:id', ({ params, body, ctx }) => {
   const u = db.users.find((x) => x.id === params.id);
   if (!u) fail(404, '用户不存在');

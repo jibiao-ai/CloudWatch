@@ -24,6 +24,7 @@ export const PERMISSION_MODULES = [
       { code: 'user:update', name: '编辑用户' },
       { code: 'user:toggle', name: '启用/禁用' },
       { code: 'user:unlock', name: '解锁' },
+      { code: 'user:delete', name: '删除用户' },
       { code: 'user:reset_password', name: '重置密码' },
       { code: 'user:export', name: '导出' },
     ],

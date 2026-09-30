@@ -13,7 +13,7 @@ type Module struct {
 var Modules = []Module{
 	{"dashboard", "dashboard:view", nil},
 	{"provider", "provider:view", []string{"provider:create", "provider:update", "provider:delete", "provider:verify", "provider:sync", "provider:write_switch", "provider:export"}},
-	{"user", "user:view", []string{"user:create", "user:update", "user:toggle", "user:unlock", "user:reset_password", "user:export"}},
+	{"user", "user:view", []string{"user:create", "user:update", "user:toggle", "user:unlock", "user:delete", "user:reset_password", "user:export"}},
 	{"role", "role:view", []string{"role:create", "role:update", "role:delete"}},
 	{"audit", "audit:view", []string{"audit:export", "audit:clean"}},
 	{"domain", "domain:view", []string{"domain:update", "domain:verify"}},
