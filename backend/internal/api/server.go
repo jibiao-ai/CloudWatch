@@ -5,11 +5,13 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jibiao-ai/cloudwatch/internal/audit"
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
+	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
 	"github.com/jibiao-ai/cloudwatch/internal/retention"
 	"github.com/jibiao-ai/cloudwatch/internal/settings"
@@ -21,6 +23,7 @@ type Server struct {
 	Auth      *auth.Service
 	Audit     *audit.Service
 	Retention *retention.Job
+	Hosts     *hosts.Manager
 }
 
 const maxBody = 8 << 20 // 设置里可能带 Logo / 背景图（base64），放宽到 8MB
@@ -103,9 +106,21 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/audit-logs/{id}", s.guard("audit:view", s.auditGet))
 	mux.Handle("POST /api/audit-logs/clean", s.guard("audit:clean", s.auditClean))
 
+	// 域名配置
+	mux.Handle("GET /api/domain-config", s.guard("domain:view", s.getDomain))
+	mux.Handle("GET /api/domain-config/containers", s.guard("domain:view", s.listContainers))
+	mux.Handle("POST /api/domain-config/mappings", s.guard("domain:update", s.saveMapping(false)))
+	mux.Handle("PUT /api/domain-config/mappings/{id}", s.guard("domain:update", s.saveMapping(true)))
+	mux.Handle("DELETE /api/domain-config/mappings/{id}", s.guard("domain:update", s.deleteMapping))
+	mux.Handle("POST /api/domain-config/mappings/{id}/verify", s.guard("domain:verify", s.verifyMapping))
+	mux.Handle("PUT /api/domain-config/sync", s.guard("domain:update", s.putSync))
+	mux.Handle("POST /api/domain-config/apply", s.guard("domain:update", s.postApply))
+
 	mux.Handle("/api/", public(func(w http.ResponseWriter, r *http.Request) error {
 		return httpx.Err(404, "接口不存在："+r.Method+" "+r.URL.Path)
 	}))
 
 	return httpx.Recover(httpx.SecurityHeaders(mux))
 }
+
+func itoa(n int) string { return strconv.Itoa(n) }

@@ -8,7 +8,7 @@
  *  - 导出类接口返回 Blob，由 <ExportButton/> 触发下载（文件名含条件与时间戳）；
  *  - 长耗时操作（同步、巡检、创建虚机）返回任务 id，前端用 pollTask 轮询。
  * VITE_USE_MOCK 三态开关：
- *   hybrid（默认）—— 认证 / 系统配置 / 审计日志 / 资源文件 / 告警未读数走真实后端，其余尚未开发的模块（平台、用户、角色、域名、概览）仍用 mock；
+ *   hybrid（默认）—— 认证 / 系统配置 / 审计日志 / 资源文件 / 告警未读数走真实后端，其余尚未开发的模块（平台、用户、角色、概览）仍用 mock；域名配置已走真实后端；
  *   true          —— 全部 mock（纯前端演示，无需后端）；
  *   false         —— 全部走真实后端。
  * TODO(mock)：其余模块后端就绪后，逐个从 services/mock 的 REAL_PREFIXES 反向迁移，最终删除 mock 目录。
@@ -189,13 +189,13 @@ export const auditApi = {
 };
 export const domainApi = {
   getDomainConfig: () => get('/domain-config'),
-  saveDomainConfig: (data) => put('/domain-config', data),
-  verifyDomainEntry: (entry) => post('/domain-config/verify', entry),
-  uploadCert: (file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    return post('/domain-config/cert', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-  },
+  listContainers: (socket) => get('/domain-config/containers', { socket }, { skipErrorToast: true }),
+  createMapping: (data) => post('/domain-config/mappings', data),
+  updateMapping: (id, data) => put(`/domain-config/mappings/${id}`, data),
+  deleteMapping: (id) => del(`/domain-config/mappings/${id}`),
+  verifyMapping: (id) => post(`/domain-config/mappings/${id}/verify`, {}),
+  saveSync: (data) => put('/domain-config/sync', data),
+  applyDomain: () => post('/domain-config/apply', {}),
 };
 export const settingsApi = {
   /** 公开读取（登录页也需要主色/Logo） */

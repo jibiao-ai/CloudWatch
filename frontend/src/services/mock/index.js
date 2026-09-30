@@ -4,7 +4,7 @@
  * 数据持久化在 localStorage（cw_mock_db），便于刷新后保持；「重置」清除该 key 即可。
  */
 import axios, { AxiosError } from 'axios';
-import { seedProviders, seedRoles, seedUsers, seedSettings, seedDomain, genAudit, MOCK_PASSWORDS } from './seed';
+import { seedProviders, seedRoles, seedUsers, seedSettings, genAudit, MOCK_PASSWORDS } from './seed';
 import { buildMenus } from './menus';
 import { dashboardOverview, dashboardTrend } from './dashboard';
 
@@ -27,7 +27,6 @@ function loadDb() {
     passwords: { ...MOCK_PASSWORDS },
     settings: clone(seedSettings),
     channelSecrets: { c1: 'mock', c2: 'mock' },
-    domain: clone(seedDomain),
     audits: genAudit(),
     sessions: {},
     tasks: {},
@@ -518,40 +517,6 @@ on('post', '/audit-logs/clean', ({ body, ctx }) => {
   return { removed };
 }, { need: 'audit:clean' });
 
-/* -- 域名配置 -- */
-on('get', '/domain-config', () => db.domain, { need: 'domain:view' });
-on('put', '/domain-config', ({ body, ctx }) => {
-  if (!body.entries?.length) fail(400, '至少保留一个访问入口');
-  if (body.entries.filter((e) => e.isDefault).length !== 1) fail(400, '必须且只能设置一个默认入口');
-  db.domain = { ...db.domain, entries: body.entries.map((e) => ({ ...e, id: e.id?.startsWith('new_') ? uid('d') : e.id })) };
-  pushAudit(ctx, 'domain', 'update', `域名配置（${body.entries.length} 个入口）`, { link: '/system/domain' });
-  save();
-  return db.domain;
-}, { need: 'domain:update' });
-on('post', '/domain-config/verify', async ({ body }) => {
-  await sleep(700);
-  const dnsOk = !!body.domain ? !/invalid|nxdomain/.test(body.domain) : true;
-  const connOk = !/^10\.140\./.test(body.ip || '');
-  const certRequired = body.protocol === 'https';
-  const expired = body.cert && new Date(body.cert.notAfter) < new Date();
-  return {
-    items: [
-      { key: 'dns', label: '域名解析', ok: dnsOk, message: body.domain ? (dnsOk ? `${body.domain} → ${body.ip}` : '') : '未配置域名，仅使用 IP 访问（跳过）', error: dnsOk ? '' : `${body.domain} 无法解析（NXDOMAIN）` },
-      { key: 'connect', label: '连通性', ok: connOk, message: connOk ? `${body.ip}:${body.port} 连接成功（${28 + Math.floor(Math.random() * 20)} ms）` : '', error: connOk ? '' : `${body.ip}:${body.port} 连接超时` },
-      { key: 'cert', label: '证书链', ok: !certRequired || (!!body.cert && !expired), message: !certRequired ? 'HTTP 协议，无需证书' : body.cert ? `证书有效期至 ${body.cert.notAfter}，链完整` : '', error: !certRequired ? '' : !body.cert ? 'HTTPS 需要上传证书' : expired ? `证书已于 ${body.cert.notAfter} 过期` : '' },
-    ],
-  };
-}, { need: 'domain:verify' });
-on('post', '/domain-config/cert', async ({ body }) => {
-  const file = body.get?.('file');
-  if (!file) fail(400, '未收到证书文件');
-  if (!/\.(crt|pem|cer)$/i.test(file.name)) fail(400, '证书格式不支持，请上传 .crt / .pem / .cer 文件');
-  const text = await file.text();
-  if (!/BEGIN CERTIFICATE/.test(text)) fail(400, '证书内容无效：未找到 PEM 证书块');
-  const y = new Date();
-  return { fileName: file.name, issuer: 'CheryFS Internal CA', subject: file.name.replace(/\.(crt|pem|cer)$/i, ''), notBefore: y.toISOString().slice(0, 10), notAfter: new Date(y.getTime() + 365 * 86400e3).toISOString().slice(0, 10) };
-}, { need: 'domain:update' });
-
 /* -- 系统配置 -- */
 const safeSettings = () => ({
   ...db.settings,
@@ -607,7 +572,7 @@ async function toXlsxBlob(payload) {
 }
 
 /* ---------------- 混合模式：这些前缀走真实后端，其余仍由本文件 mock ---------------- */
-export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts/unread-count'];
+export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts/unread-count', '/domain-config'];
 const isReal = (path) => REAL_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : `${p}/`) || path === p.replace(/\/$/, ''));
 
 let realHttp;

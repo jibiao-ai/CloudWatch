@@ -65,14 +65,6 @@ export const seedSettings = {
   ],
 };
 
-export const seedDomain = {
-  entries: [
-    { id: 'd1', networkType: 'internal', name: '内网访问', ip: '192.168.27.200', domain: 'cloudwatch.cheryfs.cn', port: 443, protocol: 'https', cert: { fileName: 'cloudwatch.cheryfs.cn.crt', issuer: 'CheryFS Internal CA', notBefore: '2026-01-10', notAfter: '2027-01-10', subject: 'cloudwatch.cheryfs.cn' }, isDefault: true },
-    { id: 'd2', networkType: 'external', name: '灾备站点访问', ip: '10.140.64.20', domain: '', port: 8080, protocol: 'http', cert: null, isDefault: false },
-  ],
-  effectHint: '需刷新网关配置后生效',
-};
-
 /** 审计日志（确定性生成） */
 export function genAudit() {
   const users = seedUsers.slice(0, 5);

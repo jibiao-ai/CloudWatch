@@ -17,6 +17,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/bootstrap"
 	"github.com/jibiao-ai/cloudwatch/internal/config"
 	"github.com/jibiao-ai/cloudwatch/internal/db"
+	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 	"github.com/jibiao-ai/cloudwatch/internal/retention"
 	"github.com/jibiao-ai/cloudwatch/internal/secrets"
 	"github.com/jibiao-ai/cloudwatch/internal/settings"
@@ -48,8 +49,10 @@ func main() {
 	}
 	st := settings.New(d, box)
 	au := auth.New(d, st)
-	srv := &api.Server{DB: d, Settings: st, Auth: au, Audit: audit.New(d), Retention: retention.New(d, st, au)}
+	hm := hosts.NewManager(hosts.NewStore(d))
+	srv := &api.Server{DB: d, Settings: st, Auth: au, Audit: audit.New(d), Retention: retention.New(d, st, au), Hosts: hm}
 	srv.Retention.Start(ctx)
+	hm.Start(ctx) // 启动即按库中配置同步 hosts / DNS / Docker，重启后自动恢复
 
 	hs := &http.Server{
 		Addr: cfg.Addr, Handler: srv.Handler(),

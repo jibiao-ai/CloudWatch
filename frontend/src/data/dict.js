@@ -40,6 +40,7 @@ export const AUDIT_ACTIONS = [
   { value: 'update', label: '修改' },
   { value: 'delete', label: '删除' },
   { value: 'verify', label: '验证' },
+  { value: 'sync', label: '同步' },
   { value: 'reset_password', label: '重置密码' },
   { value: 'export', label: '导出' },
   { value: 'clean', label: '清理' },
@@ -52,10 +53,6 @@ export const AUDIT_RESULTS = [
 export const PROTOCOLS = [
   { value: 'https', label: 'HTTPS' },
   { value: 'http', label: 'HTTP' },
-];
-export const NETWORK_TYPES = [
-  { value: 'internal', label: '内网' },
-  { value: 'external', label: '外网' },
 ];
 
 export const OPENSTACK_COMPONENTS = [

@@ -22,7 +22,7 @@
 | **平台管理**（五步向导 · 五端点自动填充 · 逐组件验证连接 · 写操作开关全站联动 · 影响范围删除） | ✅ |
 | 用户管理 / 角色管理（功能权限树 + 数据权限三级 allow/deny）/ 审计日志 / 域名配置 / 系统配置 | ✅ |
 | 统一资源管理 / 资源视图 / 巡检 / 性能监控 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
-| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；其余模块（平台/用户/角色/域名/概览）暂为 mock |
+| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；**域名配置（hosts 映射 / 内置 DNS / Docker 注入）**；其余模块（平台/用户/角色/概览）暂为 mock |
 
 ## 系统配置（真实后端）
 
@@ -35,6 +35,30 @@
 | 安全策略 | 登录真实执行：密码复杂度与最小长度、失败锁定、验证码、会话超时、最大并发会话、强制改密 |
 | 数据保留 | 后台任务启动时及每小时分批清理 `audit_logs / metric_samples / inspection_results / alert_events` 与过期会话 |
 | 告警渠道 | 邮件（SMTP）/ Webhook 真实发送；「测试」按钮真实投递；密钥 AES-256-GCM 加密入库，接口永不回显（`******`） |
+
+## 域名配置（真实后端）
+
+录入「云平台控制台 IP + 根域名」，自动生成各组件的 hosts 记录，并同步到本机与 Docker 容器，之后即可用域名访问云平台。
+例：`192.168.27.150` + `openstack.svc.cluster.local` →
+
+```
+192.168.27.150 keystone.openstack.svc.cluster.local
+192.168.27.150 neutron.openstack.svc.cluster.local
+192.168.27.150 nova.openstack.svc.cluster.local
+192.168.27.150 cinder.openstack.svc.cluster.local
+192.168.27.150 glance.openstack.svc.cluster.local
+```
+
+- **映射**：可多条（每个根域名唯一）；默认组件 keystone/neutron/nova/cinder/glance，可勾选 placement/heat/horizon… 或自定义；支持启用/停用、编辑、删除；「校验」逐项检查 本机 hosts / 内置 DNS / Docker / 控制台连通性（`IP:探测端口`）。
+- **三种同步通道**（页面「同步方式」配置，可同时开启，保存映射后自动执行；也可「立即同步」）：
+  1. **本机 hosts 文件**：只维护 `# BEGIN/END CloudWatch managed` 受控区块，区块外内容原样保留；原子写入（临时文件 + rename，失败回退原地写）。
+  2. **内置 DNS**：平台自带 UDP/TCP DNS 服务（默认 `0.0.0.0:53`，可改高位端口），受管域名直接应答，其余转发到「上游 DNS」（未配置则 REFUSED）。容器使用：`docker run --dns <本机IP> …`，或 `/etc/docker/daemon.json` 中 `{"dns":["<本机IP>"]}`。
+  3. **Docker 容器注入**：通过 Docker Engine API（unix socket）把受控区块写入容器 `/etc/hosts`；范围可选「指定容器」或「所有运行中容器」。写入方式依次尝试：宿主机直接写 `HostsPath` → `exec` 以 root 改写 → archive 上传；`host` 网络模式容器会明确拒绝（其 hosts 即宿主机 hosts）。**监听 Docker 启动事件，容器重启/新建后自动重新注入**。
+- **权限**：`domain:view` / `domain:update` / `domain:verify`（角色管理中分配）；所有变更写入审计日志（新增/修改/删除/同步/验证）。
+- **API**（均需登录）：`GET /api/domain-config` · `GET /api/domain-config/containers?socket=` · `POST /api/domain-config/mappings` · `PUT|DELETE /api/domain-config/mappings/{id}` · `POST /api/domain-config/mappings/{id}/verify` · `PUT /api/domain-config/sync` · `POST /api/domain-config/apply`。字段校验失败返回 400 / code 40001 + `data.fields`。
+- **数据**：表 `host_mappings`（迁移 `0002_hosts.sql`）；同步方式与最近同步结果存 `system_meta`（`hosts_sync` / `hosts_last_apply`）。服务启动时自动执行一次同步。
+- **部署注意**：写 `/etc/hosts` 需要 root 或对该文件有写权限；监听 53 端口需 root / `CAP_NET_BIND_SERVICE`（或改用高位端口）；访问 Docker 需要对 `docker.sock` 有读写权限。后端若跑在容器内，需挂载宿主机 hosts 文件与 `/var/run/docker.sock`。
+- **已验证范围**：后端 60 项接口测试 + 浏览器端到端 22 项（含用户示例、DNS 应答、hosts 保留/清理、容器注入）；Docker 部分用**模拟的 Docker Engine API** 验证，未连真实 dockerd，上线前请在真实 Docker 环境复测。
 
 ## 后端（`backend/`）
 
@@ -96,7 +120,7 @@ npm run lint:rules          # 规则扫描（见下）
 可用 `zhaolei`（已锁定）、`chenjie`（已禁用）体验 423 / 403 登录分支。
 
 ### mock 模式（`VITE_USE_MOCK`）
-- `hybrid`（默认）：认证 / 系统配置 / 审计日志 / 图片资源 / 登录页信息 / 未读告警走**真实后端**，平台/用户/角色/域名/概览仍为 mock；`vite dev/preview` 把 `/api` 代理到 `127.0.0.1:8080`（`VITE_PROXY_TARGET` 可改）。
+- `hybrid`（默认）：认证 / 系统配置 / 审计日志 / 图片资源 / 登录页信息 / 未读告警走**真实后端**，平台/用户/角色/概览仍为 mock；**域名配置走真实后端**；`vite dev/preview` 把 `/api` 代理到 `127.0.0.1:8080`（`VITE_PROXY_TARGET` 可改）。
 - `true`：全部 mock，无需后端。`false`：全部真实后端。
 
 ### 对接真实后端
@@ -114,7 +138,7 @@ npm run lint:rules          # 规则扫描（见下）
 ## 规范自检（`npm run lint:rules`）
 
 自动扫描并阻断：原生 `<select>` · `window.confirm/alert/prompt` · 硬编码颜色（`#fff` / `bg-white` / `gray-*`…）· `dark:` 前缀 ·
-`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行 · **毛玻璃类名/`backdrop-*`** · **输入聚焦彩色 ring / 彩色边框**。当前 **92 个文件全部通过**。
+`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行 · **毛玻璃类名/`backdrop-*`** · **输入聚焦彩色 ring / 彩色边框**。当前 **96 个文件全部通过**。
 
 ## 关键设计说明
 
