@@ -310,7 +310,7 @@ func (s *Service) Login(ctx context.Context, req LoginReq, ip, ua string) (*Toke
 		return nil, nil, httpx.Err(400, "请输入账号和密码")
 	}
 	fails := s.failCount(ctx, name)
-	needCap := sec.CaptchaEnabled && fails >= sec.CaptchaAfterFailures
+	needCap := sec.CaptchaEnabled // 开启后每次登录都必须输入验证码
 	if needCap {
 		if strings.TrimSpace(req.Captcha) == "" {
 			return nil, nil, httpx.ErrData(401, 40101, "请输入验证码", map[string]any{"captchaRequired": true})
@@ -345,14 +345,18 @@ func (s *Service) Login(ctx context.Context, req LoginReq, ip, ua string) (*Toke
 		_, _ = s.db.ExecContext(ctx, `INSERT INTO login_failures(username,cnt,last_at) VALUES(?,1,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE cnt=cnt+1,last_at=UTC_TIMESTAMP(3)`, name)
 		fails++
 		if u != nil {
-			nf := u.FailCount + 1
+			base := u.FailCount
+			if u.LockedUntil != nil && !u.LockedUntil.After(time.Now()) {
+				base = 0 // 上一次锁定已到期，失败计数重新开始
+			}
+			nf := base + 1
 			if nf >= sec.LockThreshold {
 				_, _ = s.db.ExecContext(ctx, `UPDATE users SET fail_count=?, status='locked', locked_until=? WHERE id=?`, nf, time.Now().UTC().Add(time.Duration(sec.LockMinutes)*time.Minute), u.ID)
 			} else {
 				_, _ = s.db.ExecContext(ctx, `UPDATE users SET fail_count=? WHERE id=?`, nf, u.ID)
 			}
 		}
-		return nil, u, httpx.ErrData(401, 40100, "账号或密码错误", map[string]any{"captchaRequired": sec.CaptchaEnabled && fails >= sec.CaptchaAfterFailures})
+		return nil, u, httpx.ErrData(401, 40100, "账号或密码错误", map[string]any{"captchaRequired": sec.CaptchaEnabled})
 	}
 
 	_, _ = s.db.ExecContext(ctx, `DELETE FROM login_failures WHERE username=?`, name)

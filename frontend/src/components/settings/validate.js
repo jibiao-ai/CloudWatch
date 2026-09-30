@@ -2,7 +2,7 @@ import { isEmail } from '../../utils/validators';
 import { validateChannel } from './AlertChannels';
 
 /** 与后端 settings 包校验区间保持一致；后端为最终裁决，这里只做即时提示。 */
-export const SECURITY_RANGES = [['minLength', 6, 64], ['expireDays', 0, 3650], ['sessionTimeoutMin', 5, 1440], ['maxSessions', 1, 20], ['captchaAfterFailures', 1, 10], ['lockThreshold', 3, 20], ['lockMinutes', 1, 1440]];
+export const SECURITY_RANGES = [['minLength', 6, 64], ['expireDays', 0, 3650], ['sessionTimeoutMin', 5, 1440], ['maxSessions', 1, 20], ['lockThreshold', 3, 20], ['lockMinutes', 1, 1440]];
 export const RETENTION_KEYS = ['auditDays', 'metricDays', 'inspectionDays', 'alertDays'];
 
 export function validateGroup(g, v) {

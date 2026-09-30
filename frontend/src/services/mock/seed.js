@@ -57,7 +57,7 @@ export const MOCK_PASSWORDS = { admin: 'CloudWatch@2026', zhangwei: 'CloudWatch@
 export const seedSettings = {
   basic: { platformName: 'CloudWatch', subtitle: '私有云可观测平台', copyright: '© 2026 CloudWatch', supportEmail: 'ops@cloudwatch.local' },
   brand: { logoUrl: '', loginBgUrl: '', primaryColor: '#C6242A' },
-  security: { minLength: 8, requireUpper: true, requireLower: true, requireDigit: true, requireSpecial: true, expireDays: 90, sessionTimeoutMin: 60, maxSessions: 3, captchaEnabled: true, captchaAfterFailures: 3, lockThreshold: 5, lockMinutes: 15 },
+  security: { minLength: 8, requireUpper: true, requireLower: true, requireDigit: true, requireSpecial: true, expireDays: 90, sessionTimeoutMin: 60, maxSessions: 3, captchaEnabled: false, lockThreshold: 5, lockMinutes: 15 },
   retention: { auditDays: 180, metricDays: 90, inspectionDays: 365, alertDays: 180 },
   alertChannels: [
     { id: 'c1', type: 'email', name: '运维值班邮箱', enabled: true, config: { host: 'smtp.cheryfs.cn', port: 465, username: 'alert@cheryfs.cn', to: 'ops-oncall@cheryfs.cn' }, secretSet: true },

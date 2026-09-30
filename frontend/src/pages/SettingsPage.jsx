@@ -16,6 +16,7 @@ import { useAsync } from '../hooks/useAsync';
 import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { useStore } from '../store/useStore';
+import { pickPolicy } from '../utils/validators';
 
 const GROUPS = [
   { key: 'basic', title: '基础信息', desc: '平台名称、副标题与版权信息，显示于登录页与侧栏' },
@@ -73,6 +74,7 @@ export default function SettingsPage() {
     orig.current = { ...orig.current, [g]: structuredClone(res[g]) };
     setF((s) => ({ ...s, [g]: structuredClone(res[g]) }));
     if (g === 'basic') setBrand({ platformName: res.basic.platformName, subtitle: res.basic.subtitle, copyright: res.basic.copyright });
+    if (g === 'security') setBrand({ captchaEnabled: !!res.security.captchaEnabled, pwdPolicy: pickPolicy(res.security) });
     if (g === 'brand') { committedColor.current = res.brand.primaryColor; setBrand({ ...res.brand }); }
   };
   const fieldErrorsOf = (g, ex) => {

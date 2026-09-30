@@ -8,7 +8,7 @@ import PageHeader from '../components/PageHeader';
 import { authApi } from '../services/api';
 import { useStore } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
-import { checkPassword } from '../utils/validators';
+import { checkPassword, policyText } from '../utils/validators';
 
 const STRENGTH = ['很弱', '较弱', '一般', '较强', '很强'];
 /**
@@ -26,7 +26,8 @@ export default function ChangePasswordPage() {
   const [err, setErr] = useState({});
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
-  const chk = checkPassword(f.newPassword);
+  const policy = useStore((s) => s.brand.pwdPolicy);
+  const chk = checkPassword(f.newPassword, policy);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -56,7 +57,7 @@ export default function ChangePasswordPage() {
       <form onSubmit={submit} noValidate className="card p-6 space-y-4">
         {err.form && <div role="alert" className="p-3 rounded-md bg-danger-soft text-danger text-[13px]">{err.form}</div>}
         <FormField label="原密码" required error={err.oldPassword}><PasswordInput value={f.oldPassword} onChange={set('oldPassword')} autoComplete="current-password" /></FormField>
-        <FormField label="新密码" required error={err.newPassword} hint="至少 8 位，包含大小写字母、数字和特殊字符">
+        <FormField label="新密码" required error={err.newPassword} hint={policyText(policy)}>
           <PasswordInput value={f.newPassword} onChange={set('newPassword')} autoComplete="new-password" />
         </FormField>
         {f.newPassword && (

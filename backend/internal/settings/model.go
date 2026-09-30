@@ -25,18 +25,17 @@ type Brand struct {
 }
 
 type Security struct {
-	MinLength            int  `json:"minLength"`
-	RequireUpper         bool `json:"requireUpper"`
-	RequireLower         bool `json:"requireLower"`
-	RequireDigit         bool `json:"requireDigit"`
-	RequireSpecial       bool `json:"requireSpecial"`
-	ExpireDays           int  `json:"expireDays"`
-	SessionTimeoutMin    int  `json:"sessionTimeoutMin"`
-	MaxSessions          int  `json:"maxSessions"`
-	CaptchaEnabled       bool `json:"captchaEnabled"`
-	CaptchaAfterFailures int  `json:"captchaAfterFailures"`
-	LockThreshold        int  `json:"lockThreshold"`
-	LockMinutes          int  `json:"lockMinutes"`
+	MinLength         int  `json:"minLength"`
+	RequireUpper      bool `json:"requireUpper"`
+	RequireLower      bool `json:"requireLower"`
+	RequireDigit      bool `json:"requireDigit"`
+	RequireSpecial    bool `json:"requireSpecial"`
+	ExpireDays        int  `json:"expireDays"`
+	SessionTimeoutMin int  `json:"sessionTimeoutMin"`
+	MaxSessions       int  `json:"maxSessions"`
+	CaptchaEnabled    bool `json:"captchaEnabled"`
+	LockThreshold     int  `json:"lockThreshold"`
+	LockMinutes       int  `json:"lockMinutes"`
 }
 
 type Retention struct {
@@ -82,7 +81,7 @@ func DefaultBasic() Basic {
 func DefaultBrand() Brand { return Brand{PrimaryColor: DefaultPrimary} }
 func DefaultSecurity() Security {
 	return Security{MinLength: 8, RequireUpper: true, RequireLower: true, RequireDigit: true, RequireSpecial: true,
-		ExpireDays: 90, SessionTimeoutMin: 60, MaxSessions: 3, CaptchaEnabled: true, CaptchaAfterFailures: 3, LockThreshold: 5, LockMinutes: 15}
+		ExpireDays: 90, SessionTimeoutMin: 60, MaxSessions: 3, CaptchaEnabled: false, LockThreshold: 5, LockMinutes: 15}
 }
 func DefaultRetention() Retention {
 	return Retention{AuditDays: 180, MetricDays: 90, InspectionDays: 365, AlertDays: 180}
@@ -145,7 +144,6 @@ func (s *Security) Validate() FieldErrors {
 	chk("expireDays", s.ExpireDays, 0, 3650)
 	chk("sessionTimeoutMin", s.SessionTimeoutMin, 5, 1440)
 	chk("maxSessions", s.MaxSessions, 1, 20)
-	chk("captchaAfterFailures", s.CaptchaAfterFailures, 1, 10)
 	chk("lockThreshold", s.LockThreshold, 3, 20)
 	chk("lockMinutes", s.LockMinutes, 1, 1440)
 	return e

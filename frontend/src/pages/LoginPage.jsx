@@ -12,7 +12,7 @@ import { tokenStorage, accountStorage } from '../utils/auth';
 import { safeRedirect } from '../components/RouteGuards';
 
 /**
- * LoginPage —— 账号 / 密码（明文切换）/ 验证码（失败达阈值后出现）/ 记住账号（只记账号，绝不存密码）
+ * LoginPage —— 账号 / 密码（明文切换）/ 验证码（系统配置开启后出现）/ 记住账号（只记账号，绝不存密码）
  * 失败分级：401 统一文案（不区分账号是否存在）/ 423 锁定+剩余分钟 / 403 已禁用 / 429 频繁 / 5xx 服务不可用+重试
  */
 export default function LoginPage() {
@@ -36,6 +36,8 @@ export default function LoginPage() {
   const loadCaptcha = useCallback(async () => {
     try { setCap(await authApi.getCaptcha()); setCaptcha(''); } catch { setCap(null); }
   }, []);
+  // 系统配置里开启了登录验证码：进入登录页即显示（也兼容服务端返回 captchaRequired）
+  useEffect(() => { if (brand.captchaEnabled) setNeedCaptcha(true); }, [brand.captchaEnabled]);
   useEffect(() => { if (needCaptcha) loadCaptcha(); }, [needCaptcha, loadCaptcha]);
 
   const submit = async (e) => {

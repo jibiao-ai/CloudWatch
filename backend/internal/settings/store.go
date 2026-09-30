@@ -107,8 +107,13 @@ func (s *Store) Retention(ctx context.Context) (Retention, error) {
 type Public struct {
 	Basic
 	Brand
-	CaptchaEnabled       bool `json:"captchaEnabled"`
-	CaptchaAfterFailures int  `json:"captchaAfterFailures"`
+	CaptchaEnabled bool `json:"captchaEnabled"`
+	// 密码策略（非敏感）：改密页据此展示与校验，保持与后端一致
+	MinLength      int  `json:"minLength"`
+	RequireUpper   bool `json:"requireUpper"`
+	RequireLower   bool `json:"requireLower"`
+	RequireDigit   bool `json:"requireDigit"`
+	RequireSpecial bool `json:"requireSpecial"`
 }
 
 func (s *Store) Public(ctx context.Context) (*Public, error) {
@@ -116,7 +121,8 @@ func (s *Store) Public(ctx context.Context) (*Public, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Public{Basic: n.basic, Brand: n.brand, CaptchaEnabled: n.security.CaptchaEnabled, CaptchaAfterFailures: n.security.CaptchaAfterFailures}, nil
+	return &Public{Basic: n.basic, Brand: n.brand, CaptchaEnabled: n.security.CaptchaEnabled,
+		MinLength: n.security.MinLength, RequireUpper: n.security.RequireUpper, RequireLower: n.security.RequireLower, RequireDigit: n.security.RequireDigit, RequireSpecial: n.security.RequireSpecial}, nil
 }
 
 func (s *Store) Get(ctx context.Context) (*All, error) {

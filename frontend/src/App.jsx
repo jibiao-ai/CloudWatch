@@ -9,6 +9,7 @@ import { useStore } from './store/useStore';
 import { authApi, settingsApi } from './services/api';
 import { tokenStorage } from './utils/auth';
 import { setNavigator } from './utils/navigate';
+import { pickPolicy } from './utils/validators';
 
 // 路由懒加载
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -50,7 +51,7 @@ export default function App() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      settingsApi.getPublicSettings().then((s) => alive && setBrand({ platformName: s.platformName, subtitle: s.subtitle, copyright: s.copyright, primaryColor: s.primaryColor, logoUrl: s.logoUrl, loginBgUrl: s.loginBgUrl, captchaEnabled: s.captchaEnabled, captchaAfterFailures: s.captchaAfterFailures })).catch(() => {});
+      settingsApi.getPublicSettings().then((s) => alive && setBrand({ platformName: s.platformName, subtitle: s.subtitle, copyright: s.copyright, primaryColor: s.primaryColor, logoUrl: s.logoUrl, loginBgUrl: s.loginBgUrl, captchaEnabled: !!s.captchaEnabled, pwdPolicy: pickPolicy(s) })).catch(() => {});
       if (tokenStorage.getAccess()) {
         try {
           const me = await authApi.getMe();

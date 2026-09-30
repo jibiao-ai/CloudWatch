@@ -29,7 +29,7 @@ const readJSON = (k, d) => {
   }
 };
 
-const DEFAULT_BRAND = { platformName: 'CloudWatch', subtitle: '私有云可观测平台', copyright: '© 2026 CloudWatch', primaryColor: DEFAULT_PRIMARY, logoUrl: '', loginBgUrl: '' };
+const DEFAULT_BRAND = { platformName: 'CloudWatch', subtitle: '私有云可观测平台', copyright: '© 2026 CloudWatch', primaryColor: DEFAULT_PRIMARY, logoUrl: '', loginBgUrl: '', captchaEnabled: false, pwdPolicy: {} };
 let toastSeq = 0;
 
 const initialModuleState = () => ({

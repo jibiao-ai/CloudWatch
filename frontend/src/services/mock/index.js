@@ -6,6 +6,7 @@
 import axios, { AxiosError } from 'axios';
 import { seedProviders, seedRoles, seedUsers, seedSettings, genAudit, MOCK_PASSWORDS } from './seed';
 import { buildMenus } from './menus';
+import { pickPolicy } from '../../utils/validators';
 import { dashboardOverview, dashboardTrend } from './dashboard';
 
 const DB_KEY = 'cw_mock_db_v1';
@@ -158,7 +159,7 @@ on('post', '/auth/login', ({ body, ctx }) => {
   const { username = '', password = '', captcha, captchaId } = body;
   const fails = loginFails[username] || 0;
   const sec = db.settings.security;
-  const needCaptcha = sec.captchaEnabled && fails >= sec.captchaAfterFailures;
+  const needCaptcha = !!sec.captchaEnabled;
   if (needCaptcha && (!captcha || captchas[captchaId] !== String(captcha))) {
     fail(401, captcha ? '验证码错误' : '请输入验证码', { captchaRequired: true }, 40101);
   }
@@ -180,7 +181,7 @@ on('post', '/auth/login', ({ body, ctx }) => {
     if ((loginFails[username] || 0) >= 20) fail(429, '尝试过于频繁，请稍后再试');
     pushAudit({ ...ctx, user: null }, 'auth', 'login', username, { result: 'failure', error: '账号或密码错误', body: { username, password, captcha } });
     save();
-    fail(401, '账号或密码错误', { captchaRequired: sec.captchaEnabled && loginFails[username] >= sec.captchaAfterFailures }, 40100);
+    fail(401, '账号或密码错误', { captchaRequired: !!sec.captchaEnabled }, 40100);
   }
   loginFails[username] = 0;
   user.failCount = 0;
@@ -522,7 +523,7 @@ const safeSettings = () => ({
   ...db.settings,
   alertChannels: db.settings.alertChannels.map((c) => ({ ...c, secretSet: !!db.channelSecrets[c.id], secret: undefined })),
 });
-on('get', '/settings/public', () => ({ ...db.settings.basic, ...db.settings.brand, captchaEnabled: db.settings.security.captchaEnabled, captchaAfterFailures: db.settings.security.captchaAfterFailures }), { public: true });
+on('get', '/settings/public', () => ({ ...db.settings.basic, ...db.settings.brand, captchaEnabled: !!db.settings.security.captchaEnabled, ...pickPolicy(db.settings.security) }), { public: true });
 on('get', '/settings', () => safeSettings(), { need: 'settings:view' });
 on('put', '/settings', ({ body, ctx }) => {
   const next = { ...db.settings };

@@ -2,7 +2,7 @@ import React from 'react';
 import Switch from '../Switch';
 import { NumField } from './fields';
 
-const TOGGLES = [['requireUpper', '要求大写字母'], ['requireLower', '要求小写字母'], ['requireDigit', '要求数字'], ['requireSpecial', '要求特殊字符'], ['captchaEnabled', '启用登录验证码']];
+const TOGGLES = [['requireUpper', '要求大写字母'], ['requireLower', '要求小写字母'], ['requireDigit', '要求数字'], ['requireSpecial', '要求特殊字符'], ['captchaEnabled', '启用登录验证码（开启后每次登录都需输入）']];
 
 /** 安全策略：保存后由后端登录 / 会话 / 改密逻辑真实执行 */
 export default function SecuritySection({ value, onChange, errors, disabled }) {
@@ -14,7 +14,6 @@ export default function SecuritySection({ value, onChange, errors, disabled }) {
         <NumField {...p} name="expireDays" label="密码有效期（天，0 = 永不过期）" value={value.expireDays} />
         <NumField {...p} name="sessionTimeoutMin" label="会话超时（分钟）" value={value.sessionTimeoutMin} />
         <NumField {...p} name="maxSessions" label="同账号最大会话数" value={value.maxSessions} />
-        <NumField {...p} name="captchaAfterFailures" label="失败几次后出现验证码" value={value.captchaAfterFailures} />
         <NumField {...p} name="lockThreshold" label="失败几次后锁定账号" value={value.lockThreshold} />
         <NumField {...p} name="lockMinutes" label="锁定时长（分钟）" value={value.lockMinutes} />
       </div>
