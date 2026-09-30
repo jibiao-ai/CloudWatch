@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { CalendarRange } from 'lucide-react';
 import Modal from './Modal';
+import CustomSelect from './CustomSelect';
 
 /**
  * RangeSelector —— 时间范围：1小时/1天/1周/1月/1季度/1年/自定义 + 「对比上一周期」开关（全站统计页统一使用）
  * 属性：value { key, start, end, compare } / onChange(value) / showCompare(默认 true) / customOnly
  * 输出：start/end 为毫秒时间戳；自定义时通过弹窗（Portal）选择。
+ * variant='select'：以「label + 下拉」呈现（预设周期 + 自定义时间范围…），用于筛选栏。
  */
 export const RANGE_PRESETS = [
   { key: '1h', label: '1 小时', ms: 3600e3 },
@@ -27,7 +29,9 @@ const toLocal = (ms) => {
   return d.toISOString().slice(0, 16);
 };
 
-export default function RangeSelector({ value, onChange, showCompare = true, customOnly = false }) {
+const fmtShort = (ms) => { const d = new Date(ms); const z = (n) => String(n).padStart(2, '0'); return `${d.getMonth() + 1}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+
+export default function RangeSelector({ value, onChange, showCompare = true, customOnly = false, variant = 'tabs', label = '时间范围' }) {
   const [open, setOpen] = useState(false);
   const [s, setS] = useState('');
   const [e, setE] = useState('');
@@ -49,8 +53,20 @@ export default function RangeSelector({ value, onChange, showCompare = true, cus
     setOpen(false);
   };
 
+  const selectOptions = [
+    ...presets.map((p) => ({ value: p.key, label: p.label })),
+    { value: 'custom', label: value.key === 'custom' && value.start ? `自定义：${fmtShort(value.start)} ~ ${fmtShort(value.end)}` : '自定义时间范围…' },
+  ];
+  const pick = (k) => (k === 'custom' ? openCustom() : onChange({ ...value, ...resolveRange(k) }));
+
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {variant === 'select' ? (
+        <div className="inline-flex items-center gap-2">
+          <span className="text-[13px] text-fg-muted whitespace-nowrap">{label}</span>
+          <div className={`${value.key === 'custom' ? 'w-[270px]' : 'w-[130px]'} shrink-0`}><CustomSelect size="sm" aria-label={label} value={value.key} onChange={pick} options={selectOptions} minWidth={220} /></div>
+        </div>
+      ) : (
       <div role="radiogroup" aria-label="时间范围" className="inline-flex p-0.5 rounded-md bg-muted border border-line max-w-full overflow-x-auto">
         {presets.map((p) => (
           <button
@@ -68,6 +84,7 @@ export default function RangeSelector({ value, onChange, showCompare = true, cus
           <CalendarRange size={13} /> 自定义
         </button>
       </div>
+      )}
       {showCompare && (
         <label className="inline-flex items-center gap-2 text-[13px] text-fg-muted cursor-pointer select-none">
           <button

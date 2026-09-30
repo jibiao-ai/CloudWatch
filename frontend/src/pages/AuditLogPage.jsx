@@ -21,18 +21,22 @@ import { maskSensitive } from '../utils/mask';
 const label = (list, v) => list.find((x) => x.value === v)?.label || v;
 const CLEAN_OPTS = [30, 90, 180, 365].map((d) => ({ value: d, label: `${d} 天前` }));
 
+/** 列表/导出统一的查询参数：审计周期 → start/end（毫秒），排序 → sortKey/sortOrder */
+const toParams = (q) => ({ ...q, start: q.range.start, end: q.range.end, sortKey: q.sort?.key, sortOrder: q.sort?.order, range: undefined, sort: undefined });
+
 /** AuditLogPage —— 审计日志：时间范围（自定义）+ 操作人 + 模块 + 动作 + 结果 + 关键字；详情抽屉（参数脱敏）；导出当前筛选；清理仅有权限者可见 */
+
 export default function AuditLogPage() {
   const toast = useToast();
   const canExport = useCan('audit:export');
   const canClean = useCan('audit:clean');
   const boxRef = React.useRef(null);
-  const list = useListQuery('audit', auditApi.getAuditList, { page: 1, pageSize: 20, range: defaultRange('1M'), operator: '', module: '', action: '', result: '', keyword: '', sort: { key: 'time', order: 'desc' } });
+  const list = useListQuery('audit', (q) => auditApi.getAuditList(toParams(q)), { page: 1, pageSize: 20, range: defaultRange('1M'), operator: '', module: '', action: '', result: '', keyword: '', sort: { key: 'time', order: 'desc' } });
   const { query, setQuery } = list;
   const [detail, setDetail] = useState(null);
   const [clean, setClean] = useState(null); // days
   const [busy, setBusy] = useState(false);
-  const params = { ...query, start: query.range.start, end: query.range.end, sortKey: query.sort?.key, sortOrder: query.sort?.order, range: undefined };
+  const params = toParams(query);
 
   const doClean = async () => {
     setBusy(true);
@@ -56,9 +60,9 @@ export default function AuditLogPage() {
         <FullscreenButton containerRef={boxRef} />
         {canClean && <button type="button" className="btn-default !text-danger" onClick={() => setClean(180)}><Trash2 size={15} /> 清理日志</button>}
       </>} />
-      <div className="card p-3 mb-4 space-y-3">
-        <RangeSelector customOnly={false} showCompare={false} value={query.range} onChange={(range) => setQuery({ range })} />
+      <div className="card p-3 mb-4">
         <div className="flex flex-wrap items-center gap-2.5">
+          <RangeSelector variant="select" label="审计周期" showCompare={false} value={query.range} onChange={(range) => setQuery({ range })} />
           <SearchInput value={query.operator} onChange={(operator) => setQuery({ operator })} placeholder="操作人" width={150} />
           <div className="w-[140px]"><CustomSelect size="sm" clearable placeholder="模块" aria-label="模块" value={query.module} onChange={(module) => setQuery({ module })} options={AUDIT_MODULES} /></div>
           <div className="w-[140px]"><CustomSelect size="sm" clearable placeholder="动作" aria-label="动作" value={query.action} onChange={(action) => setQuery({ action })} options={AUDIT_ACTIONS} /></div>
