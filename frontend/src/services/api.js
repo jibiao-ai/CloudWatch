@@ -7,7 +7,11 @@
  *  - 401 → 刷新 token 一次（并发合流）后重放；失败清状态跳登录；403 → 提示 + 跳 403；5xx → 可读提示；
  *  - 导出类接口返回 Blob，由 <ExportButton/> 触发下载（文件名含条件与时间戳）；
  *  - 长耗时操作（同步、巡检、创建虚机）返回任务 id，前端用 pollTask 轮询。
- * TODO(mock)：VITE_USE_MOCK 控制统一 mock 开关（默认开启；对接真实后端时设为 false，一次性替换）。
+ * VITE_USE_MOCK 三态开关：
+ *   hybrid（默认）—— 认证 / 系统配置 / 审计日志 / 资源文件 / 告警未读数走真实后端，其余尚未开发的模块（平台、用户、角色、域名、概览）仍用 mock；
+ *   true          —— 全部 mock（纯前端演示，无需后端）；
+ *   false         —— 全部走真实后端。
+ * TODO(mock)：其余模块后端就绪后，逐个从 services/mock 的 REAL_PREFIXES 反向迁移，最终删除 mock 目录。
  */
 import axios from 'axios';
 import { tokenStorage } from '../utils/auth';
@@ -25,13 +29,15 @@ export class ApiError extends Error {
 }
 
 const BASE = import.meta.env.VITE_API_BASE || '/api';
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
+const MOCK_MODE = String(import.meta.env.VITE_USE_MOCK ?? 'hybrid');
+export const USE_MOCK = MOCK_MODE !== 'false';
+const HYBRID = MOCK_MODE === 'hybrid';
 
 const http = axios.create({ baseURL: BASE, timeout: 60000, headers: { 'Content-Type': 'application/json' } });
 
 if (USE_MOCK) {
   const ready = import('./mock');
-  http.defaults.adapter = async (config) => (await ready).mockAdapter(config);
+  http.defaults.adapter = async (config) => (await ready).mockAdapter(config, { hybrid: HYBRID, base: BASE });
 }
 
 http.interceptors.request.use((config) => {

@@ -22,7 +22,48 @@
 | **平台管理**（五步向导 · 五端点自动填充 · 逐组件验证连接 · 写操作开关全站联动 · 影响范围删除） | ✅ |
 | 用户管理 / 角色管理（功能权限树 + 数据权限三级 allow/deny）/ 审计日志 / 域名配置 / 系统配置 | ✅ |
 | 统一资源管理 / 资源视图 / 巡检 / 性能监控 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
-| **后端（Go + MySQL）** | ⏳ 未开始 —— 目前前端使用统一 mock |
+| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；其余模块（平台/用户/角色/域名/概览）暂为 mock |
+
+## 系统配置（真实后端）
+
+页面以**横向标签**一次只显示一组：基础信息 · 品牌信息 · 安全策略 · 数据保留 · 告警渠道；底部「上一项 / 第 X / 5 项 / 下一项」翻页，告警渠道列表自带分页（5/10/20 条）。
+每组独立保存 / 撤销 / 恢复默认，未保存的标签带圆点提示；服务端字段级校验错误回显到对应输入框。
+
+| 分组 | 后端真实行为 |
+|---|---|
+| 基础信息 / 品牌信息 | 入库 `settings`；Logo / 登录背景以二进制存入 `assets`（校验类型、尺寸），经 `/api/assets/{id}` 提供；主色即时生效 |
+| 安全策略 | 登录真实执行：密码复杂度与最小长度、失败锁定、验证码、会话超时、最大并发会话、强制改密 |
+| 数据保留 | 后台任务启动时及每小时分批清理 `audit_logs / metric_samples / inspection_results / alert_events` 与过期会话 |
+| 告警渠道 | 邮件（SMTP）/ Webhook 真实发送；「测试」按钮真实投递；密钥 AES-256-GCM 加密入库，接口永不回显（`******`） |
+
+## 后端（`backend/`）
+
+Go 1.22 · 标准库 `net/http` · `database/sql` + MySQL/MariaDB · bcrypt · 内嵌 SQL 迁移（`schema_migrations`，启动自动执行）。
+
+**引导项环境变量**（仅用于启动引导，业务参数一律在页面配置）：
+
+| 变量 | 说明 |
+|---|---|
+| `CW_ADDR` | 监听地址，默认 `:8080` |
+| `CW_DB_DSN` | 数据库 DSN，如 `cloudwatch:pwd@tcp(127.0.0.1:3306)/cloudwatch` |
+| `CW_SECRET_KEY` | 密钥加密主密钥；缺省时自动生成并存入 `system_meta` |
+| `CW_ADMIN_PASSWORD` | 初始 admin 密码；缺省时随机生成，**仅在首次启动日志打印一次**，且首次登录强制改密 |
+| `CW_SEED_DEMO` | `true` 时写入演示账号（密码 `CloudWatch@2026`），生产请勿开启 |
+
+```bash
+sudo service mariadb start
+sudo mysql -e "CREATE DATABASE cloudwatch CHARACTER SET utf8mb4; CREATE USER 'cloudwatch'@'localhost' IDENTIFIED BY 'cloudwatch_dev'; GRANT ALL ON cloudwatch.* TO 'cloudwatch'@'localhost';"
+cd backend && go build -o bin/cloudwatch-api ./cmd/server
+pm2 start ecosystem.config.cjs      # 或直接运行 bin/cloudwatch-api
+```
+
+**接口**（统一 `{code,message,data}`）：`GET /healthz` · `GET /api/settings/public` · `GET /api/public/portal-info` · `GET /api/assets/{id}` ·
+`GET /api/auth/captcha` · `POST /api/auth/login|refresh|logout|change-password` · `GET /api/auth/me` · `GET /api/alerts/unread-count` ·
+`GET|PUT /api/settings` · `POST /api/settings/reset` · `POST /api/settings/alert-channels/test` ·
+`GET /api/audit-logs[/{id}]` · `GET /api/audit-logs/export`（xlsx）· `POST /api/audit-logs/clean`。
+字段校验失败：HTTP 400 / code 40001 / `data.fields`。
+
+**数据表**：`roles · users · sessions · settings · assets · alert_channels · audit_logs · metric_samples · inspection_results · alert_events · system_meta · schema_migrations`。
 
 ## 技术栈（锁定）
 
@@ -45,7 +86,7 @@ frontend/src/
 ```bash
 cd frontend
 npm install
-cp .env.example .env        # VITE_USE_MOCK=true 即无需后端
+cp .env.example .env        # VITE_USE_MOCK=hybrid（默认）| true | false
 npm run dev                 # http://localhost:3000
 npm run build
 npm run lint:rules          # 规则扫描（见下）
@@ -53,6 +94,10 @@ npm run lint:rules          # 规则扫描（见下）
 
 **演示账号**（仅 mock，密码 `CloudWatch@2026`）：`admin`（超管）· `zhangwei`（云平台运维）· `wangfang`（只读）· `liuyang`（审计员）。
 可用 `zhaolei`（已锁定）、`chenjie`（已禁用）体验 423 / 403 登录分支。
+
+### mock 模式（`VITE_USE_MOCK`）
+- `hybrid`（默认）：认证 / 系统配置 / 审计日志 / 图片资源 / 登录页信息 / 未读告警走**真实后端**，平台/用户/角色/域名/概览仍为 mock；`vite dev/preview` 把 `/api` 代理到 `127.0.0.1:8080`（`VITE_PROXY_TARGET` 可改）。
+- `true`：全部 mock，无需后端。`false`：全部真实后端。
 
 ### 对接真实后端
 1. `.env` 设 `VITE_USE_MOCK=false`；前端只用相对路径 `/api`（IP / 域名访问均可），由 nginx / vite 代理。
@@ -69,7 +114,7 @@ npm run lint:rules          # 规则扫描（见下）
 ## 规范自检（`npm run lint:rules`）
 
 自动扫描并阻断：原生 `<select>` · `window.confirm/alert/prompt` · 硬编码颜色（`#fff` / `bg-white` / `gray-*`…）· `dark:` 前缀 ·
-`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行 · **毛玻璃类名/`backdrop-*`** · **输入聚焦彩色 ring / 彩色边框**。当前 **86 个文件全部通过**。
+`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行 · **毛玻璃类名/`backdrop-*`** · **输入聚焦彩色 ring / 彩色边框**。当前 **92 个文件全部通过**。
 
 ## 关键设计说明
 

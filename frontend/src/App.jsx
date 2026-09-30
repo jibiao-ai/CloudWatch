@@ -50,7 +50,7 @@ export default function App() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      settingsApi.getPublicSettings().then((s) => alive && setBrand({ platformName: s.platformName, subtitle: s.subtitle, primaryColor: s.primaryColor, logoUrl: s.logoUrl, loginBgUrl: s.loginBgUrl, captchaEnabled: s.captchaEnabled, captchaAfterFailures: s.captchaAfterFailures })).catch(() => {});
+      settingsApi.getPublicSettings().then((s) => alive && setBrand({ platformName: s.platformName, subtitle: s.subtitle, copyright: s.copyright, primaryColor: s.primaryColor, logoUrl: s.logoUrl, loginBgUrl: s.loginBgUrl, captchaEnabled: s.captchaEnabled, captchaAfterFailures: s.captchaAfterFailures })).catch(() => {});
       if (tokenStorage.getAccess()) {
         try {
           const me = await authApi.getMe();

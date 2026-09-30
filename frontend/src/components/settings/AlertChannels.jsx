@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, Plus, Send, Trash2, Webhook } from 'lucide-react';
 import FormField from '../FormField';
 import CustomSelect from '../CustomSelect';
@@ -6,6 +6,7 @@ import Switch from '../Switch';
 import SecretInput from '../SecretInput';
 import LoadingButton from '../LoadingButton';
 import EmptyState from '../EmptyState';
+import Pagination from '../Pagination';
 import { settingsApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { isEmail, isUrl } from '../../utils/validators';
@@ -24,23 +25,42 @@ export const validateChannel = (c) => {
   return e;
 };
 
-/** AlertChannels —— 告警渠道（邮件 / Webhook）：可增删、启停、测试发送；密钥类字段永不回显 */
+const PAGE_SIZES = [5, 10, 20];
+
+/**
+ * AlertChannels —— 告警渠道（邮件 / Webhook）：可增删、启停、测试发送；密钥类字段永不回显。
+ * 渠道多时分页展示（默认 5 条/页）；新增渠道自动跳到末页；校验出错自动跳到第一条出错渠道所在页。
+ */
 export default function AlertChannels({ value, onChange, errors = {}, disabled }) {
   const toast = useToast();
   const [testing, setTesting] = useState('');
+  const [pg, setPg] = useState({ page: 1, pageSize: PAGE_SIZES[0] });
+  const pages = Math.max(1, Math.ceil(value.length / pg.pageSize));
+  const page = Math.min(pg.page, pages);
+  const shown = value.slice((page - 1) * pg.pageSize, page * pg.pageSize);
+  useEffect(() => {
+    const i = value.findIndex((c) => errors[c.id]);
+    if (i >= 0) setPg((s) => ({ ...s, page: Math.floor(i / s.pageSize) + 1 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errors]);
+  const add = () => {
+    const next = [...value, newChannel()];
+    onChange(next);
+    setPg((s) => ({ ...s, page: Math.ceil(next.length / s.pageSize) }));
+  };
   const upd = (id, patch) => onChange(value.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   const cfg = (c, k) => (e) => upd(c.id, { config: { ...c.config, [k]: e.target.value } });
   const test = async (c) => {
     const e = validateChannel(c);
     if (Object.keys(e).length) return toast.warning('请先补全渠道配置', Object.values(e)[0]);
     setTesting(c.id);
-    try { const r = await settingsApi.testAlertChannel({ type: c.type, config: c.config }); toast.success('测试成功', r.message); } catch (ex) { toast.error('测试失败', ex.message); } finally { setTesting(''); }
+    try { const r = await settingsApi.testAlertChannel({ id: c.id, type: c.type, name: c.name, config: c.config, secret: c.secret || undefined }); toast.success('测试成功', r.message); } catch (ex) { toast.error('测试失败', ex.message); } finally { setTesting(''); }
   };
   return (
     <div>
       {value.length === 0 && <EmptyState compact icon={Send} title="尚未配置告警渠道" description="告警触发后将通过这里的渠道通知值班人员" />}
       <div className="space-y-4">
-        {value.map((c) => {
+        {shown.map((c) => {
           const er = errors[c.id] || {};
           return (
             <div key={c.id} className="rounded-lg border border-line p-4">
@@ -72,7 +92,8 @@ export default function AlertChannels({ value, onChange, errors = {}, disabled }
           );
         })}
       </div>
-      {!disabled && <button type="button" className="btn-default mt-4" onClick={() => onChange([...value, newChannel()])}><Plus size={15} /> 新增渠道</button>}
+      {value.length > 0 && <div className="mt-3 rounded-lg border border-line overflow-hidden"><Pagination page={page} pageSize={pg.pageSize} total={value.length} pageSizeOptions={PAGE_SIZES} onChange={setPg} /></div>}
+      {!disabled && <button type="button" className="btn-default mt-4" onClick={add}><Plus size={15} /> 新增渠道</button>}
     </div>
   );
 }

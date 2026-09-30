@@ -3,7 +3,7 @@
  * TODO(mock)：后端就绪后删除 services/mock 目录与 api.js 里的 USE_MOCK 分支。
  * 数据持久化在 localStorage（cw_mock_db），便于刷新后保持；「重置」清除该 key 即可。
  */
-import { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { seedProviders, seedRoles, seedUsers, seedSettings, seedDomain, genAudit, MOCK_PASSWORDS } from './seed';
 import { buildMenus } from './menus';
 import { dashboardOverview, dashboardTrend } from './dashboard';
@@ -606,8 +606,35 @@ async function toXlsxBlob(payload) {
   return new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
+/* ---------------- 混合模式：这些前缀走真实后端，其余仍由本文件 mock ---------------- */
+export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts/unread-count'];
+const isReal = (path) => REAL_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : `${p}/`) || path === p.replace(/\/$/, ''));
+
+let realHttp;
+function forward(config, base) {
+  realHttp ||= axios.create({ baseURL: base, timeout: 60000 });
+  return realHttp.request({ ...config, adapter: undefined, baseURL: base });
+}
+/** 混合模式下，mock 路由的鉴权/权限以真实后端的 /auth/me 为准（短缓存），并把真实用户映射到 mock 用户表 */
+const meCache = { token: '', at: 0, me: null };
+async function realMe(config, base) {
+  const token = authFromConfig(config);
+  if (!token) throw new HttpFail(401, '未登录或登录已过期');
+  if (meCache.token === token && Date.now() - meCache.at < 10000) return meCache.me;
+  realHttp ||= axios.create({ baseURL: base, timeout: 60000 });
+  try {
+    const r = await realHttp.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    meCache.token = token; meCache.at = Date.now(); meCache.me = r.data.data;
+    return meCache.me;
+  } catch (e) {
+    throw new HttpFail(e.response?.status === 403 ? 403 : 401, e.response?.data?.message || '未登录或登录已过期');
+  }
+}
+
 /* ---------------- adapter ---------------- */
-export async function mockAdapter(config) {
+export async function mockAdapter(config, { hybrid = false, base = '/api' } = {}) {
+  const rawPath = (config.url || '').replace(/\?.*$/, '');
+  if (hybrid && isReal(rawPath)) return forward(config, base);
   await sleep(140 + Math.random() * 220);
   const method = (config.method || 'get').toLowerCase();
   const path = (config.url || '').replace(/\?.*$/, '');
@@ -629,7 +656,12 @@ export async function mockAdapter(config) {
     if (!route) throw new HttpFail(404, `接口不存在：${method.toUpperCase()} ${path}`);
     const params = route.re.exec(path).groups || {};
     const ctx = { method, path, user: null };
-    if (!route.public) {
+    if (!route.public && hybrid) {
+      const me = await realMe(config, base);
+      const mu = db.users.find((u) => u.username === me.user.username) || { id: me.user.id, username: me.user.username, name: me.user.name, roleIds: [], status: 'active' };
+      ctx.user = mu;
+      if (route.need && !me.permissions.includes('*') && !me.permissions.includes(route.need)) throw new HttpFail(403, `缺少权限：${route.need}`);
+    } else if (!route.public) {
       const uidv = db.sessions[authFromConfig(config)];
       const user = uidv && db.users.find((u) => u.id === uidv);
       if (!user) throw new HttpFail(401, '未登录或登录已过期');

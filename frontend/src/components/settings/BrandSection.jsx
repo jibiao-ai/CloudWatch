@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Check, ImageUp, Trash2 } from 'lucide-react';
 import FormField from '../FormField';
 import { PRESET_COLORS, DEFAULT_PRIMARY, contrastOn, isValidHex } from '../../utils/theme';
@@ -45,6 +45,8 @@ function ImageUpload({ kind, label, value, onChange, disabled }) {
 export default function BrandSection({ value, onChange, onPreviewColor, disabled }) {
   const [hex, setHex] = useState(value.primaryColor);
   const [err, setErr] = useState('');
+  // 外部改动（撤销 / 恢复默认 / 保存回填）时同步输入框
+  useEffect(() => { if (isValidHex(value.primaryColor) && value.primaryColor.toLowerCase() !== hex.toLowerCase() && (hex.length === 7 ? isValidHex(hex) : true)) { setHex(value.primaryColor); setErr(''); } }, [value.primaryColor]); // eslint-disable-line react-hooks/exhaustive-deps
   const setColor = (c) => { setHex(c); setErr(''); onChange({ ...value, primaryColor: c }); onPreviewColor(c); };
   const typed = (v) => {
     setHex(v);
