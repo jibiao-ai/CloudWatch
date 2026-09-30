@@ -85,8 +85,8 @@ export default function Sidebar({ mode }) {
                     </NavLink>
                   );
                   return iconOnly ? (
-                    <Tooltip key={item.code} content={item.name} placement="top">
-                      <div className="w-full flex">{React.cloneElement(link, { className: (s) => `${link.props.className(s)} w-full` })}</div>
+                    <Tooltip key={item.code} content={item.name} placement="right" block>
+                      <div className="w-full flex min-w-0">{React.cloneElement(link, { className: (s) => `${link.props.className(s)} w-full` })}</div>
                     </Tooltip>
                   ) : (
                     link
