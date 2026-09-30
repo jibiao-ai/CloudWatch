@@ -1,0 +1,81 @@
+# CloudWatch · 私有云可观测平台
+
+<p align="center"><img src="docs/logo.svg" width="72" alt="CloudWatch logo" /></p>
+
+面向 SRE 与云平台运维人员的**多云 / 私有云统一运维控制台**：把多个 OpenStack（易捷行云 ES 等）平台纳管到同一界面，
+一眼看清 **平台 → 集群 → 节点 → 云主机 → 存储/网络** 全链路状态，并可一键回到原平台处理。
+
+- **主色**：`#C6242A`（运行时可在「系统配置」修改，全站即时生效，含暗色）
+- **Logo**：眼睛（洞察）+ 表盘虹膜（watch），SVG 矢量，`frontend/src/components/Logo.jsx`
+- **风格参考**：[jibiao-ai/deliverydesk](https://github.com/jibiao-ai/deliverydesk)（页面命名 / 共享组件 / 单 store / 单 api.js / CSS 变量主题）
+- **铁律**：所有参数**只允许在页面上填写**，不允许改后台配置文件
+
+## 当前进度（首批交付：前端 · 登录 + 系统管理）
+
+| 模块 | 状态 |
+|---|---|
+| 主题系统（CSS Variables · 浅/暗 · 主色运行时注入 · 图表色板） | ✅ |
+| 共享组件（CustomSelect / ConfirmModal / Toast / Pagination / Skeleton / EmptyState / StatusDot / CapacityBar / RangeSelector / DataTable / Drawer / Modal / FullscreenButton …） | ✅ |
+| 布局 + 侧栏（权限树生成 / 折叠持久化 / 图标模式 / 移动抽屉）+ 路由守卫 + 403/404/500 | ✅ |
+| 登录 / 强制改密 / 个人信息 | ✅ |
+| 运维概览（KPI · 容量条 · 趋势图 · 平台概况 · 高负载节点） | ✅ |
+| **平台管理**（五步向导 · 五端点自动填充 · 逐组件验证连接 · 写操作开关全站联动 · 影响范围删除） | ✅ |
+| 用户管理 / 角色管理（功能权限树 + 数据权限三级 allow/deny）/ 审计日志 / 域名配置 / 系统配置 | ✅ |
+| 统一资源管理 / 资源视图 / 巡检 / 性能监控 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
+| **后端（Go + MySQL）** | ⏳ 未开始 —— 目前前端使用统一 mock |
+
+## 技术栈（锁定）
+
+React 18 + Vite 5 + Tailwind CSS 3（**JSX，无 TypeScript**）· Recharts · zustand（单 store）· axios（单 `services/api.js`）· lucide-react。
+
+## 目录
+
+```
+frontend/src/
+  components/   共享组件（MainLayout / Sidebar / CustomSelect / ConfirmModal / DataTable …）+ provider/ user/ role/ domain/ settings/ 业务子组件
+  pages/        XxxPage.jsx（PlatformManagePage / UsersPage / RolesPage / AuditLogPage / DomainConfigPage / SettingsPage …）
+  services/     api.js（按 认证/系统管理/资源/监控 分组）+ mock/（统一 mock，可整体删除）
+  store/        useStore.js（user / permissions / dataScopes / theme / brand / 列表状态缓存）
+  styles/       index.css（CSS Variables：浅色 :root + [data-theme="dark"]）
+  hooks/ utils/ data/   useCan / useListQuery / useAsync … 、theme / format / mask / validators、字典与权限码
+```
+
+## 本地运行
+
+```bash
+cd frontend
+npm install
+cp .env.example .env        # VITE_USE_MOCK=true 即无需后端
+npm run dev                 # http://localhost:3000
+npm run build
+npm run lint:rules          # 规则扫描（见下）
+```
+
+**演示账号**（仅 mock，密码 `CloudWatch@2026`）：`admin`（超管）· `zhangwei`（云平台运维）· `wangfang`（只读）· `liuyang`（审计员）。
+可用 `zhaolei`（已锁定）、`chenjie`（已禁用）体验 423 / 403 登录分支。
+
+### 对接真实后端
+1. `.env` 设 `VITE_USE_MOCK=false`；前端只用相对路径 `/api`（IP / 域名访问均可），由 nginx / vite 代理。
+2. 删除 `frontend/src/services/mock/`（统一开关，代码里以 `TODO(mock)` 标记）。
+3. 接口契约见 `frontend/src/services/api.js`（统一响应 `{code,message,data}`；401 自动刷新一次；导出返回 Blob）。
+
+## 规范自检（`npm run lint:rules`）
+
+自动扫描并阻断：原生 `<select>` · `window.confirm/alert/prompt` · 硬编码颜色（`#fff` / `bg-white` / `gray-*`…）· `dark:` 前缀 ·
+`role === 'admin'` 硬编码 · 页面内直接 `fetch/axios` · emoji 当图标 · 页面文件 > 400 行。当前 **86 个文件全部通过**。
+
+## 关键设计说明
+
+- **主题**：颜色为 `R G B` 三元组变量，Tailwind 用 `rgb(var(--c-x) / <alpha-value>)` 映射；主色由 `applyBrandColor()` 写入 `:root`，并为暗色单独派生可读强调色。图表色板 `getChartPalette(isDark)` 读取变量，切主题/主色即时刷新。
+- **权限**：菜单来自后端权限树（`/auth/me`），前端 `hasPermission(code)` 二次过滤；路由守卫无权限渲染 403；数据权限仅用于 UI，真实拦截在后端。
+- **密码/密钥**：保存后一律显示 `******`（`SecretInput`），任何位置不回显；审计详情对 `password/token/secret` 递归脱敏。
+- **写操作开关**：生产平台关闭后，`useWriteGuard()` 让全站创建/删除类按钮置灰并给出原因。
+- **接入约定**（来自《ES云平台相关接口文档》）：每朵云独立根域名，五组件端点 `<keystone|nova|neutron|cinder|glance>.<根域名>`，需在**后端所在机器**做 hosts 映射；项目名对应云平台 project；容量口径 Ceph `pool_bytes_used / pool_max_avail`，vCPU/内存 `domain_usage` 配额，节点指标 `node_cpu_utilization_total` 等。
+
+## 安全提示
+
+接口文档中含各环境管理员账号/密码，**未写入本仓库**；mock 数据只保留云管标识 / IP / 根域名。文档里 `brces.cheryfs,cn` 的逗号按笔误处理为 `.cn`（请确认）。
+
+## 提交规范
+
+`feat(scope):` / `fix(scope):`，一功能一分支一 PR。
