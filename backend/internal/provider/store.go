@@ -195,7 +195,7 @@ func dupErr(err error) error {
 	if errors.As(err, &me) && me.Number == 1062 {
 		switch {
 		case strings.Contains(me.Message, "uk_providers_name"):
-			return FieldsErr(FieldErrors{"name": "云管标识已存在"})
+			return FieldsErr(FieldErrors{"name": "云贯标已存在"})
 		case strings.Contains(me.Message, "uk_providers_ip"):
 			return FieldsErr(FieldErrors{"consoleIp": "控制台 IP 已被其他平台使用"})
 		case strings.Contains(me.Message, "uk_providers_root"):

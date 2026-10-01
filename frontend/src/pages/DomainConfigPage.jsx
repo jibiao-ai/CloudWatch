@@ -117,7 +117,7 @@ export default function DomainConfigPage() {
 
   return (
     <div>
-      <PageHeader title="域名配置" description="录入云平台控制台 IP 与根域名，自动生成 keystone / nova / neutron / cinder / glance 等组件的 hosts 记录，并同步到本机 /etc/hosts 与所有 Docker 容器"
+      <PageHeader title="域名配置" description="录入云平台控制台 IP 与根域名，自动生成 keystone / nova / neutron / cinder / glance / gnocchi 等组件的 hosts 记录，并同步到本机 /etc/hosts 与所有 Docker 容器"
         actions={<>
           {state && tab === 'mappings' && <button type="button" className="btn-default" onClick={copyAll}><Copy size={15} /> 复制全部 hosts</button>}
           {canUpdate && <LoadingButton icon={RefreshCw} loading={applying} onClick={apply}>立即同步</LoadingButton>}

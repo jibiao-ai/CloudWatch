@@ -104,7 +104,7 @@ function pushAudit(ctx, module, action, target, { result = 'success', error = ''
 }
 
 /* ---------------- 验证连接（纯 mock 模式的演示实现；混合 / 真实模式走后端真实探测） ---------------- */
-const MOCK_COMPS = [['keystone', 'Keystone（认证）'], ['neutron', 'Neutron（网络）'], ['nova', 'Nova（计算）'], ['cinder', 'Cinder（块存储）'], ['glance', 'Glance（镜像）'], ['emla', 'EMLA（监控）']];
+const MOCK_COMPS = [['keystone', 'Keystone（认证）'], ['neutron', 'Neutron（网络）'], ['nova', 'Nova（计算）'], ['cinder', 'Cinder（块存储）'], ['glance', 'Glance（镜像）'], ['gnocchi', 'Gnocchi（时序指标）'], ['emla', 'EMLA（监控）']];
 function verifyDraft(d, hasSavedSecret) {
   const t0 = 40 + Math.floor(Math.random() * 80);
   const unreachable = /^10\.140\./.test(d.consoleIp || '') || /fail|down/.test(d.rootDomain || '');
@@ -242,7 +242,7 @@ on('get', '/providers', ({ query }) => {
   if (query.status) list = list.filter((p) => p.status === query.status);
   return paginate(sortBy(list, query), query);
 }, PV);
-on('get', '/providers/export', ({ query }) => ({ __xlsx: true, name: '平台', rows: db.providers.filter((p) => (!query.envType || p.envType === query.envType) && (!query.keyword || `${p.name}${p.consoleIp}`.includes(query.keyword))).map((p) => ({ 云管标识: p.name, 环境类型: p.envType, 控制台IP: p.consoleIp, 根域名: p.rootDomain, 状态: p.status, 写操作: p.writeEnabled ? '开启' : '关闭', 最后同步: p.lastSyncAt })) }));
+on('get', '/providers/export', ({ query }) => ({ __xlsx: true, name: '平台', rows: db.providers.filter((p) => (!query.envType || p.envType === query.envType) && (!query.keyword || `${p.name}${p.consoleIp}`.includes(query.keyword))).map((p) => ({ 云贯标: p.name, 环境类型: p.envType, 控制台IP: p.consoleIp, 根域名: p.rootDomain, 状态: p.status, 写操作: p.writeEnabled ? '开启' : '关闭', 最后同步: p.lastSyncAt })) }));
 on('get', '/providers/:id', ({ params }) => {
   const p = db.providers.find((x) => x.id === params.id);
   if (!p) fail(404, '平台不存在');
@@ -254,7 +254,7 @@ on('get', '/providers/:id/impact', ({ params }) => {
   return { vmCount: 210 + p.nodeCount * 17, volumeCount: 340, networkCount: 28, inspectionCount: 96, alertCount: 12 };
 });
 const dupCheck = (d, id) => {
-  if (db.providers.some((p) => p.id !== id && p.name === d.name)) fail(400, `云管标识「${d.name}」已存在`);
+  if (db.providers.some((p) => p.id !== id && p.name === d.name)) fail(400, `云贯标「${d.name}」已存在`);
   if (db.providers.some((p) => p.id !== id && p.consoleIp === d.consoleIp && d.consoleIp)) fail(400, `控制台 IP ${d.consoleIp} 已被其他平台使用`);
 };
 on('post', '/providers', ({ body, ctx }) => {

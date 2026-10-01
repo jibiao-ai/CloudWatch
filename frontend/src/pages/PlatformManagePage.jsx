@@ -9,6 +9,7 @@ import StatusDot from '../components/StatusDot';
 import Switch from '../components/Switch';
 import ConfirmModal from '../components/ConfirmModal';
 import Drawer from '../components/Drawer';
+import ConsoleLink from '../components/ConsoleLink';
 import Modal from '../components/Modal';
 import Tooltip from '../components/Tooltip';
 import FullscreenButton from '../components/FullscreenButton';
@@ -97,9 +98,9 @@ export default function PlatformManagePage() {
   };
 
   const columns = [
-    { key: 'name', title: '云管标识', width: 210, sortable: true, render: (p) => <button type="button" className="text-left font-medium text-primary-text hover:underline" onClick={() => setDetail(p)}>{p.name}</button> },
+    { key: 'name', title: '云贯标', width: 210, sortable: true, render: (p) => <button type="button" className="text-left font-medium text-primary-text hover:underline" onClick={() => setDetail(p)}>{p.name}</button> },
     { key: 'envType', title: '环境类型', width: 100, render: (p) => <span className={ENV_TAG[p.envType]}>{ENV_TYPES.find((e) => e.value === p.envType)?.label}</span> },
-    { key: 'consoleIp', title: '控制台IP', width: 130, sortable: true, render: (p) => <code className="text-[13px]">{p.consoleIp}</code> },
+    { key: 'consoleIp', title: '控制台IP', width: 130, sortable: true, render: (p) => <ConsoleLink ip={p.consoleIp} /> },
     { key: 'rootDomain', title: '根域名', width: 220, render: (p) => <code className="text-[13px] text-fg-muted">{p.rootDomain}</code> },
     { key: 'status', title: '状态', width: 90, render: (p) => <StatusDot status={p.status} label /> },
     { key: 'lastSyncAt', title: '最后同步', width: 130, sortable: true, render: (p) => <span title={formatDateTime(p.lastSyncAt)} className="text-fg-muted text-[13px]">{p.lastSyncAt ? fromNow(p.lastSyncAt) : '从未同步'}</span> },
@@ -119,7 +120,7 @@ export default function PlatformManagePage() {
   const impact = del.impact;
   return (
     <div ref={boxRef} className="bg-bg">
-      <PageHeader title="平台管理" description="纳管多套 OpenStack / 私有云：基本信息 + 认证信息即可接入，自动验证六个组件域名与 Keystone Token，统一控制写操作开关"
+      <PageHeader title="平台管理" description="纳管多套 OpenStack / 私有云：基本信息 + 认证信息即可接入，自动验证七个组件域名与 Keystone Token，统一控制写操作开关"
         actions={<>
           <button type="button" className="btn-default" onClick={reload} aria-label="刷新列表"><RefreshCw size={15} className={list.refreshing ? 'animate-spin' : ''} /> 刷新</button>
           <FullscreenButton containerRef={boxRef} />
@@ -140,7 +141,7 @@ export default function PlatformManagePage() {
 
       {wizard.open && <ProviderWizard key={wizard.key} open provider={wizard.provider} onClose={() => setWizard({ open: false, provider: null, key: 0 })} onSaved={() => { setWizard({ open: false, provider: null, key: 0 }); reload(); }} onVerified={reload} />}
 
-      <Modal open={verify.open} width={560} title={`验证连接：${verify.provider?.name || ''}`} subtitle="验证 Keystone 是否签发 Token，并逐个检测六个组件域名的 HTTP 连通性" onClose={() => setVerify({ open: false, provider: null, loading: false, result: null })}
+      <Modal open={verify.open} width={560} title={`验证连接：${verify.provider?.name || ''}`} subtitle="验证 Keystone 是否签发 Token，并逐个检测七个组件域名的 HTTP 连通性" onClose={() => setVerify({ open: false, provider: null, loading: false, result: null })}
         footer={<><button type="button" className="btn-default" onClick={() => setVerify({ open: false, provider: null, loading: false, result: null })}>关闭</button><LoadingButton variant="primary" icon={PlugZap} loading={verify.loading} onClick={() => runVerify(verify.provider)}>重新验证</LoadingButton></>}>
         <VerifyResult loading={verify.loading} result={verify.result} hosts={(verify.provider?.components || []).map((c) => ({ ...c, label: OPENSTACK_COMPONENTS.find((o) => o.key === c.key)?.label || c.key }))} />
       </Modal>
@@ -154,7 +155,7 @@ export default function PlatformManagePage() {
         impactList={sw.next ? [sw.target?.envType === 'prod' ? '这是【生产环境】，请确认已获得变更审批' : '仅影响该平台', '所有写操作都会记录到审计日志'] : ['云主机 / 云硬盘的创建、删除、挂载入口将置灰', '正在执行中的任务不受影响']}
         confirmText={sw.next ? '确认开启' : '确认关闭'} loading={sw.busy} onCancel={() => setSw({ target: null, next: false, busy: false })} onConfirm={doSwitch} />
 
-      <Drawer open={!!detail} title={detail?.name} subtitle={`${detail?.consoleIp}　·　${detail?.rootDomain}`} width={520} onClose={() => setDetail(null)}
+      <Drawer open={!!detail} title={detail?.name} subtitle={detail && <span className="inline-flex items-center gap-2"><ConsoleLink ip={detail.consoleIp} /><span>·</span><span>{detail.rootDomain}</span></span>} width={520} onClose={() => setDetail(null)}
         footer={canUpdate && <button type="button" className="btn-primary" onClick={() => { setWizard({ open: true, provider: detail, key: Date.now() }); setDetail(null); }}><Pencil size={15} /> 编辑</button>}>
         {detail && (
           <div className="space-y-5">

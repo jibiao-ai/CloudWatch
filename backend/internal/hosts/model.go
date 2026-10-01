@@ -1,4 +1,4 @@
-// Package hosts 域名配置：按「云平台控制台 IP + 根域名」生成各组件（keystone/neutron/nova/cinder/glance…）的 hosts 映射，
+// Package hosts 域名配置：按「云平台控制台 IP + 根域名」生成各组件（keystone/neutron/nova/cinder/glance/gnocchi…）的 hosts 映射，
 // 并真实地同步到：本机 hosts 文件、内置 DNS 服务（供 docker --dns 使用）、运行中的 Docker 容器（/etc/hosts）。
 package hosts
 
@@ -16,7 +16,7 @@ const (
 )
 
 // DefaultComponents 与接口文档一致：<组件>.<根域名>。
-var DefaultComponents = []string{"keystone", "neutron", "nova", "cinder", "glance"}
+var DefaultComponents = []string{"keystone", "neutron", "nova", "cinder", "glance", "gnocchi"}
 
 type HostLine struct {
 	IP   string `json:"ip"`

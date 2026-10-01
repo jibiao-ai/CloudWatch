@@ -30,7 +30,7 @@ export const toForm = (p) => {
   };
 };
 
-/** 由根域名自动派生六个组件域名：<组件>.<根域名>（例：keystone.openstack.svc.cluster.local） */
+/** 由根域名自动派生七个组件域名：<组件>.<根域名>（例：keystone.openstack.svc.cluster.local） */
 export const componentHosts = (root) =>
   OPENSTACK_COMPONENTS.map((c) => ({ ...c, host: root && root.trim() ? `${c.key}.${root.trim().toLowerCase()}` : '' }));
 
@@ -38,7 +38,7 @@ export const componentHosts = (root) =>
 export function validateStep(step, f, { editing, passwordSet }) {
   const e = {};
   if (step === 0) {
-    if (!f.name.trim()) e.name = '请输入云管标识（如：生产环境高性能云ES1）';
+    if (!f.name.trim()) e.name = '请输入云贯标（如：生产环境高性能云ES1）';
     else if (f.name.trim().length > 40) e.name = '不超过 40 个字符';
     if (!f.consoleIp.trim()) e.consoleIp = '请输入控制台 IP';
     else if (!isIPv4(f.consoleIp.trim())) e.consoleIp = 'IP 格式不正确';

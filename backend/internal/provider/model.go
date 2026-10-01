@@ -11,13 +11,14 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 )
 
-// Components 需验证的六个组件，域名为 <组件>.<根域名>。
+// Components 需验证的七个组件，域名为 <组件>.<根域名>。
 var Components = []struct{ Key, Label string }{
 	{"keystone", "Keystone（认证）"},
 	{"neutron", "Neutron（网络）"},
 	{"nova", "Nova（计算）"},
 	{"cinder", "Cinder（块存储）"},
 	{"glance", "Glance（镜像）"},
+	{"gnocchi", "Gnocchi（时序指标）"},
 	{"emla", "EMLA（监控）"},
 }
 
@@ -90,7 +91,7 @@ type ComponentRef struct {
 	Host string `json:"host"`
 }
 
-// ComponentHosts 由根域名派生六个组件域名。
+// ComponentHosts 由根域名派生七个组件域名。
 func ComponentHosts(root string) []ComponentRef {
 	out := make([]ComponentRef, 0, len(Components))
 	for _, c := range Components {
@@ -108,7 +109,7 @@ func Normalize(in *Input, needPassword bool) FieldErrors {
 	e := FieldErrors{}
 	in.Name = strings.TrimSpace(in.Name)
 	if n := runeLen(in.Name); n == 0 || n > 40 {
-		e["name"] = "请输入云管标识（1~40 个字符）"
+		e["name"] = "请输入云贯标（1~40 个字符）"
 	}
 	if !envTypes[in.EnvType] {
 		e["envType"] = "环境类型不合法"

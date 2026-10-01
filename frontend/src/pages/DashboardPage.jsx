@@ -1,3 +1,4 @@
+import ConsoleLink from '../components/ConsoleLink';
 import React, { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from 'recharts';
@@ -116,11 +117,11 @@ export default function DashboardPage() {
         {ov.loading ? <Skeleton.Table rows={4} cols={6} /> : !ov.data?.providers?.length ? <EmptyState title="暂无纳管平台" description="请先在「平台管理」中新增并验证平台" /> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] border-collapse">
-              <thead><tr>{['云管标识', '环境', '状态', '云主机', 'vCPU', '内存', '存储', '告警', '最后同步'].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+              <thead><tr>{['云贯标', '环境', '状态', '云主机', 'vCPU', '内存', '存储', '告警', '最后同步'].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
               <tbody>
                 {ov.data.providers.map((p) => (
                   <tr key={p.id} className="hover:bg-hover/60 transition-colors">
-                    <td className="td"><div className="font-medium">{p.name}</div><div className="text-xs text-fg-subtle">{p.consoleIp}</div></td>
+                    <td className="td"><div className="font-medium">{p.name}</div><div><ConsoleLink ip={p.consoleIp} className="!text-xs" /></div></td>
                     <td className="td"><span className={ENV_TAG[p.envType]}>{ENV_TYPES.find((e) => e.value === p.envType)?.label}</span></td>
                     <td className="td"><StatusDot status={p.status} label /></td>
                     <td className="td tabular-nums">{formatNumber(p.vms)}</td>

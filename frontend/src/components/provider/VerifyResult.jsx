@@ -3,7 +3,7 @@ import { CircleCheck, CircleX, Loader2, ShieldCheck } from 'lucide-react';
 import { formatDateTime } from '../../utils/format';
 
 /**
- * VerifyResult —— 验证连接结果：先看 Keystone 是否签发 Token，再逐个看六个组件域名的 HTTP 连通性。
+ * VerifyResult —— 验证连接结果：先看 Keystone 是否签发 Token，再逐个看七个组件域名的 HTTP 连通性。
  * 属性：loading / result（后端 items 含 key、host、ok、latencyMs、message、error）/ hosts（[{key,label,host}] 用于未出结果前的占位行）
  */
 export default function VerifyResult({ loading, result, hosts = [] }) {

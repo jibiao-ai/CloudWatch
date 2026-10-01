@@ -16,8 +16,8 @@ const ACCESS_KEYS = new Set(['consoleIp', 'rootDomain', 'auth']);
 
 /**
  * ProviderWizard —— 平台新增 / 编辑分步向导：① 基本信息 ② 认证信息 ③ 高级（请求超时 / 同步间隔 / 备注）
- * 「验证连接」：基本信息 + 认证信息全部填写完整后才可用并高亮；点击后按根域名自动补全六个组件域名
- * （<keystone|neutron|nova|cinder|glance|emla>.<根域名>），逐个验证 HTTP 连通性，并验证能否从 Keystone 拿到 Token。
+ * 「验证连接」：基本信息 + 认证信息全部填写完整后才可用并高亮；点击后按根域名自动补全七个组件域名
+ * （<keystone|neutron|nova|cinder|glance|gnocchi|emla>.<根域名>），逐个验证 HTTP 连通性，并验证能否从 Keystone 拿到 Token。
  * 密码保存后一律显示 ******，任何位置不回显。
  */
 export default function ProviderWizard({ open, provider, onClose, onSaved, onVerified }) {
@@ -102,7 +102,7 @@ export default function ProviderWizard({ open, provider, onClose, onSaved, onVer
           <button type="button" className="btn-default" onClick={close}>取消</button>
           <div className="flex-1" />
           <LoadingButton id="provider-verify-btn" variant={highlightVerify ? 'primary' : 'default'} icon={PlugZap} loading={verifying} disabled={!ready}
-            title={ready ? '按根域名自动补全六个组件域名，验证 HTTP 连通性并获取 Keystone Token' : '请先填写完整的基本信息与认证信息'} onClick={verify}>验证连接</LoadingButton>
+            title={ready ? '按根域名自动补全七个组件域名，验证 HTTP 连通性并获取 Keystone Token' : '请先填写完整的基本信息与认证信息'} onClick={verify}>验证连接</LoadingButton>
           {step > 0 && <button type="button" className="btn-default" onClick={() => setStep(step - 1)}><ChevronLeft size={15} /> 上一步</button>}
           {!last ? <button type="button" className={highlightVerify && step === 1 ? 'btn-default' : 'btn-primary'} onClick={goNext}>下一步 <ChevronRight size={15} /></button>
             : <LoadingButton variant="primary" icon={Save} loading={saving} onClick={save}>{editing ? '保存修改' : '保存并接入'}</LoadingButton>}
@@ -122,7 +122,7 @@ export default function ProviderWizard({ open, provider, onClose, onSaved, onVer
         <div className="space-y-4 min-h-[300px]">
           {step === 0 && (
             <div className="grid sm:grid-cols-2 gap-4">
-              <FormField label="云管标识" required error={E('name')} hint="平台在云管中的唯一名称"><input {...inp('name', { placeholder: '例如：生产环境高性能云ES1', maxLength: 40 })} /></FormField>
+              <FormField label="云贯标" required error={E('name')} hint="平台在云管中的唯一名称"><input {...inp('name', { placeholder: '例如：生产环境高性能云ES1', maxLength: 40 })} /></FormField>
               <FormField label="环境类型" required><CustomSelect value={f.envType} onChange={(v) => patch('envType', v)} options={ENV_TYPES} /></FormField>
               <FormField label="控制台 IP" required error={E('consoleIp')} hint="界面访问地址 / VIP"><input {...inp('consoleIp', { placeholder: '192.168.27.150' })} /></FormField>
               <FormField label="根域名" required error={E('rootDomain')} hint="各组件域名 = <组件>.<根域名>，如 openstack.svc.cluster.local"><input {...inp('rootDomain', { placeholder: 'openstack.svc.cluster.local' })} /></FormField>
@@ -148,7 +148,7 @@ export default function ProviderWizard({ open, provider, onClose, onSaved, onVer
               <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1 px-4 py-3 text-[13px]">
                 {hosts.map((h) => <li key={h.key} className="flex gap-2 min-w-0"><span className="w-12 text-fg-muted shrink-0">{h.key}</span><code className="break-all">{h.host || `${h.key}.<根域名>`}</code></li>)}
               </ul>
-              {!ready && <p className="px-4 pb-3 text-xs text-fg-muted">基本信息与认证信息填写完整后，「验证连接」按钮将高亮，可验证以上六个域名的 HTTP 连通性及能否从 Keystone 获取 Token。</p>}
+              {!ready && <p className="px-4 pb-3 text-xs text-fg-muted">基本信息与认证信息填写完整后，「验证连接」按钮将高亮，可验证以上七个域名的 HTTP 连通性及能否从 Keystone 获取 Token。</p>}
             </section>
             {(verifying || result) && <VerifyResult loading={verifying} result={result} hosts={hosts} />}
           </>)}

@@ -227,7 +227,7 @@ func (s *Server) providerExport(w http.ResponseWriter, r *http.Request, p *auth.
 	f := excelize.NewFile()
 	sh := "平台列表"
 	f.SetSheetName("Sheet1", sh)
-	head := []any{"云管标识", "环境类型", "控制台IP", "根域名", "芯片架构", "节点数", "状态", "写操作", "云主机", "云硬盘", "网络", "最后同步(UTC+8)", "备注"}
+	head := []any{"云贯标", "环境类型", "控制台IP", "根域名", "芯片架构", "节点数", "状态", "写操作", "云主机", "云硬盘", "网络", "最后同步(UTC+8)", "备注"}
 	_ = f.SetSheetRow(sh, "A1", &head)
 	cst := time.FixedZone("CST", 8*3600)
 	for i, v := range pg.List {
