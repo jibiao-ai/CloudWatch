@@ -104,7 +104,7 @@ function pushAudit(ctx, module, action, target, { result = 'success', error = ''
 }
 
 /* ---------------- 验证连接（纯 mock 模式的演示实现；混合 / 真实模式走后端真实探测） ---------------- */
-const MOCK_COMPS = [['keystone', 'Keystone（认证）'], ['neutron', 'Neutron（网络）'], ['nova', 'Nova（计算）'], ['cinder', 'Cinder（块存储）'], ['glance', 'Glance（镜像）'], ['gnocchi', 'Gnocchi（时序指标）'], ['emla', 'EMLA（监控）']];
+const MOCK_COMPS = [['keystone', 'Keystone（认证）'], ['neutron', 'Neutron（网络）'], ['nova', 'Nova（计算）'], ['cinder', 'Cinder（块存储）'], ['glance', 'Glance（镜像）'], ['gnocchi', 'Gnocchi（时序指标）'], ['coaster', 'Coaster（物理节点）'], ['emla', 'EMLA（监控）']];
 function verifyDraft(d, hasSavedSecret) {
   const t0 = 40 + Math.floor(Math.random() * 80);
   const unreachable = /^10\.140\./.test(d.consoleIp || '') || /fail|down/.test(d.rootDomain || '');

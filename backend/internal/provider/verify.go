@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// Item 单项验证结果：key 为 token 或七个组件之一。
+// Item 单项验证结果：key 为 token 或八个组件之一。
 type Item struct {
 	Key       string `json:"key"`
 	Label     string `json:"label"`
@@ -32,7 +32,7 @@ type TokenInfo struct {
 	Roles     []string `json:"roles"`
 }
 
-// VerifyResult 验证结论：七个组件域名的 HTTP 连通性 + Keystone 是否签发 Token。
+// VerifyResult 验证结论：八个组件域名的 HTTP 连通性 + Keystone 是否签发 Token。
 type VerifyResult struct {
 	OK     bool       `json:"ok"`
 	Status string     `json:"status"` // online / warning / error
@@ -217,7 +217,7 @@ func upstreamMsg(raw []byte) string {
 	return s
 }
 
-// Verify 并发探测七个组件域名，再用 Keystone 取 Token。
+// Verify 并发探测八个组件域名，再用 Keystone 取 Token。
 func (c *Client) Verify(ctx context.Context, cr Creds) *VerifyResult {
 	res := &VerifyResult{At: time.Now().UTC(), Items: []Item{}}
 	hc := c.http(cr.Timeout)

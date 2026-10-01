@@ -30,7 +30,7 @@ export const toForm = (p) => {
   };
 };
 
-/** 由根域名自动派生七个组件域名：<组件>.<根域名>（例：keystone.openstack.svc.cluster.local） */
+/** 由根域名自动派生八个组件域名：<组件>.<根域名>（例：keystone.openstack.svc.cluster.local） */
 export const componentHosts = (root) =>
   OPENSTACK_COMPONENTS.map((c) => ({ ...c, host: root && root.trim() ? `${c.key}.${root.trim().toLowerCase()}` : '' }));
 

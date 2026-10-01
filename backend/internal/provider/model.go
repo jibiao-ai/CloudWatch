@@ -11,7 +11,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 )
 
-// Components 需验证的七个组件，域名为 <组件>.<根域名>。
+// Components 需验证的八个组件，域名为 <组件>.<根域名>。
 var Components = []struct{ Key, Label string }{
 	{"keystone", "Keystone（认证）"},
 	{"neutron", "Neutron（网络）"},
@@ -19,6 +19,7 @@ var Components = []struct{ Key, Label string }{
 	{"cinder", "Cinder（块存储）"},
 	{"glance", "Glance（镜像）"},
 	{"gnocchi", "Gnocchi（时序指标）"},
+	{"coaster", "Coaster（物理节点）"},
 	{"emla", "EMLA（监控）"},
 }
 
@@ -91,7 +92,7 @@ type ComponentRef struct {
 	Host string `json:"host"`
 }
 
-// ComponentHosts 由根域名派生七个组件域名。
+// ComponentHosts 由根域名派生八个组件域名。
 func ComponentHosts(root string) []ComponentRef {
 	out := make([]ComponentRef, 0, len(Components))
 	for _, c := range Components {

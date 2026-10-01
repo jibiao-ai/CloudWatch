@@ -120,7 +120,7 @@ export default function PlatformManagePage() {
   const impact = del.impact;
   return (
     <div ref={boxRef} className="bg-bg">
-      <PageHeader title="平台管理" description="纳管多套 OpenStack / 私有云：基本信息 + 认证信息即可接入，自动验证七个组件域名与 Keystone Token，统一控制写操作开关"
+      <PageHeader title="平台管理" description="纳管多套 OpenStack / 私有云：基本信息 + 认证信息即可接入，自动验证八个组件域名与 Keystone Token，统一控制写操作开关"
         actions={<>
           <button type="button" className="btn-default" onClick={reload} aria-label="刷新列表"><RefreshCw size={15} className={list.refreshing ? 'animate-spin' : ''} /> 刷新</button>
           <FullscreenButton containerRef={boxRef} />
@@ -141,7 +141,7 @@ export default function PlatformManagePage() {
 
       {wizard.open && <ProviderWizard key={wizard.key} open provider={wizard.provider} onClose={() => setWizard({ open: false, provider: null, key: 0 })} onSaved={() => { setWizard({ open: false, provider: null, key: 0 }); reload(); }} onVerified={reload} />}
 
-      <Modal open={verify.open} width={560} title={`验证连接：${verify.provider?.name || ''}`} subtitle="验证 Keystone 是否签发 Token，并逐个检测七个组件域名的 HTTP 连通性" onClose={() => setVerify({ open: false, provider: null, loading: false, result: null })}
+      <Modal open={verify.open} width={560} title={`验证连接：${verify.provider?.name || ''}`} subtitle="验证 Keystone 是否签发 Token，并逐个检测八个组件域名的 HTTP 连通性" onClose={() => setVerify({ open: false, provider: null, loading: false, result: null })}
         footer={<><button type="button" className="btn-default" onClick={() => setVerify({ open: false, provider: null, loading: false, result: null })}>关闭</button><LoadingButton variant="primary" icon={PlugZap} loading={verify.loading} onClick={() => runVerify(verify.provider)}>重新验证</LoadingButton></>}>
         <VerifyResult loading={verify.loading} result={verify.result} hosts={(verify.provider?.components || []).map((c) => ({ ...c, label: OPENSTACK_COMPONENTS.find((o) => o.key === c.key)?.label || c.key }))} />
       </Modal>
