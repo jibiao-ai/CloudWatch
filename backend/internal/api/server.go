@@ -13,6 +13,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
+	"github.com/jibiao-ai/cloudwatch/internal/monitor"
 	"github.com/jibiao-ai/cloudwatch/internal/provider"
 	"github.com/jibiao-ai/cloudwatch/internal/retention"
 	"github.com/jibiao-ai/cloudwatch/internal/settings"
@@ -26,6 +27,7 @@ type Server struct {
 	Retention *retention.Job
 	Hosts     *hosts.Manager
 	Providers *provider.Manager
+	Monitor   *monitor.Manager
 }
 
 const maxBody = 8 << 20 // 设置里可能带 Logo / 背景图（base64），放宽到 8MB
@@ -128,6 +130,20 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/providers/{id}/impact", s.guard("provider:view", s.providerImpact))
 	mux.Handle("PUT /api/providers/{id}/write-switch", s.guard("provider:write_switch", s.providerWriteSwitch))
 	mux.Handle("POST /api/providers/{id}/sync", s.guard("provider:sync", s.providerSync))
+	// 性能监控
+	mux.Handle("GET /api/monitor/overview", s.guard("monitor:view", s.monitorOverview))
+	mux.Handle("GET /api/monitor/{id}", s.guard("monitor:view", s.monitorSnapshot))
+	mux.Handle("GET /api/monitor/{id}/trend", s.guard("monitor:view", s.monitorTrend))
+	mux.Handle("POST /api/monitor/{id}/collect", s.guard("monitor:collect", s.monitorCollect))
+
+	// 告警中心
+	mux.Handle("GET /api/alerts", s.guard("alert:view", s.alertList))
+	mux.Handle("GET /api/alerts/stats", s.guard("alert:view", s.alertStats))
+	mux.Handle("GET /api/alerts/export", s.guard("alert:export", s.alertExport))
+	mux.Handle("POST /api/alerts/ack", s.guard("alert:ack", s.alertAck))
+	mux.Handle("POST /api/alerts/sync", s.guard("alert:sync", s.alertSync))
+	mux.Handle("GET /api/alerts/{id}", s.guard("alert:view", s.alertGet))
+
 	mux.Handle("GET /api/tasks/{id}", s.guard("", s.taskGet))
 
 	mux.Handle("/api/", public(func(w http.ResponseWriter, r *http.Request) error {

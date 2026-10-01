@@ -20,9 +20,9 @@ var Modules = []Module{
 	{"settings", "settings:view", []string{"settings:update"}},
 	{"resource", "resource:view", nil},
 	{"inspection", "inspection:view", nil},
-	{"monitor", "monitor:view", nil},
+	{"monitor", "monitor:view", []string{"monitor:collect"}},
 	{"capacity", "capacity:view", nil},
-	{"alert", "alert:view", nil},
+	{"alert", "alert:view", []string{"alert:ack", "alert:sync", "alert:export"}},
 	{"topology", "topology:view", nil},
 	{"analytics", "analytics:view", nil},
 }
@@ -79,9 +79,9 @@ var tree = []MenuGroup{
 	{"resource-mgmt", "统一资源管理", "Boxes", []MenuItem{planned("resource-mgmt-home", "资源纳管", "resource-mgmt", "resource:view", "Boxes")}},
 	{"resource-view", "统一资源视图", "LayoutList", []MenuItem{planned("resource-view-home", "资源总览", "resource-view", "resource:view", "LayoutList")}},
 	{"inspection", "自动化巡检", "ClipboardCheck", []MenuItem{planned("inspection-home", "巡检任务", "inspection", "inspection:view", "ClipboardCheck")}},
-	{"monitor", "性能监控", "Activity", []MenuItem{planned("monitor-home", "性能总览", "monitor", "monitor:view", "Activity")}},
+	{"monitor", "性能监控", "Activity", []MenuItem{{Code: "monitor-home", Name: "性能总览", Path: "/monitor", Permission: "monitor:view", Icon: "Activity"}}},
 	{"capacity", "容量管理", "Database", []MenuItem{planned("capacity-home", "容量总览", "capacity", "capacity:view", "Database")}},
-	{"alert", "告警中心", "BellRing", []MenuItem{planned("alert-home", "告警列表", "alert", "alert:view", "BellRing")}},
+	{"alert", "告警中心", "BellRing", []MenuItem{{Code: "alert-home", Name: "告警列表", Path: "/alerts", Permission: "alert:view", Icon: "BellRing"}}},
 	{"topology", "资源拓扑", "Network", []MenuItem{planned("topology-home", "全链路拓扑", "topology", "topology:view", "Network")}},
 	{"analytics", "运营分析", "ChartPie", []MenuItem{planned("analytics-home", "运营报表", "analytics", "analytics:view", "ChartPie")}},
 	{"system", "系统管理", "Settings2", []MenuItem{

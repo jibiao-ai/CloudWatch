@@ -100,7 +100,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request, p *auth.
 
 func (s *Server) unreadAlerts(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	var n int
-	if err := s.DB.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM alert_events WHERE status='firing'`).Scan(&n); err != nil {
+	if err := s.DB.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM alert_events WHERE status='firing' AND acked=0`).Scan(&n); err != nil {
 		return err
 	}
 	httpx.OK(w, map[string]any{"count": n})
