@@ -22,6 +22,9 @@ func (c *Client) getJSON(ctx context.Context, hc *http.Client, tok, url string, 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	req.Header.Set("X-Auth-Token", tok)
 	req.Header.Set("Accept", "application/json")
+	// 部分组件（如 coaster）要求 GET 也带 Content-Type: application/json，否则 500「Invalid content type in request: text/plain」；
+	// 接口文档的 curl 示例同样带此头，对 Nova/Cinder/Neutron 等无副作用。
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := hc.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s", shortErr(err))
