@@ -12,6 +12,7 @@ import MappingCard from '../components/domain/MappingCard';
 import MappingModal from '../components/domain/MappingModal';
 import SyncPanel from '../components/domain/SyncPanel';
 import ReportPanel from '../components/domain/ReportPanel';
+import Pagination from '../components/Pagination';
 import { allLines } from '../components/domain/hosts';
 import { domainApi } from '../services/api';
 import { useAsync } from '../hooks/useAsync';
@@ -21,6 +22,7 @@ import { copyText } from '../utils/download';
 
 const TAB_ID = 'domain-tab';
 const TABS = ['mappings', 'sync', 'report'];
+const PAGE_SIZE = 10; // 映射超过 10 条时分页
 
 /** 报告中有失败通道时给出可读提示 */
 const failedText = (rep) => ['local', 'dns', 'docker'].filter((k) => rep?.[k]?.status === 'failed').map((k) => `${{ local: '本机 hosts', dns: '内置 DNS', docker: 'Docker' }[k]}：${rep[k].message}`).join('；');
@@ -42,11 +44,16 @@ export default function DomainConfigPage() {
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [syncDirty, setSyncDirty] = useState(false);
+  const [pg, setPg] = useState({ page: 1, pageSize: PAGE_SIZE });
   const [tab, setTab] = useState(() => { const h = window.location.hash.slice(1); return TABS.includes(h) ? h : 'mappings'; });
   const onSyncDirty = useCallback((v) => setSyncDirty(v), []);
   useEffect(() => { window.history.replaceState(null, '', `#${tab}`); }, [tab]);
   useEffect(() => { if (data) setState(data); }, [data]);
 
+  const total = state?.mappings.length || 0;
+  const lastPage = Math.max(1, Math.ceil(total / pg.pageSize));
+  const page = Math.min(pg.page, lastPage); // 删除后页码越界时回退
+  const pageItems = state ? state.mappings.slice((page - 1) * pg.pageSize, page * pg.pageSize) : [];
   const patch = (p) => setState((s) => ({ ...s, ...p }));
   /** 同步结果提示：有失败通道用警告，否则成功 */
   const notify = (title, rep) => {
@@ -123,10 +130,11 @@ export default function DomainConfigPage() {
             <div hidden={tab !== 'mappings'} className="space-y-4">
               {state.mappings.length === 0 ? (
                 <div className="card"><EmptyState title="还没有域名映射" description="点击「新增映射」，填写控制台 IP 与根域名，例如 192.168.27.150 与 openstack.svc.cluster.local" /></div>
-              ) : state.mappings.map((m) => (
+              ) : pageItems.map((m) => (
                 <MappingCard key={m.id} m={m} canUpdate={canUpdate} canVerify={canVerify} toggling={toggling === m.id}
                   onToggle={(v) => toggle(m, v)} onEdit={() => { setErrs({}); setModal({ open: true, item: m }); }} onDelete={() => setDel(m)} />
               ))}
+              {total > PAGE_SIZE && <div className="card"><Pagination page={page} pageSize={pg.pageSize} total={total} pageSizeOptions={[10, 20, 50]} onChange={setPg} /></div>}
             </div>
             <div hidden={tab !== 'sync'}><SyncPanel sync={state.sync} dnsAddr={state.dnsAddr} canUpdate={canUpdate} errors={syncErrs} saving={syncSaving} onSave={saveSync} onDirty={onSyncDirty} /></div>
             <div hidden={tab !== 'report'}><ReportPanel report={state.report} /></div>

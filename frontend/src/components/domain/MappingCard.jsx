@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CircleCheck, CircleX, Copy, Loader2, MinusCircle, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, CircleCheck, CircleX, Copy, Loader2, MinusCircle, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
 import Switch from '../Switch';
 import LoadingButton from '../LoadingButton';
 import { domainApi } from '../../services/api';
@@ -15,6 +15,8 @@ export default function MappingCard({ m, canUpdate, canVerify, toggling, onToggl
   const toast = useToast();
   const [verifying, setVerifying] = useState(false);
   const [result, setResult] = useState(null);
+  const [open, setOpen] = useState(false);
+  const panelId = `hosts-detail-${m.id}`;
   const lines = linesOf(m);
   const copy = async () => ((await copyText(lines.join('\n'))) ? toast.success('已复制 hosts 记录', `${lines.length} 条`) : toast.error('复制失败'));
   const verify = async () => {
@@ -39,7 +41,10 @@ export default function MappingCard({ m, canUpdate, canVerify, toggling, onToggl
         <div className="sm:col-span-2"><dt className="text-fg-muted">根域名</dt><dd className="text-fg font-mono break-all">{m.rootDomain}</dd></div>
         <div><dt className="text-fg-muted">探测端口</dt><dd className="text-fg font-mono">{m.probePort}</dd></div>
       </dl>
-      <pre className="mt-3 p-3 rounded-lg bg-muted text-[13px] text-fg font-mono overflow-x-auto whitespace-pre" aria-label="生成的 hosts 记录">{lines.join('\n')}</pre>
+      <button type="button" className="mt-3 inline-flex items-center gap-1 text-[13px] text-primary hover:underline" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}{open ? '收起域名映射明细' : '查看域名映射明细'}（{lines.length} 条）
+      </button>
+      {open && <pre id={panelId} className="mt-2 p-3 rounded-lg bg-muted text-[13px] text-fg font-mono overflow-x-auto whitespace-pre" aria-label="生成的 hosts 记录">{lines.join('\n')}</pre>}
       <p className="mt-2 text-xs text-fg-muted">{m.remark ? `${m.remark} · ` : ''}最后修改 {formatDateTime(m.updatedAt)}{m.updatedBy ? ` · ${m.updatedBy}` : ''}</p>
       {(verifying || result) && (
         <ul className="mt-3 rounded-lg border border-line divide-y divide-line" aria-live="polite">
