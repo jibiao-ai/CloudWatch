@@ -211,7 +211,11 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	if okPhys {
 		r.Phys = make([]Row, 0, len(phys.items))
 		for _, n := range phys.items {
-			r.Phys = append(r.Phys, physRow(n))
+			row := physRow(n)
+			if isNovaModel(row) { // 型号为 OpenStack Nova 的是虚拟机资源，不属于物理节点
+				continue
+			}
+			r.Phys = append(r.Phys, row)
 		}
 	}
 	if okHV {
@@ -311,4 +315,10 @@ func isIronic(h map[string]any) bool {
 	const p = "ironic.compute.domain.tld"
 	return strings.HasPrefix(strings.ToLower(str(h, "hypervisor_hostname")), p) ||
 		strings.HasPrefix(strings.ToLower(str(obj(h, "service"), "host")), p)
+}
+
+// isNovaModel 物理节点型号为「OpenStack Nova」（虚拟机资源，非真实物理机）。忽略大小写与多余空白。
+func isNovaModel(r Row) bool {
+	m, _ := r["model"].(string)
+	return strings.Contains(strings.Join(strings.Fields(strings.ToLower(m)), " "), "openstack nova")
 }

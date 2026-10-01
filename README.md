@@ -256,3 +256,7 @@ npm run lint:rules          # 规则扫描（见下）
 - **根因**：经在用户服务器上用已保存的平台凭据实测，coaster `GET /v2/nodes` 在不带 `Content-Type` 时返回 `500 {"CoasterError":"Invalid content type in request: text/plain"}`，带 `Content-Type: application/json` 则返回 200（文档示例 curl 本就带该头，是我们的 GET 请求漏发）。
 - **修复**：`provider.getJSON`（所有平台 GET 请求公共入口）统一增加 `Content-Type: application/json`，对 Nova/Cinder/Neutron/Keystone 无副作用。
 - **真实数据核对**：两个平台共 29 个物理节点，`hostname / platform_name / serial / meta.cpu.spec[0].model / meta.cpu.total / meta.memory.total / meta.interfaces` 均存在，字段映射无需调整；`ipmi_info.password` 在真实响应中为明文，已确认入库与返回前被脱敏。
+
+### 第22轮修复（物理节点排除型号为 OpenStack Nova 的记录）
+- coaster `/v2/nodes` 中型号（`platform_name`，缺失时回退 `meta.system.product`）为 **OpenStack Nova**（忽略大小写/多余空格）的是虚拟机资源，不属于物理节点，现已排除。
+- 两处生效：① 采集入库时不再保存；② 读取已入库快照时同样过滤（无需等待下次采集，部署后即生效，页签数量、总览 KPI（物理节点数/核数/内存）、筛选分页同步）。附单元测试 `capacity/phys_test.go`。

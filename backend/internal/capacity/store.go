@@ -175,9 +175,18 @@ func (s *Store) load(ctx context.Context, p Platform) (*entry, error) {
 		if err := s.db.QueryRowContext(ctx, "SELECT "+c+" FROM capacity_snapshots WHERE provider_id=?", p.ID).Scan(&b); err != nil {
 			return nil, err
 		}
-		var rows []Row
-		if err := ungz(b, &rows); err != nil {
+		var all []Row
+		if err := ungz(b, &all); err != nil {
 			return nil, err
+		}
+		rows := all
+		if kind == "phys" { // 兼容已入库的旧快照：排除型号为 OpenStack Nova 的虚拟机资源
+			rows = make([]Row, 0, len(all))
+			for _, r := range all {
+				if !isNovaModel(r) {
+					rows = append(rows, r)
+				}
+			}
 		}
 		for _, r := range rows {
 			raw := r["raw"]
