@@ -228,8 +228,8 @@ npm run lint:rules          # 规则扫描（见下）
 - **数据库**：迁移 0007 为 `monitor_snapshots` 增加 `vms` 列。
 - **口径说明**（文档未给出确切指标名，需以真实环境为准）：节点网络流量用 `series/query` 的 `irate(node_network_receive|transmit_bytes_total{物理网卡}[5m])`（旧文档给出）；磁盘 I/O 使用率用 `max by (node_name)(rate(node_disk_io_time_seconds_total[5m]))*100`；若真实环境不支持，采集明细会显示对应步骤失败原因，其余功能不受影响。
 
-### 第21轮（容量管理，对接《接口补充文档》第6章）
-- **入口**：菜单「容量管理」→ `/capacity`（权限 `capacity:view`；立即采集 `capacity:collect`）。页签：**总览 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储**，页签上显示条目总数；聚合**全部已对接云平台**，可按「所属云平台」「状态」筛选。
+### 第21轮（资产管理，对接《接口补充文档》第6章）
+- **入口**：菜单「资产管理」→ `/capacity`（权限 `capacity:view`；立即采集 `capacity:collect`）。页签：**总览 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储**，页签上显示条目总数；聚合**全部已对接云平台**，可按「所属云平台」「状态」筛选。
 - **全部列表**：服务端关键字搜索（命中接口返回的全部字段，含中文状态词，多个关键字空格分隔需同时命中）+ 列头排序（数值按大小、文本按自然序、空值恒排最后）+ 分页（默认 **10 条/页**，可选 10/20/50/100，与告警中心一致）。
 - **虚拟机 / 云硬盘 / 虚拟网卡（及计算节点）**：必显 **UUID**、**所属云平台**（平台名 + 控制台 IP 超链接，新标签页打开）；点击行弹出详情抽屉：基本信息（中文分组）/ 全部字段（原始 JSON 打平为 路径→值）/ 原始 JSON，即接口返回的全量信息。
 - **集群存储**（`scheduler-stats/get_pools`）：存储池名称、总容量、剩余容量、已分配容量、精简置备总容量、使用率、供应商（`vendor_name`）、存储协议（`storage_protocol`）、后端状态（`backend_state`）、后端名称（`volume_backend_name`）等，状态/协议/供应商均中文显示（如 `ceph`→Ceph（RBD）、`up`→正常、`Easystack`→易捷行云（EasyStack））。
@@ -238,3 +238,13 @@ npm run lint:rules          # 规则扫描（见下）
 - **本平台接口**：`GET /api/capacity/overview`、`GET /api/capacity/{nodes|vms|volumes|ports|pools}?keyword&providerId&status&sortKey&sortOrder&page&pageSize`、`GET /api/capacity/{kind}/{providerId}/{id}`、`POST /api/capacity/collect[?providerId=]`。
 - **采集与存储**：后台 30 秒巡检，到期（取「平台同步间隔」与 5 分钟的较大值）即采集；结果按平台 gzip 压缩落库（迁移 0008 `capacity_snapshots`），某个接口失败只影响该类数据（保留上次成功数据，错误在总览「采集明细」显示）。
 - **口径说明**：① 文档示例卷接口为 `/v2/{project_id}/volumes`，而存储池接口为 `/v3/...`，实现按服务目录 `volumev3`（v3）调用，与 v2 响应结构一致；② 计算节点 vCPU / 内存「容量」= 物理量 × 分配比（`cpu_allocation_ratio` / `ram_allocation_ratio`），详情中同时给出物理值；③ 容量单位：Cinder `*_gb` 按 GiB、Nova `memory_mb` 按 MiB 显示；④ 存储池文档仅列出部分字段，其余 capabilities 一并展示。
+
+### 第22轮（容量管理改名「资产管理」+ 列表精简/详情增强 + 物理节点）
+- **改名**：菜单/页面标题/权限名/权限页文案「容量管理」→「资产管理」（路由 `/capacity` 与权限码 `capacity:*` 不变，保证已有授权不失效）。
+- **新增「物理节点」页签**（位于「计算节点」之前）：对接《4.1.11 平台物理节点信息查询接口》`GET http://coaster.<根域名>/v2/nodes`（`X-Auth-Token` 同 Keystone token）。列：主机名、型号（`platform_name`，回退 `meta.system.product`）、序列号、CPU 型号、内存大小（`meta.memory.total`）、CPU 核数、网卡数量、所属云平台、状态；详情含 BMC/硬件元数据。`ipmi_info` 用户名/密码在入库与返回前一律脱敏为 `******`。迁移 0009 为 `capacity_snapshots` 增加 `phys` 列；迁移 0010 与默认组件列表为域名配置增加 `coaster` 域名映射（需在「域名配置」重新同步 hosts）。
+- **计算节点**：过滤 `ironic.compute.domain.tld` 开头的 hypervisor；去掉 UUID、本地磁盘使用量、CPU 型号、CPU 拓扑列。
+- **虚拟机**：规格显示规格名称（Nova `/flavors/detail`）；项目 ID→项目名称（Keystone `/v3/projects`，失败回退当前登录项目名/ID），列在「所在节点」之后；点击行详情新增：关联系统盘/数据盘、安全组（Neutron `/security-groups`）、vCPU/内存（取自规格）。
+- **云硬盘**：项目名称列在「所属云平台」之后；加密/共享/可用区/存储后端移入详情。
+- **虚拟网卡**：状态「未连通」→「停止」、「活动」→「运行中」；项目名称列在「所属云平台」之后；设备类型/网卡类型/管理状态/端口安全移入详情。
+- **集群存储**：「后端名称」为第一列；存储协议/存储池名称/精简置备/最大超分比/驱动版本移入详情。
+- **口径说明**：物理节点列依赖 `meta` 字段，缺失显示空；项目名称解析依赖 Keystone 项目列表权限。

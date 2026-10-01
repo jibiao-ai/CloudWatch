@@ -234,7 +234,7 @@ export const monitorApi = {
   /** 云主机监控详情：后端实时向 Gnocchi 取 CPU / 内存 / 磁盘读写速率曲线 */
   getVMMetrics: (id, vmId, range) => get(`/monitor/${id}/vms/${vmId}/metrics`, { range }, { skipErrorToast: true, timeout: 60000 }),
 };
-/* ============================ 容量管理（第6章：Nova / Cinder / Neutron） ============================ */
+/* ============================ 资产管理（第6章：Nova / Cinder / Neutron） ============================ */
 export const capacityApi = {
   getOverview: () => get('/capacity/overview'),
   /** kind: nodes | vms | volumes | ports | pools；全部平台聚合，服务端搜索 / 排序 / 分页 */

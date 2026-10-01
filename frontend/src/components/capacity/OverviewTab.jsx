@@ -7,20 +7,21 @@ import DataTable from '../DataTable';
 import SearchInput from '../SearchInput';
 import { PlatformCell } from '../monitor/cells';
 import { useClientTable } from '../../hooks/useClientTable';
-import { formatNumber, formatDateTime, fromNow } from '../../utils/format';
+import { formatNumber, formatDateTime, fromNow, formatBytes } from '../../utils/format';
 import { gb, mb, Tag, numCell } from './capUtil';
 import StepsPanel from './StepsPanel';
 
-const KIND_LABEL = { nodes: '计算节点', vms: '虚拟机', volumes: '云硬盘', ports: '虚拟网卡', pools: '集群存储' };
+const KIND_LABEL = { phys: '物理节点', nodes: '计算节点', vms: '虚拟机', volumes: '云硬盘', ports: '虚拟网卡', pools: '集群存储' };
 const n0 = (v) => formatNumber(Math.round(v || 0));
 
-/** 总览：全部平台容量 KPI + 容量条 + 状态分布 + 各平台汇总（搜索 / 排序 / 分页）+ 采集明细 */
+/** 总览：全部平台资产 KPI + 容量条 + 状态分布 + 各平台汇总（搜索 / 排序 / 分页）+ 采集明细 */
 export default function OverviewTab({ ov, onJump }) {
   const t = ov.totals;
   const columns = useMemo(() => [
     { key: 'name', title: '所属云平台', width: 190, sortable: true, render: (p) => <PlatformCell platform={p} /> },
     { key: 'state', title: '采集状态', width: 120, sortable: true, sortBy: (p) => (p.collectedAt ? (p.ok ? 2 : 1) : 0), render: (p) => <StatusDot status={p.collectedAt ? (p.ok ? 'online' : 'warning') : 'unknown'} label={p.collectedAt ? (p.ok ? '正常' : '部分失败') : '未采集'} /> },
     { key: 'collectedAt', title: '最近采集', width: 160, sortable: true, render: (p) => <span className="text-[13px] tabular-nums" title={p.collectedAt ? fromNow(p.collectedAt) : ''}>{p.collectedAt ? formatDateTime(p.collectedAt) : '—'}</span> },
+    { key: 'phys', title: '物理节点', width: 90, sortable: true, align: 'right', sortBy: (p) => p.sum.phys, render: (p) => numCell(p.sum.phys, n0) },
     { key: 'nodes', title: '计算节点', width: 90, sortable: true, align: 'right', sortBy: (p) => p.sum.nodes, render: (p) => numCell(p.sum.nodes, n0) },
     { key: 'vms', title: '虚拟机', width: 80, sortable: true, align: 'right', sortBy: (p) => p.sum.vms, render: (p) => numCell(p.sum.vms, n0) },
     { key: 'volumes', title: '云硬盘', width: 80, sortable: true, align: 'right', sortBy: (p) => p.sum.volumeCount, render: (p) => numCell(p.sum.volumeCount, n0) },
@@ -36,6 +37,7 @@ export default function OverviewTab({ ov, onJump }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={Layers} label="已对接云平台" value={ov.platforms.length} hint={`${ov.platforms.filter((p) => p.collectedAt && p.ok).length} 个采集正常`} />
+        <StatCard icon={HardDrive} tone="info" label="物理节点" value={n0(t.phys)} hint={`CPU ${n0(t.physCores)} 核，内存 ${formatBytes((t.physMemGb || 0) * 1024 ** 3, 1)}`} />
         <StatCard icon={Server} tone="info" label="计算节点" value={n0(t.nodes)} hint={t.nodesDown ? `${n0(t.nodesDown)} 个宕机` : '全部运行中'} />
         <StatCard icon={MonitorCog} tone="success" label="虚拟机" value={n0(t.vms)} hint={`${n0(t.vmsActive)} 台运行中`} />
         <StatCard icon={HardDrive} tone="warning" label="云硬盘" value={n0(t.volumeCount)} hint={`合计 ${gb(t.volumeGb)}，${n0(t.volumeInUse)} 块使用中`} />
@@ -64,7 +66,7 @@ export default function OverviewTab({ ov, onJump }) {
       )}
       <DataTable columns={columns} rows={tbl.pageRows} rowKey="id" page={tbl.page} pageSize={tbl.pageSize} total={tbl.total} onPageChange={tbl.setPage} pageSizeOptions={[10, 20, 50, 100]}
         sort={tbl.sort} onSortChange={tbl.setSort}
-        toolbar={<><h3 className="text-sm font-semibold text-fg mr-2">各云平台容量汇总</h3><SearchInput value={tbl.keyword} onChange={tbl.setKeyword} placeholder="搜索平台名称 / 控制台 IP" width={260} /></>}
+        toolbar={<><h3 className="text-sm font-semibold text-fg mr-2">各云平台资产汇总</h3><SearchInput value={tbl.keyword} onChange={tbl.setKeyword} placeholder="搜索平台名称 / 控制台 IP" width={260} /></>}
         empty={{ title: '暂无已对接的云平台', description: '请先在「平台管理」中新增并验证平台' }} />
       <StepsPanel platforms={ov.platforms} />
     </div>

@@ -29,10 +29,13 @@ type PageResult struct {
 	Facets   []Facet `json:"facets"`
 }
 
+// heavy 只在详情接口返回的大字段（列表不带，减小响应）。
+var heavy = map[string]bool{"disks": true, "securityGroupList": true, "interfaces": true}
+
 func hide(r Row) Row {
 	out := make(Row, len(r))
 	for k, v := range r {
-		if k != "_s" {
+		if k != "_s" && !heavy[k] {
 			out[k] = v
 		}
 	}

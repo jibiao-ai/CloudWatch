@@ -15,7 +15,7 @@ import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
 
-/** CapacityPage —— 容量管理（总览 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储）：聚合全部已对接云平台，数据来自第 6 章 Nova / Cinder / Neutron 接口 */
+/** CapacityPage —— 资产管理（总览 / 物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储）：聚合全部已对接云平台，数据来自第 6 章 Nova / Cinder / Neutron 接口 */
 export default function CapacityPage() {
   const toast = useToast();
   const canCollect = useCan('capacity:collect');
@@ -32,7 +32,7 @@ export default function CapacityPage() {
       const res = await capacityApi.collect();
       const bad = res.filter((r) => r.fail || (r.error && !r.ok));
       if (bad.length) toast.error('部分平台采集失败', bad.map((b) => b.fail || b.error).join('；').slice(0, 200));
-      else toast.success('采集完成', `已采集 ${res.length} 个云平台的容量数据`);
+      else toast.success('采集完成', `已采集 ${res.length} 个云平台的资产数据`);
       reload();
     } catch (e) { toast.error('采集失败', e.message); } finally { setBusy(false); }
   };
@@ -44,7 +44,7 @@ export default function CapacityPage() {
 
   return (
     <div className="bg-bg">
-      <PageHeader title="容量管理" description="汇聚全部已对接云平台的计算节点、虚拟机、云硬盘、虚拟网卡与集群存储；对接 Nova / Cinder / Neutron 接口，后台周期采集并落库"
+      <PageHeader title="资产管理" description="汇聚全部已对接云平台的物理节点、计算节点、虚拟机、云硬盘、虚拟网卡与集群存储；对接 Coaster / Nova / Cinder / Neutron 接口，后台周期采集并落库"
         actions={<>
           <LoadingButton icon={RefreshCw} loading={ov.refreshing} onClick={reload}>刷新</LoadingButton>
           {canCollect && <LoadingButton variant="primary" icon={Play} loading={busy} onClick={collect}>立即采集</LoadingButton>}

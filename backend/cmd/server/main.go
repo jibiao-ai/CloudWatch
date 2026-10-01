@@ -59,7 +59,7 @@ func main() {
 	srv := &api.Server{DB: d, Providers: pm, Monitor: mm, Capacity: cm, Settings: st, Auth: au, Audit: audit.New(d), Retention: retention.New(d, st, au), Hosts: hm}
 	srv.Retention.Start(ctx)
 	pm.Start(ctx) // 平台按「同步间隔」后台自动同步；重启时中断的任务置失败
-	cm.Start(ctx) // 容量管理：计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
+	cm.Start(ctx) // 资产管理：物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
 	mm.Start(ctx) // 性能指标采集 + 告警同步（间隔复用平台同步间隔）
 	hm.Start(ctx) // 启动即按库中配置同步 hosts / DNS / Docker，重启后自动恢复
 

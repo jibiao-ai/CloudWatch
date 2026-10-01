@@ -1,5 +1,5 @@
 /** 域名配置：hosts 行生成与展示辅助（与后端 internal/hosts 的生成规则一致：<IP> <组件>.<根域名>） */
-export const DEFAULT_COMPONENTS = ['keystone', 'neutron', 'nova', 'cinder', 'glance', 'gnocchi'];
+export const DEFAULT_COMPONENTS = ['keystone', 'neutron', 'nova', 'cinder', 'glance', 'gnocchi', 'coaster'];
 export const EXTRA_COMPONENTS = ['emla'];
 
 export const normDomain = (v) => (v || '').trim().toLowerCase().replace(/^\.+|\.+$/g, '');

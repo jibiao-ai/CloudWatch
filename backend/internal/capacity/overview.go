@@ -7,6 +7,9 @@ import (
 
 // Sum 一组汇总数值。
 type Sum struct {
+	Phys              float64 `json:"phys"`
+	PhysCores         float64 `json:"physCores"`
+	PhysMemGb         float64 `json:"physMemGb"`
 	Nodes             float64 `json:"nodes"`
 	NodesDown         float64 `json:"nodesDown"`
 	VCPUs             float64 `json:"vcpus"`
@@ -57,6 +60,9 @@ func f(r Row, k string) float64 {
 }
 
 func (a *Sum) add(b Sum) {
+	a.Phys += b.Phys
+	a.PhysCores += b.PhysCores
+	a.PhysMemGb += b.PhysMemGb
 	a.Nodes += b.Nodes
 	a.NodesDown += b.NodesDown
 	a.VCPUs += b.VCPUs
@@ -83,6 +89,11 @@ func (a *Sum) add(b Sum) {
 
 func summarize(e *entry) Sum {
 	var s Sum
+	for _, r := range e.rows["phys"] {
+		s.Phys++
+		s.PhysCores += f(r, "cpuCores")
+		s.PhysMemGb += f(r, "memoryGb")
+	}
 	for _, r := range e.rows["nodes"] {
 		s.Nodes++
 		if toStr(r["state"]) != "" && toStr(r["state"]) != "up" {
@@ -124,7 +135,7 @@ func summarize(e *entry) Sum {
 	return s
 }
 
-// Overview 全部平台的容量汇总 + 各资源状态分布。
+// Overview 全部平台的资产汇总 + 各资源状态分布。
 func (s *Store) Overview(ctx context.Context, plats []Platform) (*Overview, error) {
 	ov := &Overview{Platforms: []PlatformSummary{}, Dist: map[string][]Dist{}}
 	cnt := map[string]map[string]*Dist{}

@@ -4,9 +4,10 @@ import Skeleton from '../Skeleton';
 import ErrorState from '../ErrorState';
 import ConsoleLink from '../ConsoleLink';
 import { capacityApi } from '../../services/api';
-import { formatDateTime, formatNumber } from '../../utils/format';
+import { formatDateTime, formatNumber, formatBytes } from '../../utils/format';
 import { FIELDS } from './fields';
 import { gb, mb } from './capUtil';
+import { VmExtra, PhysExtra } from './DetailExtra';
 
 /** 把原始 JSON 打平成 路径 → 值，便于逐项查看「全量信息」 */
 function flat(v, p = '', out = []) {
@@ -23,6 +24,7 @@ const fmtVal = (row, [, key, type]) => {
   if (v == null || v === '') return '—';
   if (type === 'gb') return gb(v);
   if (type === 'mb') return mb(v);
+  if (type === 'bytes') return formatBytes(v, 2);
   if (type === 'time') return formatDateTime(v);
   if (type === 'num') return formatNumber(v);
   if (type === 'console') return <ConsoleLink ip={v} />;
@@ -63,6 +65,8 @@ export default function DetailDrawer({ kind, title, row, anchor, onClose }) {
               </dl>
             </section>
           ))}
+          {tab === 'fields' && kind === 'vms' && <VmExtra row={d} loading={state.loading} />}
+          {tab === 'fields' && kind === 'phys' && <PhysExtra row={d} loading={state.loading} />}
           {tab !== 'fields' && (state.loading ? <Skeleton.Cards count={2} />
             : state.error ? <ErrorState error={state.error} onRetry={() => setState((s) => ({ ...s }))} />
               : tab === 'json' ? <pre className="text-xs text-fg bg-muted rounded-lg p-3 overflow-auto whitespace-pre-wrap break-all">{JSON.stringify(state.data?.raw, null, 2)}</pre>

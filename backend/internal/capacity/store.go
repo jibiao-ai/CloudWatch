@@ -13,9 +13,9 @@ import (
 )
 
 // Kinds 资源类型 → capacity_snapshots 列名（同时是 API 路径中的 kind）。
-var Kinds = map[string]string{"nodes": "nodes", "vms": "vms", "volumes": "volumes", "ports": "ports", "pools": "pools"}
+var Kinds = map[string]string{"phys": "phys", "nodes": "nodes", "vms": "vms", "volumes": "volumes", "ports": "ports", "pools": "pools"}
 
-// Store 容量快照的持久化 + 内存缓存（按平台缓存已解析、已预计算搜索文本的行，原始对象不驻留内存）。
+// Store 资产快照的持久化 + 内存缓存（按平台缓存已解析、已预计算搜索文本的行，原始对象不驻留内存）。
 type Store struct {
 	db    *sql.DB
 	mu    sync.Mutex
@@ -99,12 +99,12 @@ ON DUPLICATE KEY UPDATE ok=0,error=VALUES(error),duration_ms=VALUES(duration_ms)
 		sortRows(rows, key)
 		return gz(rows)
 	}
-	var cols [5]any
+	var cols [6]any
 	var err error
 	for i, k := range []struct {
 		rows []Row
 		key  string
-	}{{res.Nodes, "name"}, {res.VMs, "name"}, {res.Volumes, "name"}, {res.Ports, "name"}, {res.Pools, "poolName"}} {
+	}{{res.Nodes, "name"}, {res.VMs, "name"}, {res.Volumes, "name"}, {res.Ports, "name"}, {res.Pools, "poolName"}, {res.Phys, "hostname"}} {
 		if cols[i], err = blob(k.rows, k.key); err != nil {
 			return err
 		}
@@ -117,12 +117,12 @@ ON DUPLICATE KEY UPDATE ok=0,error=VALUES(error),duration_ms=VALUES(duration_ms)
 		}
 	}
 	// 首次插入：没采到的列为 NULL；已有记录：COALESCE 保留旧数据
-	_, err = s.db.ExecContext(ctx, `INSERT INTO capacity_snapshots(provider_id,collected_at,ok,error,duration_ms,nodes,vms,volumes,ports,pools,steps,last_try_at)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO capacity_snapshots(provider_id,collected_at,ok,error,duration_ms,nodes,vms,volumes,ports,pools,phys,steps,last_try_at)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
 ON DUPLICATE KEY UPDATE collected_at=VALUES(collected_at),ok=VALUES(ok),error=VALUES(error),duration_ms=VALUES(duration_ms),
-nodes=COALESCE(VALUES(nodes),nodes),vms=COALESCE(VALUES(vms),vms),volumes=COALESCE(VALUES(volumes),volumes),ports=COALESCE(VALUES(ports),ports),pools=COALESCE(VALUES(pools),pools),
+nodes=COALESCE(VALUES(nodes),nodes),vms=COALESCE(VALUES(vms),vms),volumes=COALESCE(VALUES(volumes),volumes),ports=COALESCE(VALUES(ports),ports),pools=COALESCE(VALUES(pools),pools),phys=COALESCE(VALUES(phys),phys),
 steps=VALUES(steps),last_try_at=VALUES(last_try_at)`,
-		id, now, ok, trunc(errMsg, 480), took.Milliseconds(), cols[0], cols[1], cols[2], cols[3], cols[4], string(steps), now)
+		id, now, ok, trunc(errMsg, 480), took.Milliseconds(), cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], string(steps), now)
 	return err
 }
 

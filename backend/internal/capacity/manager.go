@@ -10,7 +10,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/provider"
 )
 
-// Manager 周期性采集各平台容量数据。间隔 = 平台「同步间隔」，但不低于 5 分钟（容量接口数据量大）。
+// Manager 周期性采集各平台资产数据。间隔 = 平台「同步间隔」，但不低于 5 分钟（资产接口数据量大）。
 type Manager struct {
 	Store    *Store
 	Provider *provider.Manager
@@ -58,7 +58,7 @@ func (m *Manager) Start(ctx context.Context) {
 func (m *Manager) tick(ctx context.Context) {
 	ids, err := m.Provider.ListPlatformIDs(ctx)
 	if err != nil {
-		log.Printf("容量采集扫描失败: %v", err)
+		log.Printf("资产采集扫描失败: %v", err)
 		return
 	}
 	for _, id := range ids {
@@ -77,7 +77,7 @@ func (m *Manager) tick(ctx context.Context) {
 			c, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 			if _, err := m.Refresh(c, id); err != nil {
-				log.Printf("平台 %s 容量采集失败: %v", id, err)
+				log.Printf("平台 %s 资产采集失败: %v", id, err)
 			}
 		}(id)
 	}
@@ -90,7 +90,7 @@ func (m *Manager) Refresh(ctx context.Context, id string) (*Meta, error) {
 		return nil, err
 	}
 	if !m.lock(id) {
-		return nil, httpx.Err(409, "该平台正在采集容量数据，请稍候")
+		return nil, httpx.Err(409, "该平台正在采集资产数据，请稍候")
 	}
 	defer m.unlock(id)
 	t0 := time.Now()
@@ -109,7 +109,7 @@ func (m *Manager) Refresh(ctx context.Context, id string) (*Meta, error) {
 		}
 	}
 	if okN == 0 {
-		_ = m.Store.Save(ctx, id, nil, "全部容量接口调用失败。"+firstErr, time.Since(t0))
+		_ = m.Store.Save(ctx, id, nil, "全部资产接口调用失败。"+firstErr, time.Since(t0))
 		return m.meta(ctx, p), nil
 	}
 	msg := ""

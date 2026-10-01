@@ -80,7 +80,7 @@ var tree = []MenuGroup{
 	{"resource-view", "统一资源视图", "LayoutList", []MenuItem{planned("resource-view-home", "资源总览", "resource-view", "resource:view", "LayoutList")}},
 	{"inspection", "自动化巡检", "ClipboardCheck", []MenuItem{planned("inspection-home", "巡检任务", "inspection", "inspection:view", "ClipboardCheck")}},
 	{"monitor", "监控中心", "Activity", []MenuItem{{Code: "monitor-home", Name: "监控总览", Path: "/monitor", Permission: "monitor:view", Icon: "Activity"}}},
-	{"capacity", "容量管理", "Database", []MenuItem{{Code: "capacity-home", Name: "容量总览", Path: "/capacity", Permission: "capacity:view", Icon: "Database"}}},
+	{"capacity", "资产管理", "Database", []MenuItem{{Code: "capacity-home", Name: "资产总览", Path: "/capacity", Permission: "capacity:view", Icon: "Database"}}},
 	{"alert", "告警中心", "BellRing", []MenuItem{{Code: "alert-home", Name: "告警列表", Path: "/alerts", Permission: "alert:view", Icon: "BellRing"}}},
 	{"topology", "资源拓扑", "Network", []MenuItem{planned("topology-home", "全链路拓扑", "topology", "topology:view", "Network")}},
 	{"analytics", "运营分析", "ChartPie", []MenuItem{planned("analytics-home", "运营报表", "analytics", "analytics:view", "ChartPie")}},

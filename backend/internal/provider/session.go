@@ -74,6 +74,22 @@ func (cn *Conn) Neutron() string {
 // Gnocchi 返回 Gnocchi 基础地址：<scheme>://gnocchi.<根域名>（接口文档约定的域名）。
 func (cn *Conn) Gnocchi() string { return cn.c.BaseURL(cn.scheme, "gnocchi."+cn.Root) }
 
+// Coaster 返回物理节点管理组件基础地址：<scheme>://coaster.<根域名>（接口文档 4.1.11 约定的域名）。
+func (cn *Conn) Coaster() string { return cn.c.BaseURL(cn.scheme, "coaster."+cn.Root) }
+
+// Keystone 返回 Keystone v3 基础地址（含 /v3）：优先服务目录 identity，缺省 <scheme>://keystone.<根域名>/v3。
+func (cn *Conn) Keystone() string {
+	u := cn.Sess.endpoint("identity", cn.c.BaseURL(cn.scheme, "keystone."+cn.Root))
+	u = strings.TrimRight(u, "/")
+	if i := strings.Index(u, "/v3"); i >= 0 {
+		u = u[:i]
+	}
+	return u + "/v3"
+}
+
+// ProjectName 当前 Token 所属项目名称。
+func (cn *Conn) ProjectName() string { return cn.Sess.Info.Project }
+
 // GetJSON 带 X-Auth-Token 的 GET，并把响应解析到 out。
 func (cn *Conn) GetJSON(ctx context.Context, url string, out any) error {
 	return cn.c.getJSON(ctx, cn.hc, cn.Sess.Token, url, out)

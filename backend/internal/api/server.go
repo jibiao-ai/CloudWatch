@@ -132,7 +132,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/providers/{id}/impact", s.guard("provider:view", s.providerImpact))
 	mux.Handle("PUT /api/providers/{id}/write-switch", s.guard("provider:write_switch", s.providerWriteSwitch))
 	mux.Handle("POST /api/providers/{id}/sync", s.guard("provider:sync", s.providerSync))
-	// 容量管理（对接接口文档第 6 章）
+	// 资产管理（对接接口文档第 6 章）
 	mux.Handle("GET /api/capacity/overview", s.guard("capacity:view", s.capacityOverview))
 	mux.Handle("POST /api/capacity/collect", s.guard("capacity:collect", s.capacityCollect))
 	mux.Handle("GET /api/capacity/{kind}", s.guard("capacity:view", s.capacityList))

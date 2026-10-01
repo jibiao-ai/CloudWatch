@@ -25,8 +25,8 @@ type Step struct {
 
 // Result 一个平台的采集结果；某类资源采集失败时对应切片为 nil（入库时保留上一次成功的数据）。
 type Result struct {
-	Nodes, VMs, Volumes, Ports, Pools []Row
-	Steps                             []Step
+	Phys, Nodes, VMs, Volumes, Ports, Pools []Row
+	Steps                                   []Step
 }
 
 const (
@@ -101,6 +101,7 @@ func timed(fn func() ([]map[string]any, error)) fetched {
 func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	var (
 		hv, srv, vol, net, sub, port, pool fetched
+		phys, proj, flv, sgs               fetched
 		wg                                 sync.WaitGroup
 	)
 	run := func(dst *fetched, fn func() ([]map[string]any, error)) {
@@ -129,6 +130,22 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		err := cn.GetJSON(ctx, cinder+"/scheduler-stats/get_pools?detail=True", &doc)
 		return doc.P, err
 	})
+	run(&phys, func() ([]map[string]any, error) { // 4.1.11 平台物理节点信息查询：GET coaster.<根域名>/v2/nodes
+		var raw json.RawMessage
+		if err := cn.GetJSON(ctx, cn.Coaster()+"/v2/nodes", &raw); err != nil {
+			return nil, err
+		}
+		return parseNodes(raw)
+	})
+	run(&proj, func() ([]map[string]any, error) { // Keystone 项目（ID → 名称）：GET {keystone}/v3/projects
+		return getAll(ctx, cn, cn.Keystone()+"/projects", "projects", nil)
+	})
+	run(&flv, func() ([]map[string]any, error) { // Nova 规格（ID → 名称 / vCPU / 内存）：GET {nova}/flavors/detail
+		return getAll(ctx, cn, nova+"/flavors/detail", "flavors", url.Values{"is_public": {"None"}})
+	})
+	run(&sgs, func() ([]map[string]any, error) { // Neutron 安全组：GET {neutron}/security-groups
+		return getAll(ctx, cn, neutron+"/security-groups", "security_groups", nil)
+	})
 	wg.Wait()
 
 	r := &Result{}
@@ -143,6 +160,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		r.Steps = append(r.Steps, s)
 		return f.err == nil
 	}
+	okPhys := add("phys", "物理节点（平台物理节点信息查询接口）", "coaster /v2/nodes", phys)
 	okHV := add("nodes", "计算节点（Nova 虚拟机监控程序）", "/v2.1/os-hypervisors/detail", hv)
 	okSrv := add("vms", "虚拟机（Nova 云主机详情）", "/v2.1/servers/detail?all_tenants=true", srv)
 	okVol := add("volumes", "云硬盘（Cinder 云硬盘详情）", "/v3/{project_id}/volumes/detail", vol)
@@ -150,6 +168,9 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	okSub := add("subnets", "子网（Neutron，用于解析网卡所属子网）", "/v2.0/subnets", sub)
 	okPort := add("ports", "虚拟网卡（Neutron 端口）", "/v2.0/ports", port)
 	okPool := add("pools", "集群存储（Cinder 存储后端详情）", "/v3/{project_id}/scheduler-stats/get_pools?detail=True", pool)
+	okProj := add("projects", "项目（Keystone，用于解析项目名称）", "/v3/projects", proj)
+	okFlv := add("flavors", "规格（Nova，用于解析规格名称 / vCPU / 内存）", "/v2.1/flavors/detail", flv)
+	okSG := add("sgs", "安全组（Neutron，用于展示虚拟机安全组详情）", "/v2.0/security-groups", sgs)
 
 	vmName := map[string]string{}
 	for _, s := range srv.items {
@@ -163,28 +184,61 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	for _, s := range sub.items {
 		subCIDR[str(s, "id")] = str(s, "cidr")
 	}
+	lk := &lookups{proj: map[string]string{}, flavors: map[string]map[string]any{}, vols: map[string]map[string]any{}, sgs: map[string]map[string]any{}}
+	if okProj {
+		for _, p := range proj.items {
+			lk.proj[str(p, "id")] = str(p, "name")
+		}
+	}
+	if cn.ProjectID() != "" && lk.proj[cn.ProjectID()] == "" {
+		lk.proj[cn.ProjectID()] = cn.ProjectName() // 无权列出项目时，至少能解析当前登录项目
+	}
+	if okFlv {
+		for _, f := range flv.items {
+			lk.flavors[str(f, "id")] = f
+		}
+	}
+	if okSG {
+		for _, g := range sgs.items {
+			lk.sgs[str(g, "id")] = g
+		}
+	}
+	if okVol {
+		for _, v := range vol.items {
+			lk.vols[str(v, "id")] = v
+		}
+	}
+	if okPhys {
+		r.Phys = make([]Row, 0, len(phys.items))
+		for _, n := range phys.items {
+			r.Phys = append(r.Phys, physRow(n))
+		}
+	}
 	if okHV {
 		r.Nodes = make([]Row, 0, len(hv.items))
 		for _, h := range hv.items {
+			if isIronic(h) { // 过滤 ironic.compute.domain.tld 开头的虚拟机监控程序
+				continue
+			}
 			r.Nodes = append(r.Nodes, nodeRow(h))
 		}
 	}
 	if okSrv {
 		r.VMs = make([]Row, 0, len(srv.items))
 		for _, s := range srv.items {
-			r.VMs = append(r.VMs, vmRow(s))
+			r.VMs = append(r.VMs, vmRow(s, lk))
 		}
 	}
 	if okVol {
 		r.Volumes = make([]Row, 0, len(vol.items))
 		for _, v := range vol.items {
-			r.Volumes = append(r.Volumes, volumeRow(v, vmName))
+			r.Volumes = append(r.Volumes, volumeRow(v, vmName, lk))
 		}
 	}
 	if okPort {
 		r.Ports = make([]Row, 0, len(port.items))
 		for _, p := range port.items {
-			r.Ports = append(r.Ports, portRow(p, netName, subCIDR, vmName, okNet, okSub))
+			r.Ports = append(r.Ports, portRow(p, netName, subCIDR, vmName, okNet, okSub, lk))
 		}
 	}
 	if okPool {
@@ -235,4 +289,26 @@ func collectVolumes(ctx context.Context, cn *provider.Conn, cinder string) ([]ma
 	}
 	wg.Wait()
 	return out, firstErr
+}
+
+// parseNodes 物理节点接口返回 JSON 数组；兼容 {"nodes":[...]} 的包装形式。
+func parseNodes(raw json.RawMessage) ([]map[string]any, error) {
+	var arr []map[string]any
+	if err := json.Unmarshal(raw, &arr); err == nil {
+		return arr, nil
+	}
+	var doc struct {
+		Nodes []map[string]any `json:"nodes"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("解析物理节点响应失败：%w", err)
+	}
+	return doc.Nodes, nil
+}
+
+// isIronic 裸金属（ironic）虚拟机监控程序：主机名以 ironic.compute.domain.tld 开头。
+func isIronic(h map[string]any) bool {
+	const p = "ironic.compute.domain.tld"
+	return strings.HasPrefix(strings.ToLower(str(h, "hypervisor_hostname")), p) ||
+		strings.HasPrefix(strings.ToLower(str(obj(h, "service"), "host")), p)
 }

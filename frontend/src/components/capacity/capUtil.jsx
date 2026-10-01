@@ -19,7 +19,7 @@ export const clip = (v, w = 180) => (v ? <span className="text-[13px] block trun
 export const time = (v) => (v ? <span className="tabular-nums text-[13px]">{formatDateTime(v)}</span> : dash);
 export const numCell = (v, f = formatNumber) => (v == null ? dash : <span className="tabular-nums text-[13px]">{f(v)}</span>);
 
-/** 容量换算：接口中 GB 即 GiB（Cinder）；内存 MB 即 MiB（Nova） */
+/** 单位换算：接口中 GB 即 GiB（Cinder）；内存 MB 即 MiB（Nova） */
 export const gb = (v) => formatBytes(Number(v) * 1024 ** 3, 2);
 export const mb = (v) => formatBytes(Number(v) * 1024 ** 2, 2);
 export const gbCell = (v) => (v == null ? dash : <span className="tabular-nums text-[13px]">{gb(v)}</span>);
@@ -37,6 +37,7 @@ export const platCol = () => ({
 });
 
 export const KINDS = [
+  { key: 'phys', label: '物理节点', count: 'phys' },
   { key: 'nodes', label: '计算节点', count: 'nodes' },
   { key: 'vms', label: '虚拟机', count: 'vms' },
   { key: 'volumes', label: '云硬盘', count: 'volumeCount' },

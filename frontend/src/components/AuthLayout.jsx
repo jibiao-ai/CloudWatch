@@ -34,7 +34,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
         </div>
         <div className="relative max-w-xl">
           <h2 className="text-4xl font-bold leading-tight tracking-tight">一个界面，看清<br />平台到存储的全链路</h2>
-          <p className="mt-4 text-[15px] opacity-85 leading-relaxed">{brand.subtitle}。统一纳管多套 OpenStack / 私有云，资源视图、巡检、监控、容量与告警一站式呈现。</p>
+          <p className="mt-4 text-[15px] opacity-85 leading-relaxed">{brand.subtitle}。统一纳管多套 OpenStack / 私有云，资源视图、巡检、监控、资产与告警一站式呈现。</p>
           <div className="mt-10 grid grid-cols-2 gap-4 max-w-md">
             {stats.map((s) => (
               <div key={s.label} className="rounded-xl bg-primary-on/10 border border-primary-on/15 px-4 py-3.5">

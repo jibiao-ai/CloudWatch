@@ -7,10 +7,10 @@ import { useListQuery } from '../../hooks/useListQuery';
 import { COLUMNS, PLACEHOLDER, TITLE } from './columns';
 import DetailDrawer from './DetailDrawer';
 
-const DEFAULT_SORT = { nodes: 'name', vms: 'name', volumes: 'name', ports: 'name', pools: 'poolName' };
+const DEFAULT_SORT = { phys: 'hostname', nodes: 'name', vms: 'name', volumes: 'name', ports: 'name', pools: 'backendName' };
 
 /**
- * ResourceTab —— 容量管理单类资源列表：全部平台聚合；服务端搜索 / 状态与平台筛选 / 排序 / 分页（默认 10 条/页，与告警中心一致）
+ * ResourceTab —— 资产管理单类资源列表：全部平台聚合；服务端搜索 / 状态与平台筛选 / 排序 / 分页（默认 10 条/页，与告警中心一致）
  * 点击行打开详情抽屉（全部字段 + 接口原始 JSON）
  */
 export default function ResourceTab({ kind, platforms, refreshKey, onCounted }) {
@@ -37,7 +37,10 @@ export default function ResourceTab({ kind, platforms, refreshKey, onCounted }) 
     const root = tableRef.current;
     const t = root?.querySelector('[data-dt-toolbar]');
     const pg = root?.querySelector('[data-dt-pagination]');
-    return { top: t ? t.getBoundingClientRect().top : 0, bottom: pg ? pg.getBoundingClientRect().top : window.innerHeight };
+    const top = t ? t.getBoundingClientRect().top : 0;
+    // 详情内容较多（磁盘 / 安全组 / 网卡表格）：结果行很少时抽屉也延伸到视口底部，避免内容被压缩
+    const bottom = Math.max(pg ? pg.getBoundingClientRect().top : window.innerHeight, window.innerHeight - 16);
+    return { top, bottom };
   }, []);
   const filtered = !!(query.keyword || query.providerId || query.status);
   return (

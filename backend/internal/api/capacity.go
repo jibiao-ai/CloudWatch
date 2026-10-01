@@ -28,7 +28,7 @@ func (s *Server) capacityOverview(w http.ResponseWriter, r *http.Request, _ *aut
 func (s *Server) capacityList(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	kind := r.PathValue("kind")
 	if _, ok := capacity.Kinds[kind]; !ok {
-		return httpx.Err(404, "不支持的容量类型："+kind)
+		return httpx.Err(404, "不支持的资产类型："+kind)
 	}
 	plats, err := s.Capacity.Platforms(r.Context())
 	if err != nil {
@@ -69,14 +69,14 @@ func (s *Server) capacityCollect(w http.ResponseWriter, r *http.Request, p *auth
 	t0 := time.Now()
 	id := r.URL.Query().Get("providerId")
 	ids := []string{id}
-	target := "立即采集全部平台的容量数据"
+	target := "立即采集全部平台的资产数据"
 	if id == "" {
 		var err error
 		if ids, err = s.Providers.ListPlatformIDs(r.Context()); err != nil {
 			return err
 		}
 	} else if pv, e := s.Providers.Store.Get(r.Context(), id); e == nil {
-		target = "立即采集平台 " + pv.Name + " 的容量数据"
+		target = "立即采集平台 " + pv.Name + " 的资产数据"
 	}
 	type one struct {
 		ProviderID string `json:"providerId"`
