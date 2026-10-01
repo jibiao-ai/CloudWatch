@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { RefreshCw, CheckCheck, AlertOctagon, AlertTriangle, Info, BellRing } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
@@ -32,6 +32,14 @@ export default function AlertCenterPage() {
   const { query, setQuery } = list;
   const stats = useAsync(() => alertApi.getAlertStats(), []);
   const [detail, setDetail] = useState(null);
+  const tableRef = useRef(null);
+  // 详情抽屉纵向范围：上沿对齐工具栏（导出 Excel 所在行），下沿止于分页栏上方
+  const drawerAnchor = useCallback(() => {
+    const root = tableRef.current;
+    const t = root?.querySelector('[data-dt-toolbar]');
+    const pg = root?.querySelector('[data-dt-pagination]');
+    return { top: t ? t.getBoundingClientRect().top : 0, bottom: pg ? pg.getBoundingClientRect().top : window.innerHeight };
+  }, []);
   const [selected, setSelected] = useState([]);
   const [busy, setBusy] = useState(false);
   const st = stats.data || { severity: {}, firing: 0, unacked: 0 };
@@ -73,6 +81,7 @@ export default function AlertCenterPage() {
         <StatCard icon={Info} tone="info" label="提示（告警中）" value={st.severity.info || 0} />
         <StatCard icon={BellRing} tone="primary" label="告警中 / 未确认" value={`${st.firing} / ${st.unacked}`} />
       </div>
+      <div ref={tableRef}>
       <DataTable columns={columns} rows={list.rows} rowKey="id" loading={list.loading} refreshing={list.refreshing} error={list.error} onRetry={list.reload}
         page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })} pageSizeOptions={[10, 20, 50, 100]}
         sort={query.sort} onSortChange={(sort) => setQuery({ sort: sort || { key: 'firedAt', order: 'desc' } })} onRowClick={setDetail}
@@ -87,7 +96,8 @@ export default function AlertCenterPage() {
         </>}
         extra={canExport && <ExportButton fn={alertApi.exportAlerts} params={toParams(query)} title="告警列表" filters={{ 关键字: query.keyword, 级别: lab(SEV, query.severity), 状态: lab(STATUS, query.status) }} />}
         empty={{ title: '暂无告警', description: '云平台当前没有符合条件的告警' }} />
-      <Drawer open={!!detail} title={detail?.name || '告警详情'} subtitle={detail && `${lab(SEV, detail.severity)} · ${lab(STATUS, detail.status)}`} width={600} onClose={() => setDetail(null)}
+      </div>
+      <Drawer open={!!detail} title={detail?.name || '告警详情'} subtitle={detail && `${lab(SEV, detail.severity)} · ${lab(STATUS, detail.status)}`} width={600} anchor={drawerAnchor} onClose={() => setDetail(null)}
         footer={detail && canAck && !detail.acked ? <button type="button" className="btn-primary" disabled={busy} onClick={() => ack([detail.id])}><CheckCheck size={15} /> 确认告警</button> : null}>
         {detail && (
           <div className="space-y-5">

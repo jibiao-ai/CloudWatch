@@ -44,7 +44,7 @@ export default function DataTable({
   return (
     <div className="card overflow-hidden">
       {(toolbar || extra) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-line">
+        <div data-dt-toolbar className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 border-b border-line">
           <div className="flex flex-wrap items-center gap-2.5 min-w-0">{toolbar}</div>
           <div className="flex flex-wrap items-center gap-2">{extra}</div>
         </div>

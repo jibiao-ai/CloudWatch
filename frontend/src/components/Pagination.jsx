@@ -24,7 +24,7 @@ export default function Pagination({ page, pageSize, total, pageSizeOptions = [1
   const btn = 'w-8 h-8 rounded-md text-[13px] flex items-center justify-center transition disabled:opacity-40 disabled:cursor-not-allowed';
 
   return (
-    <nav aria-label="分页" className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 border-t border-line">
+    <nav data-dt-pagination aria-label="分页" className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 border-t border-line">
       <div className="text-[13px] text-fg-muted">
         第 <b className="text-fg font-medium">{from}-{to}</b> 条 / 共 <b className="text-fg font-medium">{total}</b> 条
       </div>
