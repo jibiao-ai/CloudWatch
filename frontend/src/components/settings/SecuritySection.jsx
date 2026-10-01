@@ -9,7 +9,7 @@ export default function SecuritySection({ value, onChange, errors, disabled }) {
   const p = { group: 'security', onChange, errors, disabled };
   return (
     <>
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
         <NumField {...p} name="minLength" label="密码最小长度" value={value.minLength} />
         <NumField {...p} name="expireDays" label="密码有效期（天，0 = 永不过期）" value={value.expireDays} />
         <NumField {...p} name="sessionTimeoutMin" label="会话超时（分钟）" value={value.sessionTimeoutMin} />
@@ -17,7 +17,7 @@ export default function SecuritySection({ value, onChange, errors, disabled }) {
         <NumField {...p} name="lockThreshold" label="失败几次后锁定账号" value={value.lockThreshold} />
         <NumField {...p} name="lockMinutes" label="锁定时长（分钟）" value={value.lockMinutes} />
       </div>
-      <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
         {TOGGLES.map(([k, l]) => (
           <div key={k} className="flex items-center justify-between rounded-lg border border-line px-4 py-3">
             <span className="text-sm text-fg">{l}</span>

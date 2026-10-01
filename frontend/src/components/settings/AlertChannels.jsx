@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Mail, Plus, Send, Trash2, Webhook } from 'lucide-react';
+import { Mail, Send, Trash2, Webhook } from 'lucide-react';
 import FormField from '../FormField';
 import CustomSelect from '../CustomSelect';
 import Switch from '../Switch';
@@ -31,7 +31,7 @@ const PAGE_SIZES = [5, 10, 20];
  * AlertChannels —— 告警渠道（邮件 / Webhook）：可增删、启停、测试发送；密钥类字段永不回显。
  * 渠道多时分页展示（默认 5 条/页）；新增渠道自动跳到末页；校验出错自动跳到第一条出错渠道所在页。
  */
-export default function AlertChannels({ value, onChange, errors = {}, disabled }) {
+export default function AlertChannels({ value, onChange, errors = {}, disabled, addSignal = 0 }) {
   const toast = useToast();
   const [testing, setTesting] = useState('');
   const [pg, setPg] = useState({ page: 1, pageSize: PAGE_SIZES[0] });
@@ -43,11 +43,16 @@ export default function AlertChannels({ value, onChange, errors = {}, disabled }
     if (i >= 0) setPg((s) => ({ ...s, page: Math.floor(i / s.pageSize) + 1 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errors]);
-  const add = () => {
+  // 头部「新增渠道」按钮每点一次 addSignal +1：追加一条并跳到末页
+  const seen = React.useRef(addSignal);
+  useEffect(() => {
+    if (addSignal === seen.current) return;
+    seen.current = addSignal;
     const next = [...value, newChannel()];
     onChange(next);
     setPg((s) => ({ ...s, page: Math.ceil(next.length / s.pageSize) }));
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addSignal]);
   const upd = (id, patch) => onChange(value.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   const cfg = (c, k) => (e) => upd(c.id, { config: { ...c.config, [k]: e.target.value } });
   const test = async (c) => {
@@ -73,7 +78,7 @@ export default function AlertChannels({ value, onChange, errors = {}, disabled }
                   <button type="button" className="btn-icon !w-8 !h-8 hover:!text-danger" disabled={disabled} aria-label={`删除渠道 ${c.name}`} onClick={() => onChange(value.filter((x) => x.id !== c.id))}><Trash2 size={15} /></button>
                 </div>
               </div>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                 <FormField label="渠道名称" required error={er.name}><input className="field" value={c.name} disabled={disabled} onChange={(e) => upd(c.id, { name: e.target.value })} /></FormField>
                 <FormField label="类型"><CustomSelect value={c.type} disabled={disabled} onChange={(v) => upd(c.id, { type: v })} options={TYPES} /></FormField>
                 {c.type === 'email' ? (<>
@@ -81,9 +86,9 @@ export default function AlertChannels({ value, onChange, errors = {}, disabled }
                   <FormField label="端口" required error={er.port}><input className="field" value={c.config.port || ''} disabled={disabled} onChange={cfg(c, 'port')} inputMode="numeric" /></FormField>
                   <FormField label="发件账号"><input className="field" value={c.config.username || ''} disabled={disabled} onChange={cfg(c, 'username')} autoComplete="off" /></FormField>
                   <FormField label="账号密码 / 授权码"><SecretInput saved={c.secretSet} value={c.secret || ''} onChange={(v) => upd(c.id, { secret: v })} placeholder="请输入" /></FormField>
-                  <FormField className="md:col-span-3" label="收件人" required error={er.to} hint="多个邮箱用英文逗号分隔"><input className="field" value={c.config.to || ''} disabled={disabled} onChange={cfg(c, 'to')} /></FormField>
+                  <FormField className="col-span-full" label="收件人" required error={er.to} hint="多个邮箱用英文逗号分隔"><input className="field" value={c.config.to || ''} disabled={disabled} onChange={cfg(c, 'to')} /></FormField>
                 </>) : (<>
-                  <FormField className="md:col-span-2" label="Webhook 地址" required error={er.url}><input className="field font-mono text-[13px]" value={c.config.url || ''} disabled={disabled} onChange={cfg(c, 'url')} placeholder="https://" /></FormField>
+                  <FormField className="col-span-full" label="Webhook 地址" required error={er.url}><input className="field font-mono text-[13px]" value={c.config.url || ''} disabled={disabled} onChange={cfg(c, 'url')} placeholder="https://" /></FormField>
                   <FormField label="签名密钥（可选）"><SecretInput saved={c.secretSet} value={c.secret || ''} onChange={(v) => upd(c.id, { secret: v })} placeholder="请输入" /></FormField>
                 </>)}
               </div>
@@ -93,7 +98,6 @@ export default function AlertChannels({ value, onChange, errors = {}, disabled }
         })}
       </div>
       {value.length > 0 && <div className="mt-3 rounded-lg border border-line overflow-hidden"><Pagination page={page} pageSize={pg.pageSize} total={value.length} pageSizeOptions={PAGE_SIZES} onChange={setPg} /></div>}
-      {!disabled && <button type="button" className="btn-default mt-4" onClick={add}><Plus size={15} /> 新增渠道</button>}
     </div>
   );
 }

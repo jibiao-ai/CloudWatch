@@ -60,19 +60,17 @@ export default function AuditLogPage() {
         <FullscreenButton containerRef={boxRef} />
         {canClean && <button type="button" className="btn-default !text-danger" onClick={() => setClean(180)}><Trash2 size={15} /> 清理日志</button>}
       </>} />
-      <div className="card p-3 mb-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <RangeSelector variant="select" label="审计周期" showCompare={false} value={query.range} onChange={(range) => setQuery({ range })} />
-          <SearchInput value={query.operator} onChange={(operator) => setQuery({ operator })} placeholder="操作人" width={150} />
-          <div className="w-[140px]"><CustomSelect size="sm" clearable placeholder="模块" aria-label="模块" value={query.module} onChange={(module) => setQuery({ module })} options={AUDIT_MODULES} /></div>
-          <div className="w-[140px]"><CustomSelect size="sm" clearable placeholder="动作" aria-label="动作" value={query.action} onChange={(action) => setQuery({ action })} options={AUDIT_ACTIONS} /></div>
-          <div className="w-[110px]"><CustomSelect size="sm" clearable placeholder="结果" aria-label="结果" value={query.result} onChange={(result) => setQuery({ result })} options={AUDIT_RESULTS} /></div>
-          <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="关键字（目标 / 错误 / IP）" width={240} />
-        </div>
-      </div>
       <DataTable columns={columns} rows={list.rows} rowKey="id" loading={list.loading} refreshing={list.refreshing} error={list.error} onRetry={list.reload}
         page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })} pageSizeOptions={[20, 50, 100]}
         sort={query.sort} onSortChange={(sort) => setQuery({ sort: sort || { key: 'time', order: 'desc' } })} onRowClick={setDetail}
+        toolbar={<>
+        <RangeSelector variant="select" label="审计周期" showCompare={false} value={query.range} onChange={(range) => setQuery({ range })} />
+        <SearchInput value={query.operator} onChange={(operator) => setQuery({ operator })} placeholder="操作人" width={150} />
+        <div className="w-[140px]"><CustomSelect size="sm" clearable placeholder="模块" aria-label="模块" value={query.module} onChange={(module) => setQuery({ module })} options={AUDIT_MODULES} /></div>
+        <div className="w-[140px]"><CustomSelect size="sm" clearable placeholder="动作" aria-label="动作" value={query.action} onChange={(action) => setQuery({ action })} options={AUDIT_ACTIONS} /></div>
+        <div className="w-[110px]"><CustomSelect size="sm" clearable placeholder="结果" aria-label="结果" value={query.result} onChange={(result) => setQuery({ result })} options={AUDIT_RESULTS} /></div>
+        <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="关键字（目标 / 错误 / IP）" width={240} />
+        </>}
         extra={canExport && <ExportButton fn={auditApi.exportAudits} params={params} title="审计日志" filters={{ 模块: query.module, 动作: query.action, 结果: query.result, 操作人: query.operator, 关键字: query.keyword }} />}
         empty={{ title: '没有符合条件的日志', description: '尝试放宽时间范围或清除部分筛选条件' }} />
 

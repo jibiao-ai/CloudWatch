@@ -54,7 +54,7 @@ export default function BrandSection({ value, onChange, onPreviewColor, disabled
     if (isValidHex(full) && (full.length === 7 || full.length === 4)) { setErr(''); onChange({ ...value, primaryColor: full.toUpperCase() }); onPreviewColor(full); } else setErr('请输入合法的 HEX 色值，如 #C6242A');
   };
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(380px,1fr))] gap-6">
       <div className="space-y-5">
         <ImageUpload kind="logo" label="平台 Logo" value={value.logoUrl} disabled={disabled} onChange={(v) => onChange({ ...value, logoUrl: v })} />
         <ImageUpload kind="bg" label="登录页背景" value={value.loginBgUrl} disabled={disabled} onChange={(v) => onChange({ ...value, loginBgUrl: v })} />

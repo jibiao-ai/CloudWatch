@@ -73,20 +73,18 @@ export default function AlertCenterPage() {
         <StatCard icon={Info} tone="info" label="提示（告警中）" value={st.severity.info || 0} />
         <StatCard icon={BellRing} tone="primary" label="告警中 / 未确认" value={`${st.firing} / ${st.unacked}`} />
       </div>
-      <div className="card p-3 mb-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="关键字（名称 / 节点 / IP）" width={240} />
-          <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="级别" aria-label="级别" value={query.severity} onChange={(severity) => setQuery({ severity })} options={SEV} /></div>
-          <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="状态" aria-label="状态" value={query.status} onChange={(status) => setQuery({ status })} options={STATUS} /></div>
-          <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="类型" aria-label="类型" value={query.type} onChange={(type) => setQuery({ type })} options={TYPE} /></div>
-          <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="确认" aria-label="确认" value={query.acked} onChange={(acked) => setQuery({ acked })} options={ACKED} /></div>
-        </div>
-      </div>
       <DataTable columns={columns} rows={list.rows} rowKey="id" loading={list.loading} refreshing={list.refreshing} error={list.error} onRetry={list.reload}
         page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })} pageSizeOptions={[10, 20, 50, 100]}
         sort={query.sort} onSortChange={(sort) => setQuery({ sort: sort || { key: 'firedAt', order: 'desc' } })} onRowClick={setDetail}
         selectable={canAck} selected={selected} onSelectedChange={setSelected} isRowSelectable={(r) => !r.acked}
         selectionBar={<button type="button" className="btn-default btn-sm" disabled={busy} onClick={() => ack(selected)}><CheckCheck size={14} /> 批量确认（{selected.length}）</button>}
+        toolbar={<>
+        <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="关键字（名称 / 节点 / IP）" width={240} />
+        <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="级别" aria-label="级别" value={query.severity} onChange={(severity) => setQuery({ severity })} options={SEV} /></div>
+        <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="状态" aria-label="状态" value={query.status} onChange={(status) => setQuery({ status })} options={STATUS} /></div>
+        <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="类型" aria-label="类型" value={query.type} onChange={(type) => setQuery({ type })} options={TYPE} /></div>
+        <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="确认" aria-label="确认" value={query.acked} onChange={(acked) => setQuery({ acked })} options={ACKED} /></div>
+        </>}
         extra={canExport && <ExportButton fn={alertApi.exportAlerts} params={toParams(query)} title="告警列表" filters={{ 关键字: query.keyword, 级别: lab(SEV, query.severity), 状态: lab(STATUS, query.status) }} />}
         empty={{ title: '暂无告警', description: '云平台当前没有符合条件的告警' }} />
       <Drawer open={!!detail} title={detail?.name || '告警详情'} subtitle={detail && `${lab(SEV, detail.severity)} · ${lab(STATUS, detail.status)}`} width={600} onClose={() => setDetail(null)}

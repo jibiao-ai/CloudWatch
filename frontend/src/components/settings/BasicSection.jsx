@@ -5,7 +5,7 @@ import { TextField } from './fields';
 export default function BasicSection({ value, onChange, errors, disabled }) {
   const p = { group: 'basic', onChange, errors, disabled };
   return (
-    <div className="grid md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
       <TextField {...p} name="platformName" label="平台名称" required value={value.platformName} maxLength={24} />
       <TextField {...p} name="subtitle" label="副标题" value={value.subtitle} maxLength={64} />
       <TextField {...p} name="copyright" label="版权信息" value={value.copyright} maxLength={128} />

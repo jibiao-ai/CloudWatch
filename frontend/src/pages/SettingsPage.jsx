@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Tabs from '../components/Tabs';
 import ConfirmModal from '../components/ConfirmModal';
@@ -50,6 +51,7 @@ export default function SettingsPage() {
     return GROUPS.some((g) => g.key === h) ? h : 'basic';
   });
   const [saving, setSaving] = useState('');
+  const [addSignal, setAddSignal] = useState(0);
   const [reset, setReset] = useState(null);
   const orig = useRef(null);
   const committedColor = useRef(brandInStore.primaryColor);
@@ -116,16 +118,17 @@ export default function SettingsPage() {
   const banner = tab === 'brand' && brandErrs.length > 0 && <div className="mx-5 mt-4 rounded-lg bg-danger-soft text-danger text-[13px] px-3 py-2" role="alert">{brandErrs.map((m) => <div key={m}>{m}</div>)}</div>;
 
   return (
-    <div className="max-w-[1100px]">
+    <div className="w-full">
       <PageHeader title="系统配置" description="基础信息 / 品牌信息 / 安全策略 / 数据保留 / 告警渠道。所有参数均在此页面设置并保存到数据库，无需改动后台配置文件" />
       <Tabs idPrefix={TAB_ID} items={items} value={tab} onChange={goTab} className="mb-4" />
       <Panel tabId={`${TAB_ID}-panel`} meta={meta} index={idx} total={GROUPS.length} prev={GROUPS[idx - 1]} next={GROUPS[idx + 1]} onGo={goTab}
-        canUpdate={canUpdate} dirty={dirty(tab)} saving={saving === tab} onReset={() => setReset(tab)} onSave={() => save(tab)} onRevert={tab === 'brand' ? revertBrand : undefined} banner={banner}>
+        canUpdate={canUpdate} dirty={dirty(tab)} saving={saving === tab} onReset={() => setReset(tab)} onSave={() => save(tab)} onRevert={tab === 'brand' ? revertBrand : undefined} banner={banner}
+        afterReset={tab === 'alertChannels' && <button type="button" className="btn-default btn-sm" onClick={() => setAddSignal((n) => n + 1)}><Plus size={14} />新增渠道</button>}>
         {tab === 'basic' && <BasicSection {...common} />}
         {tab === 'brand' && <BrandSection value={f.brand} disabled={!canUpdate} onChange={patch('brand')} onPreviewColor={(c) => useStore.getState().previewPrimary(c)} />}
         {tab === 'security' && <SecuritySection {...common} />}
         {tab === 'retention' && <RetentionSection {...common} />}
-        {tab === 'alertChannels' && <AlertChannels value={f.alertChannels} disabled={!canUpdate} errors={chErrs} onChange={(v) => setF((s) => ({ ...s, alertChannels: v }))} />}
+        {tab === 'alertChannels' && <AlertChannels value={f.alertChannels} disabled={!canUpdate} errors={chErrs} addSignal={addSignal} onChange={(v) => setF((s) => ({ ...s, alertChannels: v }))} />}
       </Panel>
       <ConfirmModal open={!!reset} danger title={`恢复「${GROUPS.find((x) => x.key === reset)?.title || ''}」为默认值？`} description="该分组当前的配置将被覆盖为系统默认值，并立即写入数据库。"
         impactList={RESET_IMPACT[reset] || ['配置项恢复出厂默认']}
