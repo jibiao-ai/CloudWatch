@@ -19,10 +19,10 @@
 | 布局 + 侧栏（权限树生成 / 折叠持久化 / 图标模式 / 移动抽屉）+ 路由守卫 + 403/404/500 | ✅ |
 | 登录 / 强制改密 / 个人信息 | ✅ |
 | 运维概览（KPI · 容量条 · 趋势图 · 平台概况 · 高负载节点） | ✅ |
-| **平台管理**（五步向导 · 五端点自动填充 · 逐组件验证连接 · 写操作开关全站联动 · 影响范围删除） | ✅ |
+| **平台管理**（三步向导：基本信息 / 认证信息 / 高级 · 认证填完才可「验证连接」 · 真实验证六组件域名 HTTP 连通 + Keystone Token · 同步入库 · 自动同步 · 写操作开关 · 影响范围删除） | ✅ 真实后端 |
 | 用户管理（含单个/批量删除，权限码 `user:delete`；不可删自己与最后一个超级管理员）/ 角色管理（功能权限树 + 数据权限三级 allow/deny）/ 审计日志 / 域名配置 / 系统配置 | ✅ |
 | 统一资源管理 / 资源视图 / 巡检 / 性能监控 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
-| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；**域名配置（hosts 映射 / 内置 DNS / Docker 注入）**；其余模块（平台/用户/角色/概览）暂为 mock |
+| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；**域名配置（hosts 映射 / 内置 DNS / Docker 注入）**；**平台管理（providers / tasks）**；其余模块（用户/角色/概览指标）暂为 mock（概览与角色数据范围的平台列表已读真实库） |
 
 ## 系统配置（真实后端）
 
@@ -60,6 +60,16 @@
 - **数据**：表 `host_mappings`（迁移 `0002_hosts.sql`）；同步方式与最近同步结果存 `system_meta`（`hosts_sync` / `hosts_last_apply`）。服务启动时自动执行一次同步。
 - **部署注意**：写 `/etc/hosts` 需要 root 或对该文件有写权限；监听 53 端口需 root / `CAP_NET_BIND_SERVICE`（或改用高位端口）；访问 Docker 需要对 `docker.sock` 有读写权限。后端若跑在容器内，需挂载宿主机 hosts 文件与 `/var/run/docker.sock`。
 - **已验证范围**：后端 60 项接口测试 + 浏览器端到端 22 项（含用户示例、DNS 应答、hosts 保留/清理、容器注入）；Docker 部分用**模拟的 Docker Engine API** 验证，未连真实 dockerd，上线前请在真实 Docker 环境复测。
+
+## 平台管理（真实后端）
+
+- **向导三步**：① 基本信息（云管标识 / 环境类型 / 控制台 IP / 根域名 / 架构 / 节点数）→ ② 认证信息（用户名 / 密码 / 项目 / 用户域 / 项目域）→ ③ 高级（仅 请求超时 3~300 秒、同步间隔 1~1440 分钟、备注）。已移除「五端点配置」「资源类型约定」。
+- **验证连接**：认证信息填完整后才可点击并高亮（编辑态已存密码可直接用）；按「根域名」自动补全 6 个组件域名 `keystone/neutron/nova/cinder/glance/emla.<根域名>`，后端逐个 DNS 解析 + HTTP 探测（先 http 后 https，任何 HTTP 响应即视为可达），并向 Keystone v3 发起密码认证（项目范围），以 `201 + X-Subject-Token` 判定拿到 Token。结果：Token 失败 → 异常；Token 成功但有组件不通 → 告警；全部通过 → 在线。结果落库 `providers.last_verify`。
+- **同步**：用 Token 与服务目录调用 Nova / Cinder / Neutron（分页）统计云主机 / 云硬盘 / 网络数及可用域，落库；后台每 30 秒检查，到期（`sync_interval_min`）自动验证并同步（`started_by=system`），进度存 `tasks` 表；服务重启会把遗留运行中任务置失败。
+- **安全**：密码 AES-256-GCM 加密入库（`password_enc`），接口永不回显（`******`）；修改接入信息会重置状态并清除旧验证结果；所有变更写入审计日志（密码字段脱敏）。
+- **API**：`GET|POST /api/providers` · `GET|PUT|DELETE /api/providers/{id}` · `GET /api/providers/{id}/impact` · `PUT /api/providers/{id}/write` · `POST /api/providers/verify`（草稿或已保存）· `POST /api/providers/{id}/sync` · `GET /api/tasks/{id}` · `GET /api/providers/export`。
+- **数据**：迁移 `0003_providers.sql`（`providers`、`tasks`）。
+- **已验证范围**：对**模拟 OpenStack**（Keystone/Nova/Cinder/Neutron，含分页与错误密码 401）完成接口 + 浏览器端到端 34 项；真实 OpenStack 的非标准目录/自签证书/代理场景上线前请复测。
 
 ## 后端（`backend/`）
 

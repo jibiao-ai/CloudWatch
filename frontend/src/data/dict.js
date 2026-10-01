@@ -50,15 +50,12 @@ export const AUDIT_RESULTS = [
   { value: 'failure', label: '失败' },
 ];
 
-export const PROTOCOLS = [
-  { value: 'https', label: 'HTTPS' },
-  { value: 'http', label: 'HTTP' },
-];
-
+/** 平台接入需验证的六个组件；域名固定为 <key>.<根域名>（与后端 provider.Components 一致） */
 export const OPENSTACK_COMPONENTS = [
   { key: 'keystone', label: 'Keystone（认证）' },
-  { key: 'nova', label: 'Nova（计算）' },
   { key: 'neutron', label: 'Neutron（网络）' },
+  { key: 'nova', label: 'Nova（计算）' },
   { key: 'cinder', label: 'Cinder（块存储）' },
   { key: 'glance', label: 'Glance（镜像）' },
+  { key: 'emla', label: 'EMLA（监控）' },
 ];

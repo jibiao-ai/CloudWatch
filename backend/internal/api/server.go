@@ -13,6 +13,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
+	"github.com/jibiao-ai/cloudwatch/internal/provider"
 	"github.com/jibiao-ai/cloudwatch/internal/retention"
 	"github.com/jibiao-ai/cloudwatch/internal/settings"
 )
@@ -24,6 +25,7 @@ type Server struct {
 	Audit     *audit.Service
 	Retention *retention.Job
 	Hosts     *hosts.Manager
+	Providers *provider.Manager
 }
 
 const maxBody = 8 << 20 // 设置里可能带 Logo / 背景图（base64），放宽到 8MB
@@ -114,6 +116,19 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/domain-config/mappings/{id}/verify", s.guard("domain:verify", s.verifyMapping))
 	mux.Handle("PUT /api/domain-config/sync", s.guard("domain:update", s.putSync))
 	mux.Handle("POST /api/domain-config/apply", s.guard("domain:update", s.postApply))
+
+	// 平台管理
+	mux.Handle("GET /api/providers", s.guard("provider:view", s.providerList))
+	mux.Handle("GET /api/providers/export", s.guard("provider:export", s.providerExport))
+	mux.Handle("POST /api/providers/verify", s.guard("provider:verify", s.providerVerify))
+	mux.Handle("POST /api/providers", s.guard("provider:create", s.providerSave(false)))
+	mux.Handle("GET /api/providers/{id}", s.guard("provider:view", s.providerGet))
+	mux.Handle("PUT /api/providers/{id}", s.guard("provider:update", s.providerSave(true)))
+	mux.Handle("DELETE /api/providers/{id}", s.guard("provider:delete", s.providerDelete))
+	mux.Handle("GET /api/providers/{id}/impact", s.guard("provider:view", s.providerImpact))
+	mux.Handle("PUT /api/providers/{id}/write-switch", s.guard("provider:write_switch", s.providerWriteSwitch))
+	mux.Handle("POST /api/providers/{id}/sync", s.guard("provider:sync", s.providerSync))
+	mux.Handle("GET /api/tasks/{id}", s.guard("", s.taskGet))
 
 	mux.Handle("/api/", public(func(w http.ResponseWriter, r *http.Request) error {
 		return httpx.Err(404, "接口不存在："+r.Method+" "+r.URL.Path)

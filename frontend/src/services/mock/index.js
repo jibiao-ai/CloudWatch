@@ -103,38 +103,26 @@ function pushAudit(ctx, module, action, target, { result = 'success', error = ''
   });
 }
 
-/* ---------------- 验证连接（模拟） ---------------- */
+/* ---------------- 验证连接（纯 mock 模式的演示实现；混合 / 真实模式走后端真实探测） ---------------- */
+const MOCK_COMPS = [['keystone', 'Keystone（认证）'], ['neutron', 'Neutron（网络）'], ['nova', 'Nova（计算）'], ['cinder', 'Cinder（块存储）'], ['glance', 'Glance（镜像）'], ['emla', 'EMLA（监控）']];
 function verifyDraft(d, hasSavedSecret) {
-  const t0 = 60 + Math.floor(Math.random() * 120);
-  const ep = d.endpoints || {};
+  const t0 = 40 + Math.floor(Math.random() * 80);
   const unreachable = /^10\.140\./.test(d.consoleIp || '') || /fail|down/.test(d.rootDomain || '');
-  const items = [];
   const pw = d.auth?.password;
   const tokenOk = !unreachable && !!d.auth?.username && (pw ? pw.length >= 4 : hasSavedSecret);
-  items.push({
-    key: 'token', label: '获取 Token',
-    ok: tokenOk, latencyMs: t0 + 40,
-    message: tokenOk ? '已获取 scoped token' : unreachable ? '' : '未提供有效密码',
-    error: tokenOk ? '' : unreachable ? `connect ETIMEDOUT ${d.consoleIp}:80 —— 请检查 hosts 映射与网络连通性` : '401 Unauthorized: The request you have made requires authentication.',
+  const items = [{
+    key: 'token', label: 'Keystone 认证 Token', host: `keystone.${d.rootDomain}`, ok: tokenOk, latencyMs: t0 + 40,
+    message: tokenOk ? '已获取 Token' : '',
+    error: tokenOk ? '' : unreachable ? 'Keystone 域名不可达，无法获取 Token' : 'Keystone 返回 HTTP 401：The request you have made requires authentication.',
+  }];
+  MOCK_COMPS.forEach(([key, label], i) => {
+    const ok = !unreachable;
+    items.push({ key, label, host: `${key}.${d.rootDomain}`, ok, latencyMs: ok ? t0 + i * 13 : 0, message: ok ? 'HTTP 可达，HTTP 200' : '', error: ok ? '' : `HTTP 连接失败：dial tcp ${d.consoleIp}:80: i/o timeout` });
   });
-  ['keystone', 'nova', 'neutron', 'cinder', 'glance'].forEach((c, i) => {
-    const url = ep[c];
-    let ok = tokenOk && !!url;
-    let error = '';
-    if (!url) error = '未配置端点地址';
-    else if (!tokenOk) error = '依赖 Token，已跳过';
-    else if (/^https?:\/\/[^/]+$/.test(url) === false && !/^https?:\/\//.test(url)) { ok = false; error = '端点地址格式不正确（需以 http:// 或 https:// 开头）'; }
-    items.push({
-      key: c, label: { keystone: 'Keystone（认证）', nova: 'Nova（计算）', neutron: 'Neutron（网络）', cinder: 'Cinder（块存储）', glance: 'Glance（镜像）' }[c],
-      ok, latencyMs: ok ? t0 + i * 23 : null,
-      message: ok ? `${{ keystone: 'v3', nova: 'v2.1', neutron: 'v2.0', cinder: 'v2/v3', glance: 'v2' }[c]} 接口可用` : '',
-      error,
-    });
-  });
-  const allOk = items.every((i) => i.ok);
+  const status = !tokenOk ? 'error' : items.every((x) => x.ok) ? 'online' : 'warning';
   return {
-    ok: allOk, testedAt: new Date().toISOString(), items,
-    token: tokenOk ? { expiresAt: new Date(Date.now() + 6 * 3600e3).toISOString(), roles: ['cloud_admin', 'admin'], project: d.auth?.projectName || 'admin' } : null,
+    ok: status === 'online', status, at: new Date().toISOString(), items,
+    token: tokenOk ? { user: d.auth?.username, expiresAt: new Date(Date.now() + 6 * 3600e3).toISOString(), roles: ['admin'], project: d.auth?.projectName || 'admin' } : null,
   };
 }
 
@@ -321,7 +309,7 @@ on('post', '/providers/verify', async ({ body, ctx }) => {
   const res = verifyDraft(draft, saved);
   if (body.id) {
     const p = db.providers.find((x) => x.id === body.id);
-    if (p) p.status = res.ok ? 'online' : res.items.some((i) => i.ok) ? 'warning' : 'error';
+    if (p) p.status = res.status;
   }
   pushAudit(ctx, 'provider', 'verify', draft.name || '未命名平台', { result: res.ok ? 'success' : 'failure', error: res.ok ? '' : res.items.find((i) => !i.ok)?.error, body: { name: draft.name } });
   save();
@@ -446,8 +434,8 @@ on('post', '/users/:id/reset-password', ({ params, ctx }) => {
 /* -- 角色 -- */
 const roleView = (r) => ({ ...r, userCount: db.users.filter((u) => u.roleIds.includes(r.id)).length });
 on('get', '/roles', () => db.roles.map(roleView), { need: 'role:view' });
-on('get', '/roles/scope-tree', () => ({
-  providers: db.providers.map((p) => ({
+on('get', '/roles/scope-tree', ({ ctx }) => ({
+  providers: ctx.providers.map((p) => ({
     value: p.id, label: p.name,
     clusters: [
       { value: `${p.id}:az-nova`, label: `${p.name.slice(0, 4)}-可用域 nova`, resources: [{ value: `${p.id}:az-nova:vm`, label: '云主机' }, { value: `${p.id}:az-nova:volume`, label: '云硬盘' }, { value: `${p.id}:az-nova:network`, label: '网络' }] },
@@ -576,7 +564,7 @@ on('post', '/settings/alert-channels/test', async ({ body }) => {
 }, { need: 'settings:update' });
 
 /* -- 概览 -- */
-on('get', '/dashboard/overview', ({ query }) => dashboardOverview(db.providers, query), { need: 'dashboard:view' });
+on('get', '/dashboard/overview', ({ query, ctx }) => dashboardOverview(ctx.providers, query), { need: 'dashboard:view', providers: true });
 on('get', '/dashboard/trend', ({ query }) => dashboardTrend(query), { need: 'dashboard:view' });
 on('get', '/alerts/unread-count', () => ({ count: 7 }));
 
@@ -591,13 +579,21 @@ async function toXlsxBlob(payload) {
 }
 
 /* ---------------- 混合模式：这些前缀走真实后端，其余仍由本文件 mock ---------------- */
-export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts/unread-count', '/domain-config'];
+export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts/unread-count', '/domain-config', '/providers', '/tasks'];
 const isReal = (path) => REAL_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : `${p}/`) || path === p.replace(/\/$/, ''));
 
 let realHttp;
 function forward(config, base) {
   realHttp ||= axios.create({ baseURL: base, timeout: 60000 });
   return realHttp.request({ ...config, adapter: undefined, baseURL: base });
+}
+/** 混合模式：角色数据范围树 / 概览依赖的「平台列表」取自真实后端（已落库），保证与平台管理页一致 */
+async function realProviders(config, base) {
+  realHttp ||= axios.create({ baseURL: base, timeout: 60000 });
+  try {
+    const r = await realHttp.get('/providers', { params: { page: 1, pageSize: 200 }, headers: { Authorization: `Bearer ${authFromConfig(config)}` } });
+    return r.data.data.list;
+  } catch { return []; }
 }
 /** 混合模式下，mock 路由的鉴权/权限以真实后端的 /auth/me 为准（短缓存），并把真实用户映射到 mock 用户表 */
 const meCache = { token: '', at: 0, me: null };
@@ -639,11 +635,12 @@ export async function mockAdapter(config, { hybrid = false, base = '/api' } = {}
     const route = routes.find((r) => r.method === method && r.re.test(path));
     if (!route) throw new HttpFail(404, `接口不存在：${method.toUpperCase()} ${path}`);
     const params = route.re.exec(path).groups || {};
-    const ctx = { method, path, user: null };
+    const ctx = { method, path, user: null, providers: db.providers };
     if (!route.public && hybrid) {
       const me = await realMe(config, base);
       const mu = db.users.find((u) => u.username === me.user.username) || { id: me.user.id, username: me.user.username, name: me.user.name, roleIds: [], status: 'active' };
       ctx.user = mu;
+      if (route.providers) ctx.providers = await realProviders(config, base);
       if (route.need && !me.permissions.includes('*') && !me.permissions.includes(route.need)) throw new HttpFail(403, `缺少权限：${route.need}`);
     } else if (!route.public) {
       const uidv = db.sessions[authFromConfig(config)];

@@ -87,7 +87,7 @@ export default function DashboardPage() {
             <StatCard icon={Cloud} label="纳管平台" value={`${t.online} / ${t.providers}`} hint="在线 / 总数" tone="primary" />
             <StatCard icon={Server} label="计算节点" value={formatNumber(t.nodes)} hint="超融合节点合计" tone="info" />
             <StatCard icon={MonitorCog} label="云主机" value={formatNumber(t.vms)} hint="运行中 + 已停止" tone="success" />
-            <StatCard icon={Cpu} label="vCPU 分配率" value={`${((t.vcpu.used / t.vcpu.total) * 100).toFixed(1)}%`} hint={`${formatNumber(t.vcpu.used)} / ${formatNumber(t.vcpu.total)} 核`} tone="warning" />
+            <StatCard icon={Cpu} label="vCPU 分配率" value={`${(t.vcpu.total ? (t.vcpu.used / t.vcpu.total) * 100 : 0).toFixed(1)}%`} hint={`${formatNumber(t.vcpu.used)} / ${formatNumber(t.vcpu.total)} 核`} tone="warning" />
             <StatCard icon={Siren} label="活跃告警" value={formatNumber(t.alerts)} hint="含预警与严重" tone={t.alerts > 10 ? 'danger' : 'warning'} />
           </div>
 

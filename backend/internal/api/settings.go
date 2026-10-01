@@ -23,13 +23,18 @@ func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// portalInfo 登录页品牌区：仅返回平台名称。纳管规模（平台/节点/云主机数）来自尚未开发的平台模块，这里不编造数字。
+// portalInfo 登录页品牌区：平台名称 + 纳管规模（均来自平台管理已落库的真实数据，不含 IP / 账号等敏感信息）。
 func (s *Server) portalInfo(w http.ResponseWriter, r *http.Request) error {
 	v, err := s.Settings.Public(r.Context())
 	if err != nil {
 		return err
 	}
-	httpx.OK(w, map[string]any{"platformName": v.PlatformName, "subtitle": v.Subtitle})
+	pc, nodes, vms, zones, err := s.Providers.Store.Counts(r.Context())
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, map[string]any{"platformName": v.PlatformName, "subtitle": v.Subtitle,
+		"providerCount": pc, "hostCount": nodes, "vmCount": vms, "clusterCount": zones})
 	return nil
 }
 

@@ -1,23 +1,26 @@
-import React, { useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Info, PlugZap, Wand2, Save } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Check, ChevronLeft, ChevronRight, Globe, Info, PlugZap, Save } from 'lucide-react';
 import Modal from '../Modal';
 import FormField from '../FormField';
 import CustomSelect from '../CustomSelect';
 import SecretInput from '../SecretInput';
 import LoadingButton from '../LoadingButton';
-import Switch from '../Switch';
 import VerifyResult from './VerifyResult';
-import { ENV_TYPES, OPENSTACK_COMPONENTS, PROTOCOLS } from '../../data/dict';
-import { STEPS, buildEndpoints, emptyForm, toForm, toPayload, validateStep } from './providerForm';
+import { ENV_TYPES } from '../../data/dict';
+import { FIELD_STEP, STEPS, accessReady, componentHosts, emptyForm, toForm, toPayload, validateStep } from './providerForm';
 import { providerApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 
+const ARCHS = ['X86（Intel）', 'X86（AMD）', 'ARM（鲲鹏）', 'ARM（飞腾）'].map((v) => ({ value: v, label: v }));
+const ACCESS_KEYS = new Set(['consoleIp', 'rootDomain', 'auth']);
+
 /**
- * ProviderWizard —— 平台新增 / 编辑分步向导（实色卡片）：
- * ① 基本信息 ② 五端点配置 ③ 认证信息 ④ 资源类型约定 ⑤ 高级
- * 规则：不允许后台填写参数 —— 所有参数在向导内填写；密码保存后一律显示 ******，任何位置不回显。
+ * ProviderWizard —— 平台新增 / 编辑分步向导：① 基本信息 ② 认证信息 ③ 高级（请求超时 / 同步间隔 / 备注）
+ * 「验证连接」：基本信息 + 认证信息全部填写完整后才可用并高亮；点击后按根域名自动补全六个组件域名
+ * （<keystone|neutron|nova|cinder|glance|emla>.<根域名>），逐个验证 HTTP 连通性，并验证能否从 Keystone 拿到 Token。
+ * 密码保存后一律显示 ******，任何位置不回显。
  */
-export default function ProviderWizard({ open, provider, onClose, onSaved }) {
+export default function ProviderWizard({ open, provider, onClose, onSaved, onVerified }) {
   const editing = !!provider;
   const toast = useToast();
   const [step, setStep] = useState(0);
@@ -27,84 +30,81 @@ export default function ProviderWizard({ open, provider, onClose, onSaved }) {
   const [verifying, setVerifying] = useState(false);
   const [result, setResult] = useState(null);
   const [dirty, setDirty] = useState(false);
+  const [leave, setLeave] = useState(false);
   const passwordSet = !!provider?.auth?.passwordSet;
+  const ctx = { editing, passwordSet };
+  const ready = accessReady(f, ctx);
+  const hosts = useMemo(() => componentHosts(f.rootDomain), [f.rootDomain]);
 
   const patch = (path, v) => {
     setDirty(true);
-    setF((s) => {
-      const n = { ...s };
-      const [a, b] = path.split('.');
-      if (b) n[a] = { ...s[a], [b]: v };
-      else n[a] = v;
-      return n;
-    });
+    const [a, b] = path.split('.');
+    if (ACCESS_KEYS.has(a)) setResult(null); // 接入信息变了，旧的验证结论作废
+    setErr((e) => { const n = { ...e }; delete n[b || a]; return n; });
+    setF((s) => (b ? { ...s, [a]: { ...s[a], [b]: v } } : { ...s, [a]: v }));
   };
   const inp = (path, extra = {}) => {
     const [a, b] = path.split('.');
-    const val = b ? f[a][b] : f[a];
-    return { value: val ?? '', onChange: (e) => patch(path, e.target.value), className: 'field', ...extra };
+    return { value: (b ? f[a][b] : f[a]) ?? '', onChange: (e) => patch(path, e.target.value), className: 'field', ...extra };
   };
   const goNext = () => {
-    const e = validateStep(step, f, { editing, passwordSet });
+    const e = validateStep(step, f, ctx);
     setErr(e);
-    if (Object.keys(e).length) return;
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    if (Object.keys(e).length === 0) setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
   const jump = (i) => {
     if (i <= step) return setStep(i);
-    // 向前跳转须先通过之前所有步骤
     for (let k = 0; k < i; k += 1) {
-      const e = validateStep(k, f, { editing, passwordSet });
+      const e = validateStep(k, f, ctx);
       if (Object.keys(e).length) { setErr(e); setStep(k); return; }
     }
     setStep(i);
   };
-  const autoFill = () => {
-    if (!f.rootDomain.trim()) return setErr({ rootDomain: '请先在「基本信息」填写根域名' });
-    patch('endpoints', buildEndpoints(f.rootDomain, f.endpointProtocol));
-    setErr({});
-    toast.info('已按根域名填充', `${f.endpointProtocol}://<组件>.${f.rootDomain.trim()}`);
+  const showFieldErrors = (fields) => {
+    setErr(fields);
+    const first = Math.min(...Object.keys(fields).map((k) => FIELD_STEP[k] ?? 0));
+    setStep(Number.isFinite(first) ? first : 0);
   };
+
   const verify = async () => {
-    for (let k = 0; k < 3; k += 1) {
-      const e = validateStep(k, f, { editing, passwordSet });
-      if (Object.keys(e).length) { setErr(e); setStep(k); toast.warning('请先补全必填项', '验证连接需要基本信息、端点与认证信息'); return; }
-    }
-    setVerifying(true); setResult(null);
+    setStep(1); setVerifying(true); setResult(null);
     try { setResult(await providerApi.verifyProvider(provider?.id, toPayload(f))); }
-    catch (e) { toast.error('验证失败', e.message); }
+    catch (e) { if (e.data?.fields) showFieldErrors(e.data.fields); else toast.error('验证失败', e.message); }
     finally { setVerifying(false); }
   };
   const save = async () => {
     for (let k = 0; k < STEPS.length; k += 1) {
-      const e = validateStep(k, f, { editing, passwordSet });
+      const e = validateStep(k, f, ctx);
       if (Object.keys(e).length) { setErr(e); setStep(k); return; }
     }
     setSaving(true);
     try {
       const body = toPayload(f);
       const saved = editing ? await providerApi.updateProvider(provider.id, body) : await providerApi.createProvider(body);
-      toast.success(editing ? '平台已更新' : '平台已新增', `${saved.name}${!editing ? '，请点击「验证连接」确认可用' : ''}`);
-      setF((s) => ({ ...s, auth: { ...s.auth, password: '' } }));
+      toast.success(editing ? '平台已更新' : '平台已新增', saved.name);
+      // 保存后后台立即用已落库的凭据复验一次，让列表「状态」反映真实连通性
+      providerApi.verifyProvider(saved.id).catch(() => {}).finally(() => onVerified?.());
       onSaved(saved);
     } catch (e) {
-      const m = /云管标识/.test(e.message) ? { name: e.message } : /控制台 IP/.test(e.message) ? { consoleIp: e.message } : null;
-      if (m) { setErr(m); setStep(0); } else toast.error('保存失败', e.message);
+      if (e.data?.fields) showFieldErrors(e.data.fields); else toast.error('保存失败', e.message);
     } finally { setSaving(false); }
   };
-  const [leave, setLeave] = useState(false);
   const close = () => { if (dirty && !saving) { setLeave(true); return; } onClose(); };
 
   const E = (k) => err[k];
+  const last = step === STEPS.length - 1;
+  const verified = !!result?.ok;
+  const highlightVerify = ready && !verified;
   return (
     <>
-      <Modal open={open} width={760} onClose={close} closeOnMask={false} title={editing ? `编辑平台：${provider.name}` : '新增平台'} subtitle="分步填写并验证 OpenStack 平台接入参数（所有参数均在页面填写）"
+      <Modal open={open} width={760} onClose={close} closeOnMask={false} title={editing ? `编辑平台：${provider.name}` : '新增平台'} subtitle="填写基本信息与认证信息后验证连接，再保存接入（所有参数均在页面填写）"
         footer={<>
           <button type="button" className="btn-default" onClick={close}>取消</button>
           <div className="flex-1" />
-          <LoadingButton icon={PlugZap} loading={verifying} onClick={verify}>验证连接</LoadingButton>
+          <LoadingButton id="provider-verify-btn" variant={highlightVerify ? 'primary' : 'default'} icon={PlugZap} loading={verifying} disabled={!ready}
+            title={ready ? '按根域名自动补全六个组件域名，验证 HTTP 连通性并获取 Keystone Token' : '请先填写完整的基本信息与认证信息'} onClick={verify}>验证连接</LoadingButton>
           {step > 0 && <button type="button" className="btn-default" onClick={() => setStep(step - 1)}><ChevronLeft size={15} /> 上一步</button>}
-          {step < STEPS.length - 1 ? <button type="button" className="btn-primary" onClick={goNext}>下一步 <ChevronRight size={15} /></button>
+          {!last ? <button type="button" className={highlightVerify && step === 1 ? 'btn-default' : 'btn-primary'} onClick={goNext}>下一步 <ChevronRight size={15} /></button>
             : <LoadingButton variant="primary" icon={Save} loading={saving} onClick={save}>{editing ? '保存修改' : '保存并接入'}</LoadingButton>}
         </>}>
         <ol className="flex items-center mb-6" aria-label="向导步骤">
@@ -120,37 +120,18 @@ export default function ProviderWizard({ open, provider, onClose, onSaved }) {
         </ol>
 
         <div className="space-y-4 min-h-[300px]">
-          {step === 0 && (<>
+          {step === 0 && (
             <div className="grid sm:grid-cols-2 gap-4">
               <FormField label="云管标识" required error={E('name')} hint="平台在云管中的唯一名称"><input {...inp('name', { placeholder: '例如：生产环境高性能云ES1', maxLength: 40 })} /></FormField>
               <FormField label="环境类型" required><CustomSelect value={f.envType} onChange={(v) => patch('envType', v)} options={ENV_TYPES} /></FormField>
-              <FormField label="控制台 IP" required error={E('consoleIp')} hint="界面访问地址 / VIP，用于 hosts 映射"><input {...inp('consoleIp', { placeholder: '192.168.47.3' })} /></FormField>
-              <FormField label="根域名" required error={E('rootDomain')} hint="每朵云独立的根域名，如 secs.cheryfs.cn"><input {...inp('rootDomain', { placeholder: 'secs.cheryfs.cn' })} /></FormField>
-              <FormField label="芯片架构"><CustomSelect value={f.arch} onChange={(v) => patch('arch', v)} options={['X86（Intel）', 'X86（AMD）', 'ARM（鲲鹏）', 'ARM（飞腾）'].map((v) => ({ value: v, label: v }))} /></FormField>
+              <FormField label="控制台 IP" required error={E('consoleIp')} hint="界面访问地址 / VIP"><input {...inp('consoleIp', { placeholder: '192.168.27.150' })} /></FormField>
+              <FormField label="根域名" required error={E('rootDomain')} hint="各组件域名 = <组件>.<根域名>，如 openstack.svc.cluster.local"><input {...inp('rootDomain', { placeholder: 'openstack.svc.cluster.local' })} /></FormField>
+              <FormField label="芯片架构"><CustomSelect value={f.arch} onChange={(v) => patch('arch', v)} options={ARCHS} /></FormField>
               <FormField label="超融合节点数" error={E('nodeCount')}><input {...inp('nodeCount', { type: 'number', min: 0 })} /></FormField>
             </div>
-          </>)}
+          )}
 
           {step === 1 && (<>
-            <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg bg-primary-soft">
-              <div className="w-[120px]"><label className="label">协议</label><CustomSelect value={f.endpointProtocol} onChange={(v) => patch('endpointProtocol', v)} options={PROTOCOLS} /></div>
-              <button type="button" className="btn-primary" onClick={autoFill}><Wand2 size={15} /> 按根域名自动填充</button>
-              <span className="text-xs text-fg-muted flex-1 min-w-[200px]">将生成 <code className="text-primary-text">{f.endpointProtocol}://&lt;组件&gt;.{f.rootDomain || '根域名'}</code></span>
-            </div>
-            <div className="flex gap-2 p-3 rounded-lg bg-warning-soft text-[13px] text-fg">
-              <Info size={16} className="text-warning shrink-0 mt-0.5" />
-              <div>各组件 API 入口封装为域名访问。请在<b>部署 CloudWatch 后端的机器</b>的 <code className="text-xs">/etc/hosts</code> 中做域名映射，例如：<code className="block mt-1 text-xs font-mono bg-card rounded px-2 py-1.5 border border-line">{f.consoleIp || '<控制台IP>'} keystone.{f.rootDomain || '<根域名>'} nova.{f.rootDomain || '<根域名>'} neutron.{f.rootDomain || '<根域名>'} cinder.{f.rootDomain || '<根域名>'} glance.{f.rootDomain || '<根域名>'}</code></div>
-            </div>
-            <div className="grid gap-4">
-              {OPENSTACK_COMPONENTS.map((c) => (
-                <FormField key={c.key} label={c.label} required error={E(`ep_${c.key}`)}>
-                  <input className="field font-mono text-[13px]" value={f.endpoints[c.key]} onChange={(e) => patch('endpoints', { ...f.endpoints, [c.key]: e.target.value })} placeholder={`http://${c.key}.${f.rootDomain || 'openstack.svc.cluster.local'}`} />
-                </FormField>
-              ))}
-            </div>
-          </>)}
-
-          {step === 2 && (<>
             <div className="flex gap-2 p-3 rounded-lg bg-info-soft text-[13px] text-fg"><Info size={16} className="text-info shrink-0 mt-0.5" />项目名称对应云平台的 project，仅管理加入该 project 的资源；如需管理全部资源，建议将资源统一加入一个 project 后对接。</div>
             <div className="grid sm:grid-cols-2 gap-4">
               <FormField label="用户名" required error={E('username')}><input {...inp('auth.username', { autoComplete: 'off' })} /></FormField>
@@ -158,39 +139,27 @@ export default function ProviderWizard({ open, provider, onClose, onSaved }) {
                 <SecretInput saved={editing && passwordSet} value={f.auth.password} onChange={(v) => patch('auth.password', v)} placeholder="请输入密码" error={!!E('password')} />
               </FormField>
               <FormField label="项目名称（project）" required error={E('projectName')}><input {...inp('auth.projectName')} /></FormField>
-              <FormField label="用户域 ID" required error={E('userDomain')}><input {...inp('auth.userDomain')} /></FormField>
-              <FormField label="项目域 ID" required error={E('projectDomain')}><input {...inp('auth.projectDomain')} /></FormField>
+              <FormField label="用户域" required error={E('userDomain')}><input {...inp('auth.userDomain')} /></FormField>
+              <FormField label="项目域" required error={E('projectDomain')}><input {...inp('auth.projectDomain')} /></FormField>
             </div>
-            <p className="text-xs text-fg-muted">密码仅在保存时提交；保存后任何位置均显示为 ******，不会回显。</p>
+            <p className="text-xs text-fg-muted">密码仅在保存时提交并加密存库；保存后任何位置均显示为 ******，不会回显。</p>
+            <section aria-label="组件域名" id="component-hosts" className="rounded-lg border border-line">
+              <header className="px-4 py-2.5 bg-muted flex items-center gap-1.5 text-[13px] font-medium text-fg"><Globe size={15} /> 组件域名（按根域名自动补全）</header>
+              <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1 px-4 py-3 text-[13px]">
+                {hosts.map((h) => <li key={h.key} className="flex gap-2 min-w-0"><span className="w-12 text-fg-muted shrink-0">{h.key}</span><code className="break-all">{h.host || `${h.key}.<根域名>`}</code></li>)}
+              </ul>
+              {!ready && <p className="px-4 pb-3 text-xs text-fg-muted">基本信息与认证信息填写完整后，「验证连接」按钮将高亮，可验证以上六个域名的 HTTP 连通性及能否从 Keystone 获取 Token。</p>}
+            </section>
+            {(verifying || result) && <VerifyResult loading={verifying} result={result} hosts={hosts} />}
           </>)}
 
-          {step === 3 && (<>
+          {step === 2 && (<>
             <div className="grid sm:grid-cols-2 gap-4">
-              <FormField label="默认云硬盘类型" required error={E('defaultVolumeType')} hint="对应 Cinder volume type 名称，如 hdd / ssd"><input {...inp('conventions.defaultVolumeType')} /></FormField>
-              <FormField label="默认域 ID" required error={E('defaultDomainId')}><input {...inp('conventions.defaultDomainId')} /></FormField>
+              <FormField label="请求超时（秒）" error={E('timeoutSec')} hint="验证连接与同步时，每个请求的超时时间"><input {...inp('advanced.timeoutSec', { type: 'number' })} /></FormField>
+              <FormField label="同步间隔（分钟）" error={E('syncIntervalMin')} hint="后台按该间隔自动同步该平台资源"><input {...inp('advanced.syncIntervalMin', { type: 'number' })} /></FormField>
             </div>
-            <div className="rounded-lg border border-line divide-y divide-line">
-              <div className="flex items-center justify-between gap-4 p-4"><div><div className="text-sm text-fg">默认从云硬盘启动</div><div className="text-xs text-fg-muted mt-0.5">创建云主机时使用 block_device_mapping_v2（source_type=image, boot_index=0）</div></div><Switch label="默认从云硬盘启动" checked={f.conventions.bootFromVolume} onChange={(v) => patch('conventions.bootFromVolume', v)} /></div>
-              <div className="flex items-center justify-between gap-4 p-4"><div><div className="text-sm text-fg">云主机销毁时删除引导卷</div><div className="text-xs text-fg-muted mt-0.5">对应 delete_on_termination；生产环境建议关闭以防误删数据</div></div><Switch label="销毁时删除引导卷" checked={f.conventions.deleteOnTermination} onChange={(v) => patch('conventions.deleteOnTermination', v)} /></div>
-            </div>
+            <FormField label="备注" error={E('remark')}><textarea className="field" rows={3} maxLength={255} value={f.advanced.remark} onChange={(e) => patch('advanced.remark', e.target.value)} /></FormField>
           </>)}
-
-          {step === 4 && (<>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <FormField label="请求超时（秒）" error={E('timeoutSec')}><input {...inp('advanced.timeoutSec', { type: 'number' })} /></FormField>
-              <FormField label="同步间隔（分钟）" error={E('syncIntervalMin')}><input {...inp('advanced.syncIntervalMin', { type: 'number' })} /></FormField>
-              <FormField label="Prometheus 地址" error={E('prometheusUrl')} hint="存储容量数据来源（query_range）"><input {...inp('advanced.prometheusUrl', { placeholder: 'http://192.168.47.3:9090' })} /></FormField>
-              <FormField label="排除的存储池 ID" error={E('excludePoolIds')} hint="逗号分隔，如 8（可用 ceph osd lspools 查询）"><input {...inp('advanced.excludePoolIds', { placeholder: '8' })} /></FormField>
-              <FormField label="nova-dashboard-api VIP" error={E('novaDashboardVip')} hint="计算节点资源消耗数据来源"><input {...inp('advanced.novaDashboardVip', { placeholder: '192.168.47.3' })} /></FormField>
-            </div>
-            <div className="rounded-lg border border-line divide-y divide-line">
-              <div className="flex items-center justify-between gap-4 p-4"><div><div className="text-sm text-fg">校验 SSL 证书</div><div className="text-xs text-fg-muted mt-0.5">内网自签证书环境请关闭</div></div><Switch label="校验 SSL 证书" checked={f.advanced.verifySsl} onChange={(v) => patch('advanced.verifySsl', v)} /></div>
-              <div className="flex items-center justify-between gap-4 p-4"><div><div className="text-sm text-fg">启用 EMLA 监控接口</div><div className="text-xs text-fg-muted mt-0.5">/apis/monitoring/v1/ecms/*；高版本环境可能已废弃，关闭后改用 Keystone domain_usage</div></div><Switch label="启用 EMLA" checked={f.advanced.enableEmla} onChange={(v) => patch('advanced.enableEmla', v)} /></div>
-            </div>
-            <FormField label="备注"><textarea className="field" rows={2} value={f.advanced.remark} onChange={(e) => patch('advanced.remark', e.target.value)} /></FormField>
-          </>)}
-
-          {(verifying || result) && <VerifyResult loading={verifying} result={result} />}
         </div>
       </Modal>
       <Modal open={leave} width={400} title="放弃未保存的修改？" onClose={() => setLeave(false)} footer={<><button type="button" className="btn-default" onClick={() => setLeave(false)}>继续编辑</button><button type="button" className="btn-danger" onClick={() => { setLeave(false); onClose(); }}>放弃并关闭</button></>}>

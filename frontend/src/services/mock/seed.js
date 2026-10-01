@@ -6,16 +6,14 @@
 import { ALL_PERMISSION_CODES } from '../../data/permissions';
 
 const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
-const COMPS = ['keystone', 'nova', 'neutron', 'cinder', 'glance'];
-const endpoints = (root, proto = 'http') => Object.fromEntries(COMPS.map((c) => [c, `${proto}://${c}.${root}`]));
 
 const provider = (o) => ({
   type: 'openstack',
   arch: 'X86（Intel）',
   nodeCount: 6,
   auth: { username: 'admin', projectName: 'admin', userDomain: 'default', projectDomain: 'default', passwordSet: true },
-  conventions: { defaultVolumeType: 'hdd', defaultDomainId: 'default', bootFromVolume: true, deleteOnTermination: true },
-  advanced: { timeoutSec: 30, verifySsl: false, syncIntervalMin: 10, prometheusUrl: '', excludePoolIds: '8', enableEmla: true, novaDashboardVip: '', remark: '' },
+  advanced: { timeoutSec: 30, syncIntervalMin: 10, remark: '' },
+  stats: { vmCount: 0, volumeCount: 0, networkCount: 0 },
   writeEnabled: false,
   status: 'online',
   lastSyncAt: ago(6),
@@ -24,10 +22,10 @@ const provider = (o) => ({
 });
 
 export const seedProviders = [
-  provider({ id: 'p1', name: '开发测试高性能云ES1', envType: 'dev', consoleIp: '192.168.27.150', rootDomain: 'openstack.svc.cluster.local', endpoints: endpoints('openstack.svc.cluster.local'), writeEnabled: true, advanced: { timeoutSec: 30, verifySsl: false, syncIntervalMin: 10, prometheusUrl: 'http://192.168.27.150:9090', excludePoolIds: '8', enableEmla: true, novaDashboardVip: '192.168.27.150', remark: '' } }),
-  provider({ id: 'p2', name: '生产环境高性能云ES1', envType: 'prod', consoleIp: '192.168.47.3', rootDomain: 'secs.cheryfs.cn', endpoints: endpoints('secs.cheryfs.cn'), writeEnabled: false, status: 'warning', lastSyncAt: ago(3), advanced: { timeoutSec: 30, verifySsl: false, syncIntervalMin: 5, prometheusUrl: 'http://192.168.47.3:9090', excludePoolIds: '8', enableEmla: true, novaDashboardVip: '192.168.47.3', remark: '生产核心业务集群，默认关闭写操作' } }),
-  provider({ id: 'p3', name: '开发测试高性能云ES2', envType: 'dev', consoleIp: '192.168.27.160', rootDomain: 'hdeves.cheryfs.cn', endpoints: endpoints('hdeves.cheryfs.cn'), writeEnabled: true, lastSyncAt: ago(9), advanced: { timeoutSec: 30, verifySsl: false, syncIntervalMin: 10, prometheusUrl: 'http://192.168.27.160:9090', excludePoolIds: '', enableEmla: true, novaDashboardVip: '192.168.27.160', remark: '' } }),
-  provider({ id: 'p4', name: '贵阳灾备集群ES1', envType: 'dr', consoleIp: '10.140.64.3', rootDomain: 'brces.cheryfs.cn', endpoints: endpoints('brces.cheryfs.cn'), writeEnabled: false, status: 'error', lastSyncAt: ago(185), advanced: { timeoutSec: 30, verifySsl: false, syncIntervalMin: 15, prometheusUrl: '', excludePoolIds: '', enableEmla: false, novaDashboardVip: '10.140.64.3', remark: '' } }),
+  provider({ id: 'p1', name: '开发测试高性能云ES1', envType: 'dev', consoleIp: '192.168.27.150', rootDomain: 'openstack.svc.cluster.local', writeEnabled: true, advanced: { timeoutSec: 30, syncIntervalMin: 10, remark: '' } }),
+  provider({ id: 'p2', name: '生产环境高性能云ES1', envType: 'prod', consoleIp: '192.168.47.3', rootDomain: 'secs.cheryfs.cn', writeEnabled: false, status: 'warning', lastSyncAt: ago(3), advanced: { timeoutSec: 30, syncIntervalMin: 5, remark: '生产核心业务集群，默认关闭写操作' } }),
+  provider({ id: 'p3', name: '开发测试高性能云ES2', envType: 'dev', consoleIp: '192.168.27.160', rootDomain: 'hdeves.cheryfs.cn', writeEnabled: true, lastSyncAt: ago(9), advanced: { timeoutSec: 30, syncIntervalMin: 10, remark: '' } }),
+  provider({ id: 'p4', name: '贵阳灾备集群ES1', envType: 'dr', consoleIp: '10.140.64.3', rootDomain: 'brces.cheryfs.cn', writeEnabled: false, status: 'error', lastSyncAt: ago(185), advanced: { timeoutSec: 30, syncIntervalMin: 15, remark: '' } }),
 ];
 
 const ALL = ALL_PERMISSION_CODES;

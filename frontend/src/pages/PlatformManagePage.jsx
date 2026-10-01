@@ -20,7 +20,7 @@ import { useListQuery } from '../hooks/useListQuery';
 import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { useStore } from '../store/useStore';
-import { ENV_TAG, ENV_TYPES, PROVIDER_STATUS } from '../data/dict';
+import { ENV_TAG, ENV_TYPES, OPENSTACK_COMPONENTS, PROVIDER_STATUS } from '../data/dict';
 import { formatDateTime, fromNow, formatNumber } from '../utils/format';
 
 const STATUS_OPTS = Object.entries(PROVIDER_STATUS).map(([value, v]) => ({ value, label: v.label }));
@@ -119,7 +119,7 @@ export default function PlatformManagePage() {
   const impact = del.impact;
   return (
     <div ref={boxRef} className="bg-bg">
-      <PageHeader title="平台管理" description="纳管多套 OpenStack / 私有云：接入参数分步配置，逐组件验证连接，统一控制写操作开关"
+      <PageHeader title="平台管理" description="纳管多套 OpenStack / 私有云：基本信息 + 认证信息即可接入，自动验证六个组件域名与 Keystone Token，统一控制写操作开关"
         actions={<>
           <button type="button" className="btn-default" onClick={reload} aria-label="刷新列表"><RefreshCw size={15} className={list.refreshing ? 'animate-spin' : ''} /> 刷新</button>
           <FullscreenButton containerRef={boxRef} />
@@ -135,18 +135,18 @@ export default function PlatformManagePage() {
           <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="状态" aria-label="状态" value={query.status} onChange={(status) => setQuery({ status })} options={STATUS_OPTS} /></div>
         </>}
         extra={canExport && <ExportButton fn={providerApi.exportProviders} params={params} title="平台列表" filters={{ 关键字: query.keyword, 环境: query.envType, 状态: query.status }} />}
-        empty={{ title: query.keyword || query.envType || query.status ? '没有符合条件的平台' : '尚未纳管任何平台', description: '点击「新增平台」，按向导填写接入参数并验证连接', action: canCreate && !(query.keyword || query.envType || query.status) ? <button type="button" className="btn-primary" onClick={() => setWizard({ open: true, provider: null, key: Date.now() })}><Plus size={15} /> 新增平台</button> : undefined }}
+        empty={{ title: query.keyword || query.envType || query.status ? '没有符合条件的平台' : '尚未纳管任何平台', description: '点击「新增平台」，填写基本信息与认证信息并验证连接', action: canCreate && !(query.keyword || query.envType || query.status) ? <button type="button" className="btn-primary" onClick={() => setWizard({ open: true, provider: null, key: Date.now() })}><Plus size={15} /> 新增平台</button> : undefined }}
       />
 
-      {wizard.open && <ProviderWizard key={wizard.key} open provider={wizard.provider} onClose={() => setWizard({ open: false, provider: null, key: 0 })} onSaved={() => { setWizard({ open: false, provider: null, key: 0 }); reload(); }} />}
+      {wizard.open && <ProviderWizard key={wizard.key} open provider={wizard.provider} onClose={() => setWizard({ open: false, provider: null, key: 0 })} onSaved={() => { setWizard({ open: false, provider: null, key: 0 }); reload(); }} onVerified={reload} />}
 
-      <Modal open={verify.open} width={560} title={`验证连接：${verify.provider?.name || ''}`} subtitle="逐组件检测：取 Token → Keystone / Nova / Neutron / Cinder / Glance" onClose={() => setVerify({ open: false, provider: null, loading: false, result: null })}
+      <Modal open={verify.open} width={560} title={`验证连接：${verify.provider?.name || ''}`} subtitle="验证 Keystone 是否签发 Token，并逐个检测六个组件域名的 HTTP 连通性" onClose={() => setVerify({ open: false, provider: null, loading: false, result: null })}
         footer={<><button type="button" className="btn-default" onClick={() => setVerify({ open: false, provider: null, loading: false, result: null })}>关闭</button><LoadingButton variant="primary" icon={PlugZap} loading={verify.loading} onClick={() => runVerify(verify.provider)}>重新验证</LoadingButton></>}>
-        <VerifyResult loading={verify.loading} result={verify.result} />
+        <VerifyResult loading={verify.loading} result={verify.result} hosts={(verify.provider?.components || []).map((c) => ({ ...c, label: OPENSTACK_COMPONENTS.find((o) => o.key === c.key)?.label || c.key }))} />
       </Modal>
 
-      <ConfirmModal open={!!del.target} danger title={`删除平台「${del.target?.name || ''}」？`} description="此操作不可恢复。删除后将停止对该平台的同步、巡检与监控。" targets={del.target ? [`${del.target.name}（${del.target.consoleIp}）`] : []}
-        impactList={impact ? [`关联资源缓存将被清除：云主机 ${formatNumber(impact.vmCount)} 台、云硬盘 ${formatNumber(impact.volumeCount)} 块、网络 ${formatNumber(impact.networkCount)} 个`, `巡检结果 ${formatNumber(impact.inspectionCount)} 条将一并移除`, `关联告警 ${formatNumber(impact.alertCount)} 条将被关闭`, '不会对云平台本身的资源产生任何变更'] : del.loading ? ['正在统计影响范围…'] : ['关联资源缓存、巡检结果将一并移除']}
+      <ConfirmModal open={!!del.target} danger title={`删除平台「${del.target?.name || ''}」？`} description="此操作不可恢复。删除后将停止对该平台的自动同步。" targets={del.target ? [`${del.target.name}（${del.target.consoleIp}）`] : []}
+        impactList={impact ? [impact.synced ? `将移除该平台的接入信息与最近一次同步统计（云主机 ${formatNumber(impact.vmCount)} 台、云硬盘 ${formatNumber(impact.volumeCount)} 块、网络 ${formatNumber(impact.networkCount)} 个）` : '将移除该平台的接入信息（尚未同步过资源）', '该平台的同步任务记录将一并删除', '不会对云平台本身的资源产生任何变更'] : del.loading ? ['正在统计影响范围…'] : ['接入信息、同步统计将一并移除']}
         confirmText="确认删除" loading={del.busy} onCancel={() => setDel({ target: null, impact: null, loading: false, busy: false })} onConfirm={doDelete} />
 
       <ConfirmModal open={!!sw.target} danger={!sw.next ? false : sw.target?.envType === 'prod'} title={`${sw.next ? '开启' : '关闭'}「${sw.target?.name || ''}」的写操作？`}
@@ -158,20 +158,21 @@ export default function PlatformManagePage() {
         footer={canUpdate && <button type="button" className="btn-primary" onClick={() => { setWizard({ open: true, provider: detail, key: Date.now() }); setDetail(null); }}><Pencil size={15} /> 编辑</button>}>
         {detail && (
           <div className="space-y-5">
-            <section><h3 className="text-[13px] font-semibold text-fg mb-2">组件端点</h3>
-              <ul className="rounded-lg border border-line divide-y divide-line">{Object.entries(detail.endpoints).map(([k, v]) => <li key={k} className="px-3 py-2 flex gap-3 text-[13px]"><span className="w-16 text-fg-muted shrink-0">{k}</span><code className="break-all">{v}</code></li>)}</ul></section>
+            <section><h3 className="text-[13px] font-semibold text-fg mb-2">组件域名</h3>
+              <ul className="rounded-lg border border-line divide-y divide-line">{detail.components.map((c) => <li key={c.key} className="px-3 py-2 flex gap-3 text-[13px]"><span className="w-16 text-fg-muted shrink-0">{c.key}</span><code className="break-all">{c.host}</code></li>)}</ul></section>
             <section><h3 className="text-[13px] font-semibold text-fg mb-2">认证信息</h3>
               <dl className="rounded-lg border border-line divide-y divide-line text-[13px]">
                 {[['用户名', detail.auth.username], ['密码', '******'], ['项目', detail.auth.projectName], ['用户域 / 项目域', `${detail.auth.userDomain} / ${detail.auth.projectDomain}`]].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-28 text-fg-muted shrink-0">{k}</dt><dd>{v}</dd></div>)}
               </dl></section>
-            <section><h3 className="text-[13px] font-semibold text-fg mb-2">资源类型约定</h3>
-              <dl className="rounded-lg border border-line divide-y divide-line text-[13px]">
-                {[['默认云硬盘类型', detail.conventions.defaultVolumeType], ['默认域 ID', detail.conventions.defaultDomainId], ['从云硬盘启动', detail.conventions.bootFromVolume ? '是' : '否'], ['销毁时删除引导卷', detail.conventions.deleteOnTermination ? '是' : '否']].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-36 text-fg-muted shrink-0">{k}</dt><dd>{v}</dd></div>)}
-              </dl></section>
             <section><h3 className="text-[13px] font-semibold text-fg mb-2">高级</h3>
               <dl className="rounded-lg border border-line divide-y divide-line text-[13px]">
-                {[['超时 / 同步间隔', `${detail.advanced.timeoutSec}s / ${detail.advanced.syncIntervalMin}min`], ['Prometheus', detail.advanced.prometheusUrl || '-'], ['排除存储池', detail.advanced.excludePoolIds || '-'], ['EMLA', detail.advanced.enableEmla ? '启用' : '关闭'], ['备注', detail.advanced.remark || '-']].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-36 text-fg-muted shrink-0">{k}</dt><dd className="break-all">{v}</dd></div>)}
+                {[['请求超时', `${detail.advanced.timeoutSec} 秒`], ['同步间隔', `${detail.advanced.syncIntervalMin} 分钟`], ['备注', detail.advanced.remark || '-']].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-28 text-fg-muted shrink-0">{k}</dt><dd className="break-all">{v}</dd></div>)}
               </dl></section>
+            <section><h3 className="text-[13px] font-semibold text-fg mb-2">最近一次同步</h3>
+              <dl className="rounded-lg border border-line divide-y divide-line text-[13px]">
+                {[['同步时间', detail.lastSyncAt ? formatDateTime(detail.lastSyncAt) : '从未同步'], ['云主机 / 云硬盘 / 网络', detail.lastSyncAt ? `${formatNumber(detail.stats.vmCount)} / ${formatNumber(detail.stats.volumeCount)} / ${formatNumber(detail.stats.networkCount)}` : '-'], ['可用域', detail.zones?.length ? detail.zones.join('、') : '-'], ['失败原因', detail.lastSyncError || '-']].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-36 text-fg-muted shrink-0">{k}</dt><dd className="break-all">{v}</dd></div>)}
+              </dl></section>
+            {detail.lastVerify && <section><h3 className="text-[13px] font-semibold text-fg mb-2">最近一次验证连接</h3><VerifyResult result={detail.lastVerify} hosts={detail.components.map((c) => ({ ...c, label: OPENSTACK_COMPONENTS.find((o) => o.key === c.key)?.label || c.key }))} /></section>}
           </div>
         )}
       </Drawer>

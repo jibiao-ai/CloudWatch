@@ -184,3 +184,6 @@ func Table(ms []Mapping) map[string]string {
 	}
 	return t
 }
+
+// ValidRootDomain 供其他模块（平台管理）复用根域名校验规则。
+func ValidRootDomain(d string) bool { return validRootDomain(d) }
