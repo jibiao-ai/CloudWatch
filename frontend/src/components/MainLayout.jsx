@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, Bell, Search } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Breadcrumb from './Breadcrumb';
@@ -81,10 +81,10 @@ export default function MainLayout() {
             <Search size={15} /> 搜索平台 / 资源…
             <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-card border border-line text-fg-muted">Ctrl K</kbd>
           </button>
-          <button type="button" className="btn-icon relative" aria-label={`告警通知，${unread} 条未读`} title="告警中心">
+          <Link to="/alerts" className="btn-icon relative" aria-label={`告警通知，${unread} 条未确认`} title="告警中心" hidden={!hasPermission('alert:view')}>
             <Bell size={18} />
             {unread > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-on text-[10px] leading-4 text-center font-medium">{unread > 99 ? '99+' : unread}</span>}
-          </button>
+          </Link>
           <button type="button" className="btn-icon" onClick={toggleTheme} aria-label={isDark ? '切换到浅色模式' : '切换到暗色模式'} title={isDark ? '浅色模式' : '暗色模式'}>
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>

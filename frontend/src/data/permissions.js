@@ -57,9 +57,16 @@ export const PERMISSION_MODULES = [
   },
   { code: 'resource', name: '统一资源视图', menu: 'resource:view', buttons: [] },
   { code: 'inspection', name: '自动化巡检', menu: 'inspection:view', buttons: [] },
-  { code: 'monitor', name: '性能监控', menu: 'monitor:view', buttons: [] },
+  { code: 'monitor', name: '性能监控', menu: 'monitor:view', buttons: [{ code: 'monitor:collect', name: '立即采集' }] },
   { code: 'capacity', name: '容量管理', menu: 'capacity:view', buttons: [] },
-  { code: 'alert', name: '告警中心', menu: 'alert:view', buttons: [] },
+  {
+    code: 'alert', name: '告警中心', menu: 'alert:view',
+    buttons: [
+      { code: 'alert:ack', name: '确认告警' },
+      { code: 'alert:sync', name: '立即同步' },
+      { code: 'alert:export', name: '导出' },
+    ],
+  },
   { code: 'topology', name: '资源拓扑', menu: 'topology:view', buttons: [] },
   { code: 'analytics', name: '运营分析', menu: 'analytics:view', buttons: [] },
 ];

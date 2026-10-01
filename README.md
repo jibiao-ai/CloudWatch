@@ -179,3 +179,11 @@ npm run lint:rules          # 规则扫描（见下）
 ## 提交规范
 
 `feat(scope):` / `fix(scope):`，一功能一分支一 PR。
+
+## 性能监控与告警中心（第13轮，对接 EMLA 文档第4/5章）
+- **性能监控** `/monitor`（权限 `monitor:view`，立即采集 `monitor:collect`）：总览 KPI、容量、虚机状态、IOPS、趋势图（1h/6h/24h/7d/30d）、计算节点、磁盘、服务状态、采集明细。
+- **告警中心** `/alerts`（`alert:view`；确认 `alert:ack`、同步 `alert:sync`、导出 `alert:export`）：统计卡片、筛选、排序分页、详情抽屉、单条/批量确认、xlsx 导出；顶栏铃铛跳转至此，未读数 = 告警中且未确认。
+- **接口**：`GET /api/monitor/overview|{id}|{id}/trend`、`POST /api/monitor/{id}/collect`；`GET /api/alerts|stats|export|{id}`、`POST /api/alerts/ack|sync`。
+- **数据表**（迁移 0004）：`monitor_snapshots`、`metric_samples`、`alert_events`（新增指纹/状态/确认等字段）。
+- **同步机制**：按平台「同步间隔」定时采集；按 (平台,指纹,触发时间) 幂等入库；成功拉取后未再出现的告警自动恢复；EMLA 不可达时不会误恢复；新增告警经已启用通知渠道推送。
+- **说明/假设**：未找到“原始开发设计文档”，按项目既有设计 + 文档第4/5章实现；仪表盘内存单位文档未标注，界面按原值展示；未对接真实 EMLA 验证（使用模拟服务）。

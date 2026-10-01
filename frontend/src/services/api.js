@@ -224,6 +224,23 @@ export async function pollTask(id, { interval = 800, timeout = 120000, onProgres
     await new Promise((r) => setTimeout(r, interval));
   }
 }
+/* ============================ 性能监控 / 告警中心 ============================ */
+export const monitorApi = {
+  getOverview: () => get('/monitor/overview'),
+  getSnapshot: (id) => get(`/monitor/${id}`),
+  /** 立即采集：后端同步执行（连接 + 多个 EMLA 接口），放宽超时 */
+  collect: (id) => post(`/monitor/${id}/collect`, {}, { timeout: 120000 }),
+  getTrend: (id, params) => get(`/monitor/${id}/trend`, params, { skipErrorToast: true }),
+};
+export const alertApi = {
+  getAlertList: (params) => get('/alerts', params),
+  getAlertStats: (params) => get('/alerts/stats', params),
+  getAlert: (id) => get(`/alerts/${id}`),
+  ackAlerts: (ids) => post('/alerts/ack', { ids }),
+  syncAlerts: (providerId) => post('/alerts/sync', providerId ? { providerId } : {}, { timeout: 120000 }),
+  exportAlerts: (params, opt) => blob('/alerts/export', params, opt),
+};
+
 export const dashboardApi = {
   getOverview: (params) => get('/dashboard/overview', params),
   getTrend: (params) => get('/dashboard/trend', params),
