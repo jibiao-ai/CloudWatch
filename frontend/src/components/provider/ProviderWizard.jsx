@@ -157,6 +157,7 @@ export default function ProviderWizard({ open, provider, onClose, onSaved, onVer
             <div className="grid sm:grid-cols-2 gap-4">
               <FormField label="请求超时（秒）" error={E('timeoutSec')} hint="验证连接与同步时，每个请求的超时时间"><input {...inp('advanced.timeoutSec', { type: 'number' })} /></FormField>
               <FormField label="同步间隔（分钟）" error={E('syncIntervalMin')} hint="后台按该间隔自动同步该平台资源"><input {...inp('advanced.syncIntervalMin', { type: 'number' })} /></FormField>
+              <FormField label="告警同步间隔（秒）" error={E('alertIntervalSec')} hint="独立于资源同步：按该间隔拉取告警并推送到告警渠道（10~3600，默认 60）"><input {...inp('advanced.alertIntervalSec', { type: 'number' })} /></FormField>
             </div>
             <FormField label="备注" error={E('remark')}><textarea className="field" rows={3} maxLength={255} value={f.advanced.remark} onChange={(e) => patch('advanced.remark', e.target.value)} /></FormField>
           </>)}

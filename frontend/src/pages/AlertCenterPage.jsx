@@ -28,7 +28,7 @@ export default function AlertCenterPage() {
   const canAck = useCan('alert:ack');
   const canSync = useCan('alert:sync');
   const canExport = useCan('alert:export');
-  const list = useListQuery('alerts', (q) => alertApi.getAlertList({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 20, keyword: '', severity: '', status: '', type: '', acked: '', sort: { key: 'firedAt', order: 'desc' } });
+  const list = useListQuery('alerts', (q) => alertApi.getAlertList({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 10, keyword: '', severity: '', status: '', type: '', acked: '', sort: { key: 'firedAt', order: 'desc' } });
   const { query, setQuery } = list;
   const stats = useAsync(() => alertApi.getAlertStats(), []);
   const [detail, setDetail] = useState(null);
@@ -83,7 +83,7 @@ export default function AlertCenterPage() {
         </div>
       </div>
       <DataTable columns={columns} rows={list.rows} rowKey="id" loading={list.loading} refreshing={list.refreshing} error={list.error} onRetry={list.reload}
-        page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })} pageSizeOptions={[20, 50, 100]}
+        page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })} pageSizeOptions={[10, 20, 50, 100]}
         sort={query.sort} onSortChange={(sort) => setQuery({ sort: sort || { key: 'firedAt', order: 'desc' } })} onRowClick={setDetail}
         selectable={canAck} selected={selected} onSelectedChange={setSelected} isRowSelectable={(r) => !r.acked}
         selectionBar={<button type="button" className="btn-default btn-sm" disabled={busy} onClick={() => ack(selected)}><CheckCheck size={14} /> 批量确认（{selected.length}）</button>}

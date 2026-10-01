@@ -36,9 +36,10 @@ type Auth struct {
 }
 
 type Advanced struct {
-	TimeoutSec      int    `json:"timeoutSec"`
-	SyncIntervalMin int    `json:"syncIntervalMin"`
-	Remark          string `json:"remark"`
+	TimeoutSec       int    `json:"timeoutSec"`
+	SyncIntervalMin  int    `json:"syncIntervalMin"`
+	AlertIntervalSec int    `json:"alertIntervalSec"`
+	Remark           string `json:"remark"`
 }
 
 // Input 新增 / 编辑 / 验证草稿的请求体。Password 为空 = 沿用已保存密码。
@@ -156,11 +157,17 @@ func Normalize(in *Input, needPassword bool) FieldErrors {
 	if in.Advanced.SyncIntervalMin == 0 {
 		in.Advanced.SyncIntervalMin = 10
 	}
+	if in.Advanced.AlertIntervalSec == 0 {
+		in.Advanced.AlertIntervalSec = 60
+	}
 	if t := in.Advanced.TimeoutSec; t < 3 || t > 300 {
 		e["timeoutSec"] = "请求超时需在 3~300 秒之间"
 	}
 	if s := in.Advanced.SyncIntervalMin; s < 1 || s > 1440 {
 		e["syncIntervalMin"] = "同步间隔需在 1~1440 分钟之间"
+	}
+	if a := in.Advanced.AlertIntervalSec; a < 10 || a > 3600 {
+		e["alertIntervalSec"] = "告警同步间隔需在 10~3600 秒之间"
 	}
 	in.Advanced.Remark = strings.TrimSpace(in.Advanced.Remark)
 	if runeLen(in.Advanced.Remark) > 255 {

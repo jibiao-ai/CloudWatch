@@ -166,7 +166,7 @@ export default function PlatformManagePage() {
               </dl></section>
             <section><h3 className="text-[13px] font-semibold text-fg mb-2">高级</h3>
               <dl className="rounded-lg border border-line divide-y divide-line text-[13px]">
-                {[['请求超时', `${detail.advanced.timeoutSec} 秒`], ['同步间隔', `${detail.advanced.syncIntervalMin} 分钟`], ['备注', detail.advanced.remark || '-']].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-28 text-fg-muted shrink-0">{k}</dt><dd className="break-all">{v}</dd></div>)}
+                {[['请求超时', `${detail.advanced.timeoutSec} 秒`], ['同步间隔', `${detail.advanced.syncIntervalMin} 分钟`], ['告警同步间隔', `${detail.advanced.alertIntervalSec ?? 60} 秒`], ['备注', detail.advanced.remark || '-']].map(([k, v]) => <div key={k} className="px-3 py-2 flex gap-3"><dt className="w-28 text-fg-muted shrink-0">{k}</dt><dd className="break-all">{v}</dd></div>)}
               </dl></section>
             <section><h3 className="text-[13px] font-semibold text-fg mb-2">最近一次同步</h3>
               <dl className="rounded-lg border border-line divide-y divide-line text-[13px]">

@@ -252,7 +252,7 @@ func (s *Store) ApplySync(ctx context.Context, providerID string, firing, resolv
 		}
 		r, err := tx.ExecContext(ctx, `INSERT INTO alert_events(provider_id,fingerprint,severity,title,name_en,category,alert_type,component,node_name,host_ip,project_name,content,summary,solution,labels,annotations,rule_id,status,fired_at,resolved_at,last_seen_at)
 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-ON DUPLICATE KEY UPDATE severity=VALUES(severity),title=VALUES(title),name_en=VALUES(name_en),category=VALUES(category),alert_type=VALUES(alert_type),component=VALUES(component),
+ON DUPLICATE KEY UPDATE notified=IF(status='resolved' AND VALUES(status)='firing',0,notified),resolve_notified=IF(status='firing' AND VALUES(status)='resolved',0,resolve_notified),severity=VALUES(severity),title=VALUES(title),name_en=VALUES(name_en),category=VALUES(category),alert_type=VALUES(alert_type),component=VALUES(component),
 node_name=VALUES(node_name),host_ip=VALUES(host_ip),project_name=VALUES(project_name),content=VALUES(content),summary=VALUES(summary),solution=VALUES(solution),
 labels=VALUES(labels),annotations=VALUES(annotations),rule_id=VALUES(rule_id),status=VALUES(status),resolved_at=VALUES(resolved_at),last_seen_at=VALUES(last_seen_at)`,
 			providerID, p.Fingerprint, p.Severity, trunc(p.Name, 250), trunc(p.NameEN, 250), trunc(p.Category, 60), p.AlertType, trunc(p.Component, 120), trunc(p.NodeName, 120), trunc(p.HostIP, 60), trunc(p.Project, 120),
@@ -282,7 +282,7 @@ labels=VALUES(labels),annotations=VALUES(annotations),rule_id=VALUES(rule_id),st
 	}
 	if firing != nil {
 		// 本次拉取未见到、仍标记为告警中的记录视为已恢复
-		if _, err := tx.ExecContext(ctx, `UPDATE alert_events SET status='resolved',resolved_at=? WHERE provider_id=? AND status='firing' AND (last_seen_at IS NULL OR last_seen_at<?)`,
+		if _, err := tx.ExecContext(ctx, `UPDATE alert_events SET status='resolved',resolve_notified=0,resolved_at=? WHERE provider_id=? AND status='firing' AND (last_seen_at IS NULL OR last_seen_at<?)`,
 			now, providerID, now); err != nil {
 			return nil, err
 		}
@@ -290,7 +290,48 @@ labels=VALUES(labels),annotations=VALUES(annotations),rule_id=VALUES(rule_id),st
 	return fresh, tx.Commit()
 }
 
-// MarkNotified 标记已通知。
-func (s *Store) MarkNotified(ctx context.Context, providerID string) {
-	_, _ = s.db.ExecContext(ctx, `UPDATE alert_events SET notified=1 WHERE provider_id=? AND notified=0`, providerID)
+// PendingFiring 尚未推送的告警中记录（推送失败会留到下次重试）。
+func (s *Store) PendingFiring(ctx context.Context, providerID string) ([]*Alert, error) {
+	return s.pending(ctx, `a.provider_id=? AND a.status='firing' AND a.notified=0`, providerID)
+}
+
+// PendingResolved 尚未推送的恢复记录；超过 6 小时的恢复不再补发。
+func (s *Store) PendingResolved(ctx context.Context, providerID string) ([]*Alert, error) {
+	_, _ = s.db.ExecContext(ctx, `UPDATE alert_events SET resolve_notified=1 WHERE resolve_notified=0 AND (resolved_at IS NULL OR resolved_at<?)`, time.Now().UTC().Add(-6*time.Hour))
+	return s.pending(ctx, `a.provider_id=? AND a.status='resolved' AND a.resolve_notified=0`, providerID)
+}
+
+func (s *Store) pending(ctx context.Context, where, providerID string) ([]*Alert, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT `+alertCols+` FROM alert_events a LEFT JOIN providers p ON p.id=a.provider_id WHERE `+where+` ORDER BY a.fired_at LIMIT 200`, providerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*Alert
+	for rows.Next() {
+		a, err := scanAlert(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// MarkNotified 标记已推送；resolved=true 标记恢复通知。
+func (s *Store) MarkNotified(ctx context.Context, resolved bool, list []*Alert) {
+	col := "notified"
+	if resolved {
+		col = "resolve_notified"
+	}
+	for _, a := range list {
+		_, _ = s.db.ExecContext(ctx, `UPDATE alert_events SET `+col+`=1 WHERE id=?`, a.ID)
+	}
+}
+
+// LastAlertTry 返回某平台上次尝试同步告警的时间。
+func (s *Store) LastAlertTry(ctx context.Context, id string) time.Time {
+	var t sql.NullTime
+	_ = s.db.QueryRowContext(ctx, `SELECT alert_sync_at FROM monitor_snapshots WHERE provider_id=?`, id).Scan(&t)
+	return t.Time
 }

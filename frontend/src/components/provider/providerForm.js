@@ -11,13 +11,13 @@ export const STEPS = [
 export const FIELD_STEP = {
   name: 0, envType: 0, consoleIp: 0, rootDomain: 0, arch: 0, nodeCount: 0,
   username: 1, password: 1, projectName: 1, userDomain: 1, projectDomain: 1,
-  timeoutSec: 2, syncIntervalMin: 2, remark: 2,
+  timeoutSec: 2, syncIntervalMin: 2, alertIntervalSec: 2, remark: 2,
 };
 
 export const emptyForm = () => ({
   name: '', envType: 'dev', consoleIp: '', rootDomain: '', arch: 'X86（Intel）', nodeCount: 6,
   auth: { username: 'admin', password: '', projectName: 'admin', userDomain: 'default', projectDomain: 'default' },
-  advanced: { timeoutSec: 30, syncIntervalMin: 10, remark: '' },
+  advanced: { timeoutSec: 30, syncIntervalMin: 10, alertIntervalSec: 60, remark: '' },
 });
 
 /** 详情 → 表单（密码永不回显：passwordSet 仅用于提示，password 恒为空） */
@@ -58,6 +58,8 @@ export function validateStep(step, f, { editing, passwordSet }) {
     if (!(t >= 3 && t <= 300)) e.timeoutSec = '请求超时需在 3~300 秒之间';
     const s = Number(f.advanced.syncIntervalMin);
     if (!(s >= 1 && s <= 1440)) e.syncIntervalMin = '同步间隔需在 1~1440 分钟之间';
+    const a = Number(f.advanced.alertIntervalSec);
+    if (!(a >= 10 && a <= 3600)) e.alertIntervalSec = '告警同步间隔需在 10~3600 秒之间';
     if ((f.advanced.remark || '').length > 255) e.remark = '备注不超过 255 个字符';
   }
   return e;
@@ -75,5 +77,5 @@ export const toPayload = (f) => ({
     userDomain: f.auth.userDomain.trim(), projectDomain: f.auth.projectDomain.trim(),
     password: f.auth.password || undefined,
   },
-  advanced: { timeoutSec: Number(f.advanced.timeoutSec), syncIntervalMin: Number(f.advanced.syncIntervalMin), remark: (f.advanced.remark || '').trim() },
+  advanced: { timeoutSec: Number(f.advanced.timeoutSec), syncIntervalMin: Number(f.advanced.syncIntervalMin), alertIntervalSec: Number(f.advanced.alertIntervalSec), remark: (f.advanced.remark || '').trim() },
 });

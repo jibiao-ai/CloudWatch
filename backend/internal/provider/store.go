@@ -34,7 +34,7 @@ func newID(prefix string) string {
 // FieldsErr 字段级校验错误：HTTP 400 / code 40001 / data.fields。
 func FieldsErr(e FieldErrors) error {
 	first := ""
-	for _, k := range []string{"name", "envType", "consoleIp", "rootDomain", "arch", "nodeCount", "username", "password", "projectName", "userDomain", "projectDomain", "timeoutSec", "syncIntervalMin", "remark"} {
+	for _, k := range []string{"name", "envType", "consoleIp", "rootDomain", "arch", "nodeCount", "username", "password", "projectName", "userDomain", "projectDomain", "timeoutSec", "syncIntervalMin", "alertIntervalSec", "remark"} {
 		if v, ok := e[k]; ok {
 			first = v
 			break
@@ -44,7 +44,7 @@ func FieldsErr(e FieldErrors) error {
 }
 
 const cols = `id,name,env_type,console_ip,root_domain,arch,node_count,username,project_name,user_domain,project_domain,
-timeout_sec,sync_interval_min,remark,write_enabled,status,last_verify_at,last_verify,last_sync_at,last_sync_error,
+timeout_sec,sync_interval_min,alert_interval_sec,remark,write_enabled,status,last_verify_at,last_verify,last_sync_at,last_sync_error,
 vm_count,volume_count,network_count,zones,created_at,updated_at,updated_by`
 
 type scanner interface{ Scan(...any) error }
@@ -55,7 +55,7 @@ func scan(r scanner) (*Provider, error) {
 	var lv, zones sql.NullString
 	var lva, lsa sql.NullTime
 	if err := r.Scan(&p.ID, &p.Name, &p.EnvType, &p.ConsoleIP, &p.RootDomain, &p.Arch, &p.NodeCount, &p.Auth.Username, &p.Auth.ProjectName,
-		&p.Auth.UserDomain, &p.Auth.ProjectDomain, &p.Advanced.TimeoutSec, &p.Advanced.SyncIntervalMin, &p.Advanced.Remark, &we, &p.Status,
+		&p.Auth.UserDomain, &p.Auth.ProjectDomain, &p.Advanced.TimeoutSec, &p.Advanced.SyncIntervalMin, &p.Advanced.AlertIntervalSec, &p.Advanced.Remark, &we, &p.Status,
 		&lva, &lv, &lsa, &p.LastSyncErr, &p.Stats.VMCount, &p.Stats.VolumeCount, &p.Stats.NetworkCount, &zones, &p.CreatedAt, &p.UpdatedAt, &p.UpdatedBy); err != nil {
 		return nil, err
 	}
@@ -215,9 +215,9 @@ func (s *Store) Create(ctx context.Context, by string, in Input) (*Provider, err
 	}
 	id, now := newID("p"), time.Now().UTC()
 	_, err = s.db.ExecContext(ctx, `INSERT INTO providers(id,name,env_type,console_ip,root_domain,arch,node_count,username,password_enc,project_name,user_domain,project_domain,
-timeout_sec,sync_interval_min,remark,status,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'unknown',?,?,?)`,
+timeout_sec,sync_interval_min,alert_interval_sec,remark,status,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'unknown',?,?,?)`,
 		id, in.Name, in.EnvType, in.ConsoleIP, in.RootDomain, in.Arch, in.NodeCount, in.Auth.Username, enc, in.Auth.ProjectName, in.Auth.UserDomain, in.Auth.ProjectDomain,
-		in.Advanced.TimeoutSec, in.Advanced.SyncIntervalMin, in.Advanced.Remark, now, now, by)
+		in.Advanced.TimeoutSec, in.Advanced.SyncIntervalMin, in.Advanced.AlertIntervalSec, in.Advanced.Remark, now, now, by)
 	if err != nil {
 		return nil, dupErr(err)
 	}
@@ -236,9 +236,9 @@ func (s *Store) Update(ctx context.Context, by, id string, in Input) (*Provider,
 	changed := old.ConsoleIP != in.ConsoleIP || old.RootDomain != in.RootDomain || in.Auth.Password != "" ||
 		old.Auth.Username != in.Auth.Username || old.Auth.ProjectName != in.Auth.ProjectName ||
 		old.Auth.UserDomain != in.Auth.UserDomain || old.Auth.ProjectDomain != in.Auth.ProjectDomain
-	set := `name=?,env_type=?,console_ip=?,root_domain=?,arch=?,node_count=?,username=?,project_name=?,user_domain=?,project_domain=?,timeout_sec=?,sync_interval_min=?,remark=?,updated_at=?,updated_by=?`
+	set := `name=?,env_type=?,console_ip=?,root_domain=?,arch=?,node_count=?,username=?,project_name=?,user_domain=?,project_domain=?,timeout_sec=?,sync_interval_min=?,alert_interval_sec=?,remark=?,updated_at=?,updated_by=?`
 	args := []any{in.Name, in.EnvType, in.ConsoleIP, in.RootDomain, in.Arch, in.NodeCount, in.Auth.Username, in.Auth.ProjectName, in.Auth.UserDomain, in.Auth.ProjectDomain,
-		in.Advanced.TimeoutSec, in.Advanced.SyncIntervalMin, in.Advanced.Remark, time.Now().UTC(), by}
+		in.Advanced.TimeoutSec, in.Advanced.SyncIntervalMin, in.Advanced.AlertIntervalSec, in.Advanced.Remark, time.Now().UTC(), by}
 	if in.Auth.Password != "" {
 		enc, err := s.box.Seal(in.Auth.Password)
 		if err != nil {
