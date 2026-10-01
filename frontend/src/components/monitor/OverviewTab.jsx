@@ -6,6 +6,8 @@ import HealthTag from './HealthTag';
 import TrendCard from './TrendCard';
 import { formatBytes, formatNumber } from '../../utils/format';
 
+const MIB = 1024 * 1024; // 内存 usage/total 按 MiB 换算（文档示例 584704 = 571 GiB；与 Nova memory_mb 同量纲）
+const mem = (v) => formatBytes(v * MIB);
 const n = (v, f = formatNumber) => (v == null ? '—' : f(v));
 
 /** OverviewTab —— 总览：KPI + 容量条 + 云主机状态分布 + 健康状态 + 趋势 */
@@ -19,14 +21,14 @@ export default function OverviewTab({ snap, providerId, range, refreshKey }) {
     <div className="space-y-5">
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={Cpu} label="vCPU 使用率" value={n(s.vcpu.percent, (v) => `${v.toFixed(1)}%`)} hint={s.vcpu.total != null ? `${formatNumber(s.vcpu.usage)} / ${formatNumber(s.vcpu.total)} 核` : '未采集到'} tone="primary" />
-        <StatCard icon={MemoryStick} label="云主机内存使用率" value={n(memRatio, (v) => `${v.toFixed(2)}%`)} hint={s.memory.total != null ? `${formatNumber(s.memory.usage)} / ${formatNumber(s.memory.total)}（接口原始值，文档未标注单位）` : '未采集到'} tone="info" />
+        <StatCard icon={MemoryStick} label="云主机内存使用率" value={n(memRatio, (v) => `${v.toFixed(2)}%`)} hint={s.memory.total != null ? `${mem(s.memory.usage)} / ${mem(s.memory.total)}（按 MiB 换算，原始值 ${formatNumber(s.memory.usage)} / ${formatNumber(s.memory.total)}）` : '未采集到'} tone="info" />
         <StatCard icon={HardDrive} label="存储实际使用率" value={n(s.storage.usedPercent, (v) => `${v.toFixed(1)}%`)} hint={s.storage.totalBytes != null ? `${formatBytes(s.storage.usedBytes)} / ${formatBytes(s.storage.totalBytes)}` : '未采集到'} tone="warning" />
         <StatCard icon={MonitorCog} label="云主机总数" value={formatNumber(vmTotal)} hint={`运行 ${n(vm.running)} · 异常 ${n(vm.error)} · 关机 ${n(vm.shutdown)}`} tone={vm.error > 0 ? 'danger' : 'success'} />
       </div>
 
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-3">
         <div className="card p-4"><CapacityBar label="vCPU（已用 / 总量）" used={s.vcpu.usage || 0} total={s.vcpu.total || 0} format={(v) => `${formatNumber(v)} 核`} /></div>
-        <div className="card p-4"><CapacityBar label="云主机内存（已用 / 总量）" used={s.memory.usage || 0} total={s.memory.total || 0} format={(v) => formatNumber(v)} /></div>
+        <div className="card p-4"><CapacityBar label="云主机内存（已用 / 总量）" used={s.memory.usage || 0} total={s.memory.total || 0} format={mem} /></div>
         <div className="card p-4"><CapacityBar label="存储集群（实际使用 / 总量）" used={s.storage.usedBytes || 0} total={s.storage.totalBytes || 0} format={(v) => formatBytes(v)} /></div>
       </div>
 
