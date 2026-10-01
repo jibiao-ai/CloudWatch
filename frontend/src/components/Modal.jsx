@@ -41,7 +41,7 @@ export default function Modal({ open, title, subtitle, onClose, width = 560, foo
               <h2 className="text-base font-semibold text-fg">{title}</h2>
               {subtitle && <p className="text-xs text-fg-muted mt-0.5">{subtitle}</p>}
             </div>
-            <button type="button" className="btn-icon -mr-2 -mt-1" onClick={onClose} aria-label="关闭">
+            <button type="button" className="btn-icon -mr-2 -mt-1 focus-visible:!outline-none" onClick={onClose} aria-label="关闭">
               <X size={18} />
             </button>
           </header>

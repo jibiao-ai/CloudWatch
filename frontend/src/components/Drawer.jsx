@@ -12,7 +12,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 export default function Drawer({ open, title, subtitle, onClose, width = 560, footer, children, actions, anchor }) {
   const ref = useRef(null);
   const [box, setBox] = useState(null);
-  useFocusTrap(ref, open);
+  useFocusTrap(ref, open, '[data-autofocus]');
   useLayoutEffect(() => {
     if (!open || !anchor) { setBox(null); return undefined; }
     const calc = () => {
@@ -54,12 +54,12 @@ export default function Drawer({ open, title, subtitle, onClose, width = 560, fo
             </div>
             <div className="flex items-center gap-1">
               {actions}
-              <button type="button" className="btn-icon" onClick={onClose} aria-label="关闭抽屉">
+              <button type="button" className="btn-icon focus-visible:!outline-none" onClick={onClose} aria-label="关闭抽屉">
                 <X size={18} />
               </button>
             </div>
           </header>
-          <div className="flex-1 min-h-0 overflow-y-auto p-5">{children}</div>
+          <div data-autofocus tabIndex={-1} className="flex-1 min-h-0 overflow-y-auto p-5 outline-none focus:outline-none focus-visible:!outline-none">{children}</div>
           {footer && <footer className="px-5 py-3 border-t border-line flex justify-end gap-2.5 shrink-0">{footer}</footer>}
         </aside>
       </div>
