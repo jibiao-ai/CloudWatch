@@ -39,6 +39,7 @@ type Result struct {
 	Summary  Summary
 	Nodes    []Node
 	Disks    []Disk
+	VMs      []VM
 	Services []Service
 	Storage  []Series
 	Steps    []Step
@@ -54,7 +55,7 @@ type SamplePoint struct {
 
 // Collect 依次调用各 EMLA 接口；任一接口失败只记入 Steps，不中断其它接口。全部失败视为采集失败。
 func Collect(ctx context.Context, cn *provider.Conn) *Result {
-	r := &Result{Nodes: []Node{}, Disks: []Disk{}, Services: []Service{}, Storage: []Series{}}
+	r := &Result{Nodes: []Node{}, Disks: []Disk{}, VMs: []VM{}, Services: []Service{}, Storage: []Series{}}
 	step := func(key, label string, fn func() error) {
 		t0 := time.Now()
 		err := fn()
@@ -188,8 +189,17 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return err
 		}
 		for _, m := range ms {
-			v, ok := m.First()
-			r.Services = append(r.Services, Service{Name: m.Name, State: ptr(v, ok)})
+			sv := Service{Name: m.Name, Instances: len(m.Samples)}
+			for i, sp := range m.Samples {
+				if sv.State == nil || sp.Value > *sv.State {
+					v := sp.Value
+					sv.State = &v
+				}
+				if i == 0 {
+					sv.At, sv.Labels = sp.At, pickServiceLabels(sp.Labels)
+				}
+			}
+			r.Services = append(r.Services, sv)
 		}
 		sort.Slice(r.Services, func(i, j int) bool { return r.Services[i].Name < r.Services[j].Name })
 		if len(r.Services) == 0 {
@@ -259,8 +269,75 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
+	step("hypervisors", "宿主机总核数 / 已用核数（Nova）", func() error {
+		hv, err := collectHypervisors(ctx, cn)
+		if err != nil {
+			return err
+		}
+		mergeHypervisors(r.Nodes, hv)
+		return nil
+	})
+	step("node_network", "节点网络收发流量", func() error {
+		rx, err := seriesByNode(ctx, cn, exprNetRx, sumF)
+		if err != nil {
+			return err
+		}
+		mergeNodeSeries(r.Nodes, rx, func(n *Node, v *float64) { n.NetRx = v })
+		tx, err := seriesByNode(ctx, cn, exprNetTx, sumF)
+		if err != nil {
+			return err
+		}
+		mergeNodeSeries(r.Nodes, tx, func(n *Node, v *float64) { n.NetTx = v })
+		return nil
+	})
+	step("node_disk_io", "节点磁盘 I/O 使用率", func() error {
+		io, err := seriesByNode(ctx, cn, exprDiskIO, maxF)
+		if err != nil {
+			return err
+		}
+		mergeNodeSeries(r.Nodes, io, func(n *Node, v *float64) {
+			if *v > 100 {
+				*v = 100
+			}
+			n.DiskIO = v
+		})
+		return nil
+	})
+
+	step("vms", "云主机列表（Nova）", func() error {
+		vms, err := collectVMs(ctx, cn)
+		if err != nil {
+			return err
+		}
+		r.VMs = vms
+		return nil
+	})
+	if len(r.VMs) > 0 {
+		step("vm_metrics", "云主机 CPU / 内存（Gnocchi）", func() error {
+			okN, err := fillVMMetrics(ctx, cn, r.VMs)
+			if okN == 0 && err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
 	r.Samples = samplesOf(r)
 	return r
+}
+
+// pickServiceLabels 服务指标上对展示有用的标签。
+func pickServiceLabels(l map[string]string) map[string]string {
+	out := map[string]string{}
+	for _, k := range []string{"service", "namespace", "node_name", "host_ip", "pod", "job"} {
+		if v := l[k]; v != "" {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func first(a ...string) string {
@@ -346,6 +423,10 @@ func buildNodes(ms []Metric) []Node {
 				n.CPUSystem = &v
 			case "node_cpu_utilization_iowait":
 				n.CPUIowait = &v
+			case "node_disk_io_latency":
+				if n.DiskLatency == nil || v > *n.DiskLatency {
+					n.DiskLatency = &v
+				}
 			case "node_memory_total":
 				n.MemTotal = &v
 			case "node_memory_free":
@@ -399,6 +480,10 @@ func samplesOf(r *Result) []SamplePoint {
 	for _, n := range r.Nodes {
 		add("node_cpu_percent", n.Name, n.CPUPercent)
 		add("node_mem_percent", n.Name, n.MemPercent)
+		add("node_net_rx", n.Name, n.NetRx)
+		add("node_net_tx", n.Name, n.NetTx)
+		add("node_disk_io", n.Name, n.DiskIO)
+		add("node_disk_latency", n.Name, n.DiskLatency)
 	}
 	return out
 }

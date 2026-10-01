@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -78,7 +79,7 @@ var trendRanges = map[string]time.Duration{"1h": time.Hour, "6h": 6 * time.Hour,
 
 var trendMetrics = map[string]bool{"vcpu_percent": true, "memory_percent": true, "storage_used_percent": true, "storage_used_bytes": true,
 	"storage_total_bytes": true, "iops_read": true, "iops_write": true, "vm_running": true, "vm_error": true, "vm_shutdown": true,
-	"node_cpu_percent": true, "node_mem_percent": true}
+	"node_cpu_percent": true, "node_mem_percent": true, "node_net_rx": true, "node_net_tx": true, "node_disk_io": true, "node_disk_latency": true}
 
 // monitorTrend GET /monitor/{id}/trend?metric=&target=&range=
 func (s *Server) monitorTrend(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
@@ -96,5 +97,21 @@ func (s *Server) monitorTrend(w http.ResponseWriter, r *http.Request, _ *auth.Pr
 		return err
 	}
 	httpx.OK(w, map[string]any{"metric": metric, "target": q.Get("target"), "points": pts})
+	return nil
+}
+
+// monitorVMMetrics GET /monitor/{id}/vms/{vmId}/metrics?range= —— 云主机详情：实时向 Gnocchi 取 CPU / 内存 / 磁盘读写速率曲线。
+func (s *Server) monitorVMMetrics(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	id := r.PathValue("id")
+	if _, err := s.Providers.Store.Get(r.Context(), id); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 40*time.Second)
+	defer cancel()
+	m, err := s.Monitor.VMMetrics(ctx, id, r.PathValue("vmId"), r.URL.Query().Get("range"))
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, map[string]any{"vmId": r.PathValue("vmId"), "series": m})
 	return nil
 }

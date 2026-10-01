@@ -48,6 +48,17 @@ func (cn *Conn) EMLA() string {
 	return cn.c.BaseURL(cn.scheme, "emla."+cn.Root)
 }
 
+// ProjectID 当前 Token 所属项目 ID（series/query 等接口路径需要）。
+func (cn *Conn) ProjectID() string { return cn.Sess.ProjectID }
+
+// Nova 返回 Nova 基础地址（含 /v2.1）：优先服务目录 compute，缺省 <scheme>://nova.<根域名>/v2.1。
+func (cn *Conn) Nova() string {
+	return cn.Sess.endpoint("compute", cn.c.BaseURL(cn.scheme, "nova."+cn.Root)+"/v2.1")
+}
+
+// Gnocchi 返回 Gnocchi 基础地址：<scheme>://gnocchi.<根域名>（接口文档约定的域名）。
+func (cn *Conn) Gnocchi() string { return cn.c.BaseURL(cn.scheme, "gnocchi."+cn.Root) }
+
 // GetJSON 带 X-Auth-Token 的 GET，并把响应解析到 out。
 func (cn *Conn) GetJSON(ctx context.Context, url string, out any) error {
 	return cn.c.getJSON(ctx, cn.hc, cn.Sess.Token, url, out)

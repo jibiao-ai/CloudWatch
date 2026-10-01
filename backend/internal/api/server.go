@@ -130,10 +130,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/providers/{id}/impact", s.guard("provider:view", s.providerImpact))
 	mux.Handle("PUT /api/providers/{id}/write-switch", s.guard("provider:write_switch", s.providerWriteSwitch))
 	mux.Handle("POST /api/providers/{id}/sync", s.guard("provider:sync", s.providerSync))
-	// 性能监控
+	// 监控中心
 	mux.Handle("GET /api/monitor/overview", s.guard("monitor:view", s.monitorOverview))
 	mux.Handle("GET /api/monitor/{id}", s.guard("monitor:view", s.monitorSnapshot))
 	mux.Handle("GET /api/monitor/{id}/trend", s.guard("monitor:view", s.monitorTrend))
+	mux.Handle("GET /api/monitor/{id}/vms/{vmId}/metrics", s.guard("monitor:view", s.monitorVMMetrics))
 	mux.Handle("POST /api/monitor/{id}/collect", s.guard("monitor:collect", s.monitorCollect))
 
 	// 告警中心

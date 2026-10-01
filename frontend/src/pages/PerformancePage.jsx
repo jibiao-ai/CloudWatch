@@ -9,16 +9,19 @@ import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
 import LoadingButton from '../components/LoadingButton';
 import OverviewTab from '../components/monitor/OverviewTab';
-import { NodesTab, DisksTab, ServicesTab, StepsTab } from '../components/monitor/DetailTabs';
+import NodesTab from '../components/monitor/NodesTab';
+import DisksTab from '../components/monitor/DisksTab';
+import VMsTab from '../components/monitor/VMsTab';
+import ServicesTab from '../components/monitor/ServicesTab';
+import StepsTab from '../components/monitor/StepsTab';
 import { monitorApi } from '../services/api';
 import { useAsync } from '../hooks/useAsync';
 import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
+import { RANGES } from '../utils/monitorUtil';
 
-const RANGES = [{ value: '1h', label: '近 1 小时' }, { value: '6h', label: '近 6 小时' }, { value: '24h', label: '近 24 小时' }, { value: '7d', label: '近 7 天' }, { value: '30d', label: '近 30 天' }];
-
-/** PerformancePage —— 性能监控：数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
+/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 磁盘状态 / 虚拟机 / 采集明细）：数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
 export default function PerformancePage() {
   const toast = useToast();
   const canCollect = useCan('monitor:collect');
@@ -28,9 +31,12 @@ export default function PerformancePage() {
   const [range, setRange] = useState('6h');
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
+  const [jump, setJump] = useState({ n: 0, kw: '' }); // 总览全局搜索跳转：带入目标页签的关键字
   useEffect(() => { if (!pid && plats.data?.length) setPid(plats.data[0].id); }, [plats.data, pid]);
   const snap = useAsync(() => (pid ? monitorApi.getSnapshot(pid) : Promise.resolve(null)), [pid, tick]);
   const d = snap.data;
+  const platform = (plats.data || []).find((p) => p.id === pid);
+  const goto = (t, kw) => { setJump((j) => ({ n: j.n + 1, kw })); setTab(t); };
 
   const collect = async () => {
     setBusy(true);
@@ -41,11 +47,12 @@ export default function PerformancePage() {
       r.ok ? toast.success('采集完成', `耗时 ${r.durationMs} ms，告警中 ${r.alertFiring} 条`) : toast.error('采集失败', r.error);
     } catch (e) { toast.error('采集失败', e.message); } finally { setBusy(false); }
   };
-  const tabs = [{ key: 'overview', label: '总览' }, { key: 'nodes', label: '计算节点', count: d?.nodes.length }, { key: 'disks', label: '磁盘', count: d?.disks.length }, { key: 'services', label: '服务状态' }, { key: 'steps', label: '采集明细' }];
+  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'steps', label: '采集明细' }];
+  const common = { snap: d, platform, providerId: pid, refreshKey: tick, initialKeyword: jump.kw };
 
   return (
     <div className="bg-bg">
-      <PageHeader title="性能监控" description="对接平台 EMLA 监控接口：存储容量、vCPU / 内存、云主机状态、节点与磁盘、服务健康；后台周期采集，趋势来自已落库的历史样本"
+      <PageHeader title="监控中心" description="对接平台 EMLA / Nova / Gnocchi 接口：总览、服务状态、物理节点、磁盘状态、虚拟机、采集明细；后台周期采集，趋势来自已落库的历史样本"
         actions={<>
           <div className="w-[240px]"><CustomSelect aria-label="选择平台" placeholder="选择平台" value={pid} onChange={setPid} options={(plats.data || []).map((p) => ({ value: p.id, label: p.name }))} /></div>
           <div className="w-[140px]"><CustomSelect aria-label="趋势范围" value={range} onChange={setRange} options={RANGES} /></div>
@@ -63,13 +70,14 @@ export default function PerformancePage() {
               <span className="text-fg-muted">告警中 {d.alertFiring} 条</span>
               {!d.ok && d.error && <span className="text-danger break-all">{d.error}</span>}
             </div>
-            <Tabs items={tabs} value={tab} onChange={setTab} className="mb-4" idPrefix="mon" />
+            <Tabs items={tabs} value={tab} onChange={(t) => { setJump((j) => ({ n: j.n + 1, kw: '' })); setTab(t); }} className="mb-4" idPrefix="mon" />
             <div id="mon-panel" role="tabpanel" aria-labelledby={`mon-${tab}`}>
-              {tab === 'steps' ? <StepsTab snap={d} />
+              {tab === 'steps' ? <StepsTab key={jump.n} {...common} />
                 : !d.summary ? <div className="card"><EmptyState title="暂无监控数据" description={canCollect ? '点击右上角「立即采集」，或等待后台按同步间隔自动采集' : '等待后台按同步间隔自动采集'} /></div>
-                  : tab === 'overview' ? <OverviewTab snap={d} providerId={pid} range={range} refreshKey={tick} />
-                    : tab === 'nodes' ? <NodesTab snap={d} providerId={pid} range={range} refreshKey={tick} />
-                      : tab === 'disks' ? <DisksTab snap={d} /> : <ServicesTab snap={d} />}
+                  : tab === 'overview' ? <OverviewTab snap={d} platform={platform} providerId={pid} range={range} refreshKey={tick} onJump={goto} />
+                    : tab === 'nodes' ? <NodesTab key={jump.n} {...common} />
+                      : tab === 'disks' ? <DisksTab key={jump.n} {...common} />
+                        : tab === 'vms' ? <VMsTab key={jump.n} {...common} /> : <ServicesTab key={jump.n} {...common} />}
             </div>
           </>
         )}

@@ -21,7 +21,7 @@
 | 运维概览（KPI · 容量条 · 趋势图 · 平台概况 · 高负载节点） | ✅ |
 | **平台管理**（三步向导：基本信息 / 认证信息 / 高级 · 认证填完才可「验证连接」 · 真实验证六组件域名 HTTP 连通 + Keystone Token · 同步入库 · 自动同步 · 写操作开关 · 影响范围删除） | ✅ 真实后端 |
 | 用户管理（含单个/批量删除，权限码 `user:delete`；不可删自己与最后一个超级管理员）/ 角色管理（功能权限树 + 数据权限三级 allow/deny）/ 审计日志 / 域名配置 / 系统配置 | ✅ |
-| 统一资源管理 / 资源视图 / 巡检 / 性能监控 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
+| 统一资源管理 / 资源视图 / 巡检 / 监控中心 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
 | **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；**域名配置（hosts 映射 / 内置 DNS / Docker 注入）**；**平台管理（providers / tasks）**；其余模块（用户/角色/概览指标）暂为 mock（概览与角色数据范围的平台列表已读真实库） |
 
 ## 系统配置（真实后端）
@@ -180,8 +180,8 @@ npm run lint:rules          # 规则扫描（见下）
 
 `feat(scope):` / `fix(scope):`，一功能一分支一 PR。
 
-## 性能监控与告警中心（第13轮，对接 EMLA 文档第4/5章）
-- **性能监控** `/monitor`（权限 `monitor:view`，立即采集 `monitor:collect`）：总览 KPI、容量、虚机状态、IOPS、趋势图（1h/6h/24h/7d/30d）、计算节点、磁盘、服务状态、采集明细。
+## 监控中心与告警中心（第13轮，对接 EMLA 文档第4/5章；第20轮「性能监控」更名为「监控中心」）
+- **监控中心** `/monitor`（权限 `monitor:view`，立即采集 `monitor:collect`）：总览 KPI、容量、虚机状态、IOPS、趋势图（1h/6h/24h/7d/30d）、计算节点、磁盘、服务状态、采集明细。
 - **告警中心** `/alerts`（`alert:view`；确认 `alert:ack`、同步 `alert:sync`、导出 `alert:export`）：统计卡片、筛选、排序分页、详情抽屉、单条/批量确认、xlsx 导出；顶栏铃铛跳转至此，未读数 = 告警中且未确认。
 - **接口**：`GET /api/monitor/overview|{id}|{id}/trend`、`POST /api/monitor/{id}/collect`；`GET /api/alerts|stats|export|{id}`、`POST /api/alerts/ack|sync`。
 - **数据表**（迁移 0004）：`monitor_snapshots`、`metric_samples`、`alert_events`（新增指纹/状态/确认等字段）。
@@ -217,3 +217,13 @@ npm run lint:rules          # 规则扫描（见下）
 
 ### 第19轮修复（抽屉 / 弹窗关闭按钮高亮）
 - 抽屉、弹窗打开后不再把焦点放到右上角「×」上（改为聚焦内容区），「×」不再出现彩色焦点框；键盘 Tab 聚焦时也不显示高亮框。Esc 关闭与焦点循环不受影响。
+
+### 第20轮（监控中心，对接《接口补充文档》）
+- **更名**：「性能监控」→「监控中心」（菜单 / 权限 / 页头），页签：总览、服务状态、物理节点、磁盘状态、虚拟机、采集明细；每个列表都有关键字搜索，总览顶部有「全局搜索」可跨 节点/虚拟机/磁盘/服务/采集明细 查找并跳转。
+- **统一列表**：所有明细表 10 行/页分页（页大小 10/20/50/100，与告警中心一致）+ 列头排序（空值始终排最后）。
+- **物理节点**：去掉 用户态/内核态/IO 等待；新增 所属云平台（平台名 + 控制台 IP 超链接，新标签页打开）、总核数、使用核数（Nova `GET /v2.1/os-hypervisors/detail` 的 `vcpus` / `vcpus_used`，即已分配 vCPU；节点名 `node-1.domain.tld` 去域名后与 EMLA 节点名匹配，亦按 IP 匹配）、磁盘 I/O 使用率；末列「监控详情」弹窗：CPU 使用率、内存使用率、网络接收/发送流量、磁盘 I/O 使用率 4 张趋势图（来自后台周期采集落库的历史样本）。
+- **磁盘状态**：「使用」改为使用率条（同内存使用率；`disk_usage` 为容量串时与 `disk_capacity` 相除）；HDD / 接口返回「-」的已用寿命显示「—」；「OSD」→「OSD编号」。
+- **虚拟机**（新）：列表取自 Nova `GET /v2.1/servers/detail?all_tenants=true`（自动翻页），CPU / 内存使用率取自 Gnocchi `cpu_util` / `memory.util` 最近值；样式与物理节点一致；「监控详情」弹窗实时调用 Gnocchi `/v1/resource/generic/{vm_id}/metric/{metric}/measures`，绘制 CPU、内存、磁盘读/写速率（`disk.read|write.bytes.rate`）。后端 `GET /api/monitor/{id}/vms/{vmId}/metrics?range=`。
+- **服务状态**：按《接口补充文档》对照表友好命名（35 项；表外指标兜底显示去前后缀的名称），并增加 分类、状态、实例数、服务指标、附加信息、指标时间；顶部统计卡与 状态/分类 筛选。
+- **数据库**：迁移 0007 为 `monitor_snapshots` 增加 `vms` 列。
+- **口径说明**（文档未给出确切指标名，需以真实环境为准）：节点网络流量用 `series/query` 的 `irate(node_network_receive|transmit_bytes_total{物理网卡}[5m])`（旧文档给出）；磁盘 I/O 使用率用 `max by (node_name)(rate(node_disk_io_time_seconds_total[5m]))*100`；若真实环境不支持，采集明细会显示对应步骤失败原因，其余功能不受影响。

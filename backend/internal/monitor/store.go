@@ -31,11 +31,11 @@ ON DUPLICATE KEY UPDATE ok=0,error=VALUES(error),duration_ms=VALUES(duration_ms)
 			id, trunc(errMsg, 480), took.Milliseconds(), js(stepsOf(res)), now)
 		return err
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO monitor_snapshots(provider_id,collected_at,ok,error,duration_ms,summary,nodes,disks,services,storage,steps,last_try_at)
-VALUES(?,?,1,'',?,?,?,?,?,?,?,?)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO monitor_snapshots(provider_id,collected_at,ok,error,duration_ms,summary,nodes,disks,vms,services,storage,steps,last_try_at)
+VALUES(?,?,1,'',?,?,?,?,?,?,?,?,?)
 ON DUPLICATE KEY UPDATE collected_at=VALUES(collected_at),ok=1,error='',duration_ms=VALUES(duration_ms),summary=VALUES(summary),nodes=VALUES(nodes),
-disks=VALUES(disks),services=VALUES(services),storage=VALUES(storage),steps=VALUES(steps),last_try_at=VALUES(last_try_at)`,
-		id, now, took.Milliseconds(), js(res.Summary), js(res.Nodes), js(res.Disks), js(res.Services), js(res.Storage), js(res.Steps), now)
+disks=VALUES(disks),vms=VALUES(vms),services=VALUES(services),storage=VALUES(storage),steps=VALUES(steps),last_try_at=VALUES(last_try_at)`,
+		id, now, took.Milliseconds(), js(res.Summary), js(res.Nodes), js(res.Disks), js(res.VMs), js(res.Services), js(res.Storage), js(res.Steps), now)
 	if err != nil {
 		return err
 	}
@@ -96,11 +96,11 @@ func unmarshal[T any](s sql.NullString, def T) T {
 
 // Snapshot 读取某平台的最近快照；从未采集时返回空快照（CollectedAt 为 nil）。
 func (s *Store) Snapshot(ctx context.Context, id string) (*Snapshot, error) {
-	sn := &Snapshot{ProviderID: id, Nodes: []Node{}, Disks: []Disk{}, Services: []Service{}, Storage: []Series{}, Steps: []Step{}}
+	sn := &Snapshot{ProviderID: id, Nodes: []Node{}, Disks: []Disk{}, VMs: []VM{}, Services: []Service{}, Storage: []Series{}, Steps: []Step{}}
 	var col, alt sql.NullTime
-	var sum, nodes, disks, svcs, sto, steps sql.NullString
-	err := s.db.QueryRowContext(ctx, `SELECT collected_at,ok,error,duration_ms,summary,nodes,disks,services,storage,steps,alert_sync_at,alert_error,alert_firing
-FROM monitor_snapshots WHERE provider_id=?`, id).Scan(&col, &sn.OK, &sn.Error, &sn.DurationMs, &sum, &nodes, &disks, &svcs, &sto, &steps, &alt, &sn.AlertError, &sn.AlertFiring)
+	var sum, nodes, disks, vms, svcs, sto, steps sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT collected_at,ok,error,duration_ms,summary,nodes,disks,vms,services,storage,steps,alert_sync_at,alert_error,alert_firing
+FROM monitor_snapshots WHERE provider_id=?`, id).Scan(&col, &sn.OK, &sn.Error, &sn.DurationMs, &sum, &nodes, &disks, &vms, &svcs, &sto, &steps, &alt, &sn.AlertError, &sn.AlertFiring)
 	if err == sql.ErrNoRows {
 		return sn, nil
 	}
@@ -123,6 +123,7 @@ FROM monitor_snapshots WHERE provider_id=?`, id).Scan(&col, &sn.OK, &sn.Error, &
 	}
 	sn.Nodes = unmarshal(nodes, sn.Nodes)
 	sn.Disks = unmarshal(disks, sn.Disks)
+	sn.VMs = unmarshal(vms, sn.VMs)
 	sn.Services = unmarshal(svcs, sn.Services)
 	sn.Storage = unmarshal(sto, sn.Storage)
 	sn.Steps = unmarshal(steps, sn.Steps)

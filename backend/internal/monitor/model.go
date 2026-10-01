@@ -39,18 +39,43 @@ type Summary struct {
 	IopsWrite            *float64 `json:"iopsWrite"`
 }
 
-// Node 计算 / 物理节点资源（来自 /ecms/nodes）。
+// Node 计算 / 物理节点资源（来自 /ecms/nodes，核数来自 Nova os-hypervisors，网络与磁盘 IO 来自 series/query）。
 type Node struct {
+	Name        string   `json:"name"`
+	HostIP      string   `json:"hostIp"`
+	CPUPercent  *float64 `json:"cpuPercent"`
+	CPUUser     *float64 `json:"-"` // 仅用于 CPU 总使用率缺失时的近似，不再展示
+	CPUSystem   *float64 `json:"-"`
+	CPUIowait   *float64 `json:"-"`
+	CoresTotal  *float64 `json:"coresTotal"` // Nova hypervisor vcpus
+	CoresUsed   *float64 `json:"coresUsed"`  // Nova hypervisor vcpus_used（已分配 vCPU）
+	VMCount     *float64 `json:"vmCount"`    // Nova hypervisor running_vms
+	MemTotal    *float64 `json:"memTotal"`
+	MemFree     *float64 `json:"memFree"`
+	MemCached   *float64 `json:"memCached"`
+	MemPercent  *float64 `json:"memPercent"`  // (total-free)/total*100
+	NetRx       *float64 `json:"netRx"`       // 字节/秒
+	NetTx       *float64 `json:"netTx"`       // 字节/秒
+	DiskIO      *float64 `json:"diskIo"`      // 磁盘 I/O 使用率 %
+	DiskLatency *float64 `json:"diskLatency"` // node_disk_io_latency（各设备最大值）
+}
+
+// VM 云主机（Nova servers/detail + Gnocchi 最近一次 cpu_util / memory.util）。
+type VM struct {
+	ID         string   `json:"id"`
 	Name       string   `json:"name"`
-	HostIP     string   `json:"hostIp"`
+	Status     string   `json:"status"`
+	Node       string   `json:"node"` // 所在物理节点（OS-EXT-SRV-ATTR:host 去掉域名后缀）
+	IPs        string   `json:"ips"`
+	Flavor     string   `json:"flavor"`
+	VCPUs      int      `json:"vcpus"`
+	RAMMB      int      `json:"ramMb"`
+	DiskGB     int      `json:"diskGb"`
+	AZ         string   `json:"az"`
+	ProjectID  string   `json:"projectId"`
+	CreatedAt  string   `json:"createdAt"`
 	CPUPercent *float64 `json:"cpuPercent"`
-	CPUUser    *float64 `json:"cpuUser"`
-	CPUSystem  *float64 `json:"cpuSystem"`
-	CPUIowait  *float64 `json:"cpuIowait"`
-	MemTotal   *float64 `json:"memTotal"`
-	MemFree    *float64 `json:"memFree"`
-	MemCached  *float64 `json:"memCached"`
-	MemPercent *float64 `json:"memPercent"` // (total-free)/total*100
+	MemPercent *float64 `json:"memPercent"`
 }
 
 // Disk 物理磁盘（来自 storage_cluster_disk_info）。
@@ -74,8 +99,11 @@ type Disk struct {
 
 // Service 控制服务状态（来自 /ecms/services）。
 type Service struct {
-	Name  string   `json:"name"`
-	State *float64 `json:"state"` // 0 健康，1 不健康，null 未返回数值
+	Name      string            `json:"name"`
+	State     *float64          `json:"state"`     // 0 健康，1 不健康（多序列取最大值），null 未返回数值
+	Instances int               `json:"instances"` // 该指标返回的序列数
+	Labels    map[string]string `json:"labels,omitempty"`
+	At        float64           `json:"at,omitempty"` // 指标时间戳（秒）
 }
 
 // Series 存储集群明细序列（来自 /ecms/storage）。
@@ -104,6 +132,7 @@ type Snapshot struct {
 	Summary     *Summary   `json:"summary"`
 	Nodes       []Node     `json:"nodes"`
 	Disks       []Disk     `json:"disks"`
+	VMs         []VM       `json:"vms"`
 	Services    []Service  `json:"services"`
 	Storage     []Series   `json:"storage"`
 	Steps       []Step     `json:"steps"`
@@ -114,6 +143,7 @@ type Snapshot struct {
 
 // 采集的 EMLA 接口清单（key → 路径）。
 const (
+	pathSeries    = "/apis/monitoring/v1/projects/%s/series/query"
 	pathStorage   = "/apis/monitoring/v1/ecms/storage"
 	pathDashboard = "/apis/monitoring/v1/ecms/dashboard"
 	pathServices  = "/apis/monitoring/v1/ecms/services"
@@ -123,4 +153,4 @@ const (
 
 var storageCapMetrics = "storage_actual_capacity_free_bytes|storage_actual_capacity_usage_bytes|storage_actual_capacity_total_bytes"
 
-var nodeMetrics = "node_cpu_utilization_total|node_cpu_utilization_idle|node_cpu_utilization_user|node_cpu_utilization_system|node_cpu_utilization_nice|node_cpu_utilization_iowait|node_cpu_utilization_irq|node_cpu_utilization_softirq|node_cpu_utilization_steal|node_memory_total|node_memory_usage|node_memory_free|node_memory_buffer_usage|node_memory_cached|node_memory_slab"
+var nodeMetrics = "node_cpu_utilization_total|node_cpu_utilization_idle|node_cpu_utilization_user|node_cpu_utilization_system|node_cpu_utilization_nice|node_cpu_utilization_iowait|node_cpu_utilization_irq|node_cpu_utilization_softirq|node_cpu_utilization_steal|node_memory_total|node_memory_usage|node_memory_free|node_memory_buffer_usage|node_memory_cached|node_memory_slab|node_disk_io_latency"

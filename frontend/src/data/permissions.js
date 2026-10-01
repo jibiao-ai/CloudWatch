@@ -57,7 +57,7 @@ export const PERMISSION_MODULES = [
   },
   { code: 'resource', name: '统一资源视图', menu: 'resource:view', buttons: [] },
   { code: 'inspection', name: '自动化巡检', menu: 'inspection:view', buttons: [] },
-  { code: 'monitor', name: '性能监控', menu: 'monitor:view', buttons: [{ code: 'monitor:collect', name: '立即采集' }] },
+  { code: 'monitor', name: '监控中心', menu: 'monitor:view', buttons: [{ code: 'monitor:collect', name: '立即采集' }] },
   { code: 'capacity', name: '容量管理', menu: 'capacity:view', buttons: [] },
   {
     code: 'alert', name: '告警中心', menu: 'alert:view',

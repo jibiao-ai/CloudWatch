@@ -1,9 +1,10 @@
 import React from 'react';
-import { Cpu, HardDrive, MemoryStick, MonitorCog, Activity, Gauge } from 'lucide-react';
+import { Cpu, HardDrive, MemoryStick, MonitorCog, Activity, Gauge, Server, Layers } from 'lucide-react';
 import StatCard from '../StatCard';
 import CapacityBar from '../CapacityBar';
 import HealthTag from './HealthTag';
 import TrendCard from './TrendCard';
+import GlobalSearch from './GlobalSearch';
 import { formatBytes, formatNumber } from '../../utils/format';
 
 const MIB = 1024 * 1024; // 内存 usage/total 按 MiB 换算（文档示例 584704 = 571 GiB；与 Nova memory_mb 同量纲）
@@ -11,14 +12,23 @@ const mem = (v) => formatBytes(v * MIB);
 const n = (v, f = formatNumber) => (v == null ? '—' : f(v));
 
 /** OverviewTab —— 总览：KPI + 容量条 + 云主机状态分布 + 健康状态 + 趋势 */
-export default function OverviewTab({ snap, providerId, range, refreshKey }) {
+export default function OverviewTab({ snap, platform, providerId, range, refreshKey, onJump }) {
   const s = snap.summary;
   if (!s) return null;
   const vm = s.instances;
   const vmTotal = ['running', 'error', 'shutdown', 'recycleBin', 'others'].reduce((a, k) => a + (vm[k] || 0), 0);
   const memRatio = s.memory.percent;
+  const badSvc = snap.services.filter((x) => x.state != null && x.state !== 0).length;
+  const badDisk = snap.disks.filter((d) => d.healthy && !/^(ok|healthy|passed|normal|0)$/i.test(d.healthy)).length;
   return (
     <div className="space-y-5">
+      <GlobalSearch snap={snap} platform={platform} onJump={onJump} />
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Server} label="物理节点" value={formatNumber(snap.nodes.length)} hint={`磁盘 ${snap.disks.length} 块 · 异常 ${badDisk} 块`} tone={badDisk ? 'danger' : 'primary'} />
+        <StatCard icon={MonitorCog} label="虚拟机（Nova）" value={formatNumber(snap.vms.length)} hint={`运行中 ${snap.vms.filter((v) => v.status === 'ACTIVE').length} 台`} tone="info" />
+        <StatCard icon={Layers} label="平台服务" value={formatNumber(snap.services.length)} hint={`异常 ${badSvc} 项`} tone={badSvc ? 'danger' : 'success'} />
+        <StatCard icon={Activity} label="告警中" value={formatNumber(snap.alertFiring)} hint="来自 EMLA 告警" tone={snap.alertFiring ? 'warning' : 'success'} />
+      </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={Cpu} label="vCPU 使用率" value={n(s.vcpu.percent, (v) => `${v.toFixed(1)}%`)} hint={s.vcpu.total != null ? `${formatNumber(s.vcpu.usage)} / ${formatNumber(s.vcpu.total)} 核` : '未采集到'} tone="primary" />
         <StatCard icon={MemoryStick} label="云主机内存使用率" value={n(memRatio, (v) => `${v.toFixed(2)}%`)} hint={s.memory.total != null ? `${mem(s.memory.usage)} / ${mem(s.memory.total)}（按 MiB 换算，原始值 ${formatNumber(s.memory.usage)} / ${formatNumber(s.memory.total)}）` : '未采集到'} tone="info" />
