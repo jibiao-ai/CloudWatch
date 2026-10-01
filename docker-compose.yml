@@ -1,0 +1,55 @@
+# CloudWatch 一键部署：mariadb + 后端 API + 前端(nginx)。
+# 用法：cp deploy/env.example .env && 修改密码 → docker compose up -d --build
+services:
+  db:
+    image: mariadb:10.11
+    container_name: cloudwatch-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?请在 .env 设置 DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: cloudwatch
+      MARIADB_USER: cloudwatch
+      MARIADB_PASSWORD: ${DB_PASSWORD:?请在 .env 设置 DB_PASSWORD}
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  cloudwatch-backend:
+    build: ./backend
+    container_name: cloudwatch-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CW_ADDR: ":8080"
+      CW_DB_DSN: "cloudwatch:${DB_PASSWORD}@tcp(db:3306)/cloudwatch"
+      CW_ADMIN_PASSWORD: ${CW_ADMIN_PASSWORD:-}
+      CW_SECRET_KEY: ${CW_SECRET_KEY:-}
+      CW_SEED_DEMO: "false"
+    volumes:
+      # 「域名配置」：把受控 hosts 记录写入宿主机 /etc/hosts，并经 docker.sock 注入其他容器。
+      # 不需要该功能可删除下面两行（平台验证连接依赖域名解析，建议保留 hosts 挂载）。
+      - /etc/hosts:/etc/hosts
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  cloudwatch-web:
+    build:
+      context: ./frontend
+      args:
+        VITE_USE_MOCK: hybrid
+    container_name: cloudwatch-web
+    restart: unless-stopped
+    depends_on:
+      - cloudwatch-backend
+    ports:
+      - "${WEB_PORT:-80}:80"
+
+volumes:
+  db-data:

@@ -71,6 +71,18 @@
 - **数据**：迁移 `0003_providers.sql`（`providers`、`tasks`）。
 - **已验证范围**：对**模拟 OpenStack**（Keystone/Nova/Cinder/Neutron，含分页与错误密码 401）完成接口 + 浏览器端到端 34 项；真实 OpenStack 的非标准目录/自签证书/代理场景上线前请复测。
 
+## Docker 部署（生产）
+
+```bash
+cp deploy/env.example .env      # 修改 DB_ROOT_PASSWORD / DB_PASSWORD，可指定 CW_ADMIN_PASSWORD、WEB_PORT
+docker compose up -d --build    # mariadb + cloudwatch-backend + cloudwatch-web(nginx)
+docker compose logs cloudwatch-backend | grep admin   # 未指定 CW_ADMIN_PASSWORD 时查看随机初始密码
+```
+- 数据库迁移随后端启动自动执行；数据存于 volume `db-data`。
+- 国内网络：Docker Hub 不通时在 `/etc/docker/daemon.json` 配置 `registry-mirrors`；后端镜像构建默认 `GOPROXY=https://goproxy.cn`，前端镜像默认 npmmirror。
+- 后端挂载宿主机 `/etc/hosts` 与 `docker.sock`，用于「域名配置」；不需要可在 compose 中删去。
+- 公网部署请放行 `WEB_PORT`，并建议前置 HTTPS（反向代理/证书）。
+
 ## 后端（`backend/`）
 
 Go 1.22 · 标准库 `net/http` · `database/sql` + MySQL/MariaDB · bcrypt · 内嵌 SQL 迁移（`schema_migrations`，启动自动执行）。
