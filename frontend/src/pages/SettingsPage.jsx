@@ -87,15 +87,16 @@ export default function SettingsPage() {
     return true;
   };
 
-  const save = async (g) => {
-    const e = validateGroup(g, f[g]);
+  const save = async (g, val = f[g]) => {
+    const e = validateGroup(g, val);
     setErrs((s) => ({ ...Object.fromEntries(Object.entries(s).filter(([k]) => !(g === 'alertChannels' ? k.startsWith('ch.') : k.startsWith(`${g}.`)))), ...e }));
-    if (Object.keys(e).length) return toast.warning('请修正标红字段后再保存');
+    if (Object.keys(e).length) { toast.warning('请修正标红字段后再保存'); return false; }
     setSaving(g);
     try {
-      commit(g, await settingsApi.updateSettings({ [g]: f[g] }));
+      commit(g, await settingsApi.updateSettings({ [g]: val }));
       toast.success(`「${GROUPS.find((x) => x.key === g).title}」已保存`);
-    } catch (ex) { if (!fieldErrorsOf(g, ex)) toast.error('保存失败', ex.message); } finally { setSaving(''); }
+      return true;
+    } catch (ex) { if (!fieldErrorsOf(g, ex)) toast.error('保存失败', ex.message); return false; } finally { setSaving(''); }
   };
   const doReset = async () => {
     setSaving('reset');
@@ -128,7 +129,7 @@ export default function SettingsPage() {
         {tab === 'brand' && <BrandSection value={f.brand} disabled={!canUpdate} onChange={patch('brand')} onPreviewColor={(c) => useStore.getState().previewPrimary(c)} />}
         {tab === 'security' && <SecuritySection {...common} />}
         {tab === 'retention' && <RetentionSection {...common} />}
-        {tab === 'alertChannels' && <AlertChannels value={f.alertChannels} disabled={!canUpdate} errors={chErrs} addSignal={addSignal} onChange={(v) => setF((s) => ({ ...s, alertChannels: v }))} />}
+        {tab === 'alertChannels' && <AlertChannels value={f.alertChannels} disabled={!canUpdate} errors={chErrs} addSignal={addSignal} onPersist={(v) => save('alertChannels', v)} onChange={(v) => setF((s) => ({ ...s, alertChannels: v }))} />}
       </Panel>
       <ConfirmModal open={!!reset} danger title={`恢复「${GROUPS.find((x) => x.key === reset)?.title || ''}」为默认值？`} description="该分组当前的配置将被覆盖为系统默认值，并立即写入数据库。"
         impactList={RESET_IMPACT[reset] || ['配置项恢复出厂默认']}
