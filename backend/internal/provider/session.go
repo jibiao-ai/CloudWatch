@@ -1,8 +1,11 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -14,6 +17,7 @@ type Conn struct {
 	scheme string
 	Sess   *Session
 	Root   string
+	cr     Creds // 平台凭据（仅内存持有，用于按需换取域范围 Token）
 }
 
 // Connect 用平台凭据连接 Keystone 取得 Token（项目范围）。
@@ -36,7 +40,7 @@ func (m *Manager) Connect(ctx context.Context, id string) (*Conn, *Provider, err
 	if err != nil {
 		return nil, p, fmt.Errorf("获取 Token 失败：%s", err)
 	}
-	return &Conn{c: m.Client, hc: hc, scheme: scheme, Sess: sess, Root: cr.RootDomain}, p, nil
+	return &Conn{c: m.Client, hc: hc, scheme: scheme, Sess: sess, Root: cr.RootDomain, cr: cr}, p, nil
 }
 
 // EMLA 返回 emla 组件的基础地址：优先服务目录里的 emla / monitoring，缺省为 <scheme>://emla.<根域名>。
@@ -110,4 +114,33 @@ func (m *Manager) ListPlatformIDs(ctx context.Context) ([]string, error) {
 		}
 	}
 	return ids, rows.Err()
+}
+
+// WithDomainScope 返回一个使用「域范围」Token 的连接副本（同一账号，scope 改为项目域）。
+// 默认 Keystone 策略下 identity:list_projects 需要域范围/系统范围 Token，项目范围 Token 会 403。
+func (cn *Conn) WithDomainScope(ctx context.Context) (*Conn, error) {
+	body, _ := json.Marshal(map[string]any{"auth": map[string]any{
+		"identity": map[string]any{"methods": []string{"password"}, "password": map[string]any{"user": map[string]any{
+			"name": cn.cr.Username, "domain": map[string]string{"name": cn.cr.UserDomain}, "password": cn.cr.Password}}},
+		"scope": map[string]any{"domain": map[string]any{"name": cn.cr.ProjectDomain}},
+	}})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, cn.c.BaseURL(cn.scheme, "keystone."+cn.Root)+"/v3/auth/tokens", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := cn.hc.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Keystone 失败：%s", shortErr(err))
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("获取域范围 Token 失败（HTTP %d）：%s", resp.StatusCode, upstreamMsg(raw))
+	}
+	tok := resp.Header.Get("X-Subject-Token")
+	if tok == "" {
+		return nil, fmt.Errorf("获取域范围 Token 失败：响应头缺少 X-Subject-Token")
+	}
+	c2, s2 := *cn, *cn.Sess
+	s2.Token = tok
+	c2.Sess = &s2
+	return &c2, nil
 }

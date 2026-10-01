@@ -15,8 +15,8 @@ export const FIELDS = {
   ],
   vms: [
     ['基本信息', [['名称', 'name'], ...P, ['状态', 'statusText'], ['项目名称', 'projectName'], ['虚拟机状态', 'vmState'], ['任务状态', 'taskState'], ['电源状态', 'powerState'], ['宿主机状态', 'hostStatus'], ['锁定', 'locked'], ['描述', 'description']]],
-    ['位置与网络', [['所在节点', 'node'], ['实例名称', 'instanceName'], ['可用区', 'az'], ['IP 地址', 'ips'], ['MAC 地址', 'macs']]],
-    ['规格（vCPU / 内存取自规格）', [['规格名称', 'flavor'], ['规格 ID', 'flavorId', 'mono'], ['vCPU', 'vcpus', 'num'], ['内存', 'ramMb', 'mb'], ['系统盘大小（规格）', 'diskGb', 'gb'], ['镜像 ID', 'imageId', 'mono'], ['密钥对', 'keyName']]],
+    ['位置与网络', [['所在节点', 'node'], ['实例名称', 'instanceName'], ['可用区', 'az'], ['IP 地址', 'ips'], ['MAC 地址', 'macs'], ['安全组', 'securityGroups']]],
+    ['规格（vCPU / 内存取自规格）', [['规格名称', 'flavor'], ['规格 ID', 'flavorId', 'mono'], ['vCPU', 'vcpus', 'num'], ['内存', 'ramMb', 'mb'], ['挂载云盘数', 'volumeCount', 'num'], ['镜像 ID', 'imageId', 'mono'], ['密钥对', 'keyName']]],
     ['归属与时间', [['项目 ID', 'projectId', 'mono'], ['用户 ID', 'userId', 'mono'], ['创建时间', 'createdAt', 'time'], ['更新时间', 'updatedAt', 'time'], ['启动时间', 'launchedAt', 'time']]],
   ],
   volumes: [

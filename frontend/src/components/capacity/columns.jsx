@@ -16,6 +16,7 @@ const phys = [
   platCol(),
   statusCol('status', '状态', 90),
   { key: 'ip', title: '管理 IP', width: 130, sortable: true, render: (r) => txt(r.ip, 'font-mono') },
+  { key: 'ipmiIp', title: '带外地址', width: 130, sortable: true, render: (r) => txt(r.ipmiIp, 'font-mono') },
 ];
 
 const nodes = [
@@ -37,13 +38,6 @@ const vms = [
   projCol(),
   { key: 'ips', title: 'IP 地址', width: 170, sortable: true, render: (r) => clip(r.ips, 160) },
   { key: 'flavor', title: '规格名称', width: 150, sortable: true, render: (r) => clip(r.flavor, 140) },
-  { key: 'vcpus', title: 'vCPU', width: 80, sortable: true, align: 'right', render: (r) => numCell(r.vcpus) },
-  { key: 'ramMb', title: '内存', width: 100, sortable: true, align: 'right', render: (r) => (r.ramMb == null ? txt(null) : txt(mb(r.ramMb), 'tabular-nums')) },
-  { key: 'diskGb', title: '系统盘', width: 100, sortable: true, align: 'right', render: (r) => gbCell(r.diskGb) },
-  { key: 'volumeCount', title: '挂载云盘', width: 90, sortable: true, align: 'right', render: (r) => numCell(r.volumeCount) },
-  { key: 'az', title: '可用区', width: 110, sortable: true, render: (r) => txt(r.az) },
-  { key: 'powerState', title: '电源状态', width: 100, sortable: true, render: (r) => txt(r.powerState) },
-  { key: 'securityGroups', title: '安全组', width: 150, render: (r) => clip(r.securityGroups, 140) },
   { key: 'createdAt', title: '创建时间', width: 160, sortable: true, render: (r) => time(r.createdAt) },
 ];
 
@@ -64,9 +58,7 @@ const ports = [
   { key: 'mac', title: 'MAC 地址', width: 150, sortable: true, render: (r) => txt(r.mac, 'font-mono') },
   { key: 'ips', title: 'IP 地址', width: 150, sortable: true, render: (r) => clip(r.ips, 140) },
   { key: 'networkName', title: '所属网络', width: 160, sortable: true, render: (r) => clip(r.networkName || r.networkId, 150) },
-  { key: 'subnets', title: '子网', width: 170, sortable: true, render: (r) => clip(r.subnets, 160) },
   { key: 'deviceName', title: '所属设备', width: 190, sortable: true, render: (r) => clip(r.deviceName || r.deviceId, 180) },
-  { key: 'bindingHost', title: '绑定主机', width: 140, sortable: true, render: (r) => txt(r.bindingHost) },
   { key: 'createdAt', title: '创建时间', width: 160, sortable: true, render: (r) => time(r.createdAt) },
 ];
 
@@ -84,7 +76,7 @@ const pools = [
 
 export const COLUMNS = { phys, nodes, vms, volumes, ports, pools };
 export const PLACEHOLDER = {
-  phys: '搜索主机名 / 型号 / 序列号 / CPU 型号 / IP / 平台…',
+  phys: '搜索主机名 / 型号 / 序列号 / CPU 型号 / IP / 带外地址 / 平台…',
   nodes: '搜索节点名称 / IP / 平台…',
   vms: '搜索虚拟机名称 / UUID / IP / MAC / 节点 / 项目 / 规格 / 平台…',
   volumes: '搜索云硬盘名称 / UUID / 项目 / 挂载虚拟机 / 类型 / 后端 / 平台…',

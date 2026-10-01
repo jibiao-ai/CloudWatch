@@ -193,7 +193,7 @@ func vmRow(s map[string]any, lk *lookups) Row {
 	r["flavor"] = first(str(fd, "name"), str(fl, "original_name"), str(fl, "name"), str(fl, "id"))
 	r["flavorId"] = first(str(fl, "id"), str(fd, "id"))
 	pick2 := func(k string) *float64 { return first2num(flt(fd, k), flt(fl, k)) }
-	r["vcpus"], r["ramMb"], r["diskGb"] = pick2("vcpus"), pick2("ram"), pick2("disk")
+	r["vcpus"], r["ramMb"] = pick2("vcpus"), pick2("ram") // 规格里的 disk 不是真实系统盘，不再输出
 	if im := obj(s, "image"); im != nil {
 		r["imageId"] = str(im, "id")
 	} else {

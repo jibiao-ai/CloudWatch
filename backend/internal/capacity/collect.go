@@ -138,7 +138,16 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return parseNodes(raw)
 	})
 	run(&proj, func() ([]map[string]any, error) { // Keystone 项目（ID → 名称）：GET {keystone}/v3/projects
-		return getAll(ctx, cn, cn.Keystone()+"/projects", "projects", nil)
+		items, err := getAll(ctx, cn, cn.Keystone()+"/projects", "projects", nil)
+		if err != nil && strings.Contains(err.Error(), "403") {
+			// 项目范围 Token 无 identity:list_projects 权限：改用同账号的域范围 Token 重试
+			dc, e2 := cn.WithDomainScope(ctx)
+			if e2 != nil {
+				return items, fmt.Errorf("%v；改用域范围 Token 重试失败：%v", err, e2)
+			}
+			return getAll(ctx, dc, dc.Keystone()+"/projects", "projects", nil)
+		}
+		return items, err
 	})
 	run(&flv, func() ([]map[string]any, error) { // Nova 规格（ID → 名称 / vCPU / 内存）：GET {nova}/flavors/detail
 		return getAll(ctx, cn, nova+"/flavors/detail", "flavors", url.Values{"is_public": {"None"}})
