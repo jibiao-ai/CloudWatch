@@ -1,7 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+RUN npm config set registry ${NPM_REGISTRY:-https://registry.npmmirror.com} && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund)
 COPY . .
 ARG VITE_USE_MOCK=false
 ENV VITE_USE_MOCK=$VITE_USE_MOCK
