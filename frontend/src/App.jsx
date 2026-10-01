@@ -24,6 +24,7 @@ const DomainConfigPage = lazy(() => import('./pages/DomainConfigPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const PerformancePage = lazy(() => import('./pages/PerformancePage'));
 const AlertCenterPage = lazy(() => import('./pages/AlertCenterPage'));
+const CapacityPage = lazy(() => import('./pages/CapacityPage'));
 const PlannedPage = lazy(() => import('./pages/PlannedPage'));
 
 /** 路由表：path + 权限码。菜单由后端权限树生成，这里的权限码用于路由守卫（无权限 → 403） */
@@ -31,6 +32,7 @@ const GUARDED = [
   ['/dashboard', DashboardPage, 'dashboard:view'],
   ['/monitor', PerformancePage, 'monitor:view'],
   ['/alerts', AlertCenterPage, 'alert:view'],
+  ['/capacity', CapacityPage, 'capacity:view'],
   ['/system/providers', PlatformManagePage, 'provider:view'],
   ['/system/users', UsersPage, 'user:view'],
   ['/system/roles', RolesPage, 'role:view'],
@@ -38,8 +40,8 @@ const GUARDED = [
   ['/system/domain', DomainConfigPage, 'domain:view'],
   ['/system/settings', SettingsPage, 'settings:view'],
 ];
-const PLANNED = ['resource-mgmt', 'resource-view', 'inspection', 'capacity', 'topology', 'analytics'];
-const PLANNED_PERM = { 'resource-mgmt': 'resource:view', 'resource-view': 'resource:view', inspection: 'inspection:view', capacity: 'capacity:view', topology: 'topology:view', analytics: 'analytics:view' };
+const PLANNED = ['resource-mgmt', 'resource-view', 'inspection', 'topology', 'analytics'];
+const PLANNED_PERM = { 'resource-mgmt': 'resource:view', 'resource-view': 'resource:view', inspection: 'inspection:view', topology: 'topology:view', analytics: 'analytics:view' };
 
 export default function App() {
   const navigate = useNavigate();

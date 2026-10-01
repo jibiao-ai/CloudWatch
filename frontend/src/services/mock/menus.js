@@ -8,7 +8,7 @@ const TREE = [
   { code: 'resource-view', name: '统一资源视图', icon: 'LayoutList', children: [{ code: 'resource-view-home', name: '资源总览', path: '/planned/resource-view', permission: 'resource:view', icon: 'LayoutList', planned: true }] },
   { code: 'inspection', name: '自动化巡检', icon: 'ClipboardCheck', children: [{ code: 'inspection-home', name: '巡检任务', path: '/planned/inspection', permission: 'inspection:view', icon: 'ClipboardCheck', planned: true }] },
   { code: 'monitor', name: '监控中心', icon: 'Activity', children: [{ code: 'monitor-home', name: '监控总览', path: '/monitor', permission: 'monitor:view', icon: 'Activity' }] },
-  { code: 'capacity', name: '容量管理', icon: 'Database', children: [{ code: 'capacity-home', name: '容量总览', path: '/planned/capacity', permission: 'capacity:view', icon: 'Database', planned: true }] },
+  { code: 'capacity', name: '容量管理', icon: 'Database', children: [{ code: 'capacity-home', name: '容量总览', path: '/capacity', permission: 'capacity:view', icon: 'Database' }] },
   { code: 'alert', name: '告警中心', icon: 'BellRing', children: [{ code: 'alert-home', name: '告警列表', path: '/alerts', permission: 'alert:view', icon: 'BellRing' }] },
   { code: 'topology', name: '资源拓扑', icon: 'Network', children: [{ code: 'topology-home', name: '全链路拓扑', path: '/planned/topology', permission: 'topology:view', icon: 'Network', planned: true }] },
   { code: 'analytics', name: '运营分析', icon: 'ChartPie', children: [{ code: 'analytics-home', name: '运营报表', path: '/planned/analytics', permission: 'analytics:view', icon: 'ChartPie', planned: true }] },

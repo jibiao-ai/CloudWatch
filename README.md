@@ -227,3 +227,14 @@ npm run lint:rules          # 规则扫描（见下）
 - **服务状态**：按《接口补充文档》对照表友好命名（35 项；表外指标兜底显示去前后缀的名称），并增加 分类、状态、实例数、服务指标、附加信息、指标时间；顶部统计卡与 状态/分类 筛选。
 - **数据库**：迁移 0007 为 `monitor_snapshots` 增加 `vms` 列。
 - **口径说明**（文档未给出确切指标名，需以真实环境为准）：节点网络流量用 `series/query` 的 `irate(node_network_receive|transmit_bytes_total{物理网卡}[5m])`（旧文档给出）；磁盘 I/O 使用率用 `max by (node_name)(rate(node_disk_io_time_seconds_total[5m]))*100`；若真实环境不支持，采集明细会显示对应步骤失败原因，其余功能不受影响。
+
+### 第21轮（容量管理，对接《接口补充文档》第6章）
+- **入口**：菜单「容量管理」→ `/capacity`（权限 `capacity:view`；立即采集 `capacity:collect`）。页签：**总览 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储**，页签上显示条目总数；聚合**全部已对接云平台**，可按「所属云平台」「状态」筛选。
+- **全部列表**：服务端关键字搜索（命中接口返回的全部字段，含中文状态词，多个关键字空格分隔需同时命中）+ 列头排序（数值按大小、文本按自然序、空值恒排最后）+ 分页（默认 **10 条/页**，可选 10/20/50/100，与告警中心一致）。
+- **虚拟机 / 云硬盘 / 虚拟网卡（及计算节点）**：必显 **UUID**、**所属云平台**（平台名 + 控制台 IP 超链接，新标签页打开）；点击行弹出详情抽屉：基本信息（中文分组）/ 全部字段（原始 JSON 打平为 路径→值）/ 原始 JSON，即接口返回的全量信息。
+- **集群存储**（`scheduler-stats/get_pools`）：存储池名称、总容量、剩余容量、已分配容量、精简置备总容量、使用率、供应商（`vendor_name`）、存储协议（`storage_protocol`）、后端状态（`backend_state`）、后端名称（`volume_backend_name`）等，状态/协议/供应商均中文显示（如 `ceph`→Ceph（RBD）、`up`→正常、`Easystack`→易捷行云（EasyStack））。
+- **总览**：全平台 KPI（云平台/节点/虚拟机/云硬盘/网卡/存储池）、vCPU / 内存 / 存储使用率、存储池容量四项合计、各资源状态分布、各云平台容量汇总表（搜索/排序/分页）、采集明细（每个接口的结果/条数/耗时/错误）。
+- **接口（第6章）**：Nova `GET /v2.1/os-hypervisors/detail`、`GET /v2.1/servers/detail?all_tenants=true`；Cinder `GET /v3/{project_id}/volumes/detail`（失败回退 `/volumes` + 逐个详情）、`GET /v3/{project_id}/scheduler-stats/get_pools?detail=True`；Neutron `GET /v2.0/ports`（并取 `/networks`、`/subnets` 解析网络名与网段）。均自动分页（limit=500 + marker）。
+- **本平台接口**：`GET /api/capacity/overview`、`GET /api/capacity/{nodes|vms|volumes|ports|pools}?keyword&providerId&status&sortKey&sortOrder&page&pageSize`、`GET /api/capacity/{kind}/{providerId}/{id}`、`POST /api/capacity/collect[?providerId=]`。
+- **采集与存储**：后台 30 秒巡检，到期（取「平台同步间隔」与 5 分钟的较大值）即采集；结果按平台 gzip 压缩落库（迁移 0008 `capacity_snapshots`），某个接口失败只影响该类数据（保留上次成功数据，错误在总览「采集明细」显示）。
+- **口径说明**：① 文档示例卷接口为 `/v2/{project_id}/volumes`，而存储池接口为 `/v3/...`，实现按服务目录 `volumev3`（v3）调用，与 v2 响应结构一致；② 计算节点 vCPU / 内存「容量」= 物理量 × 分配比（`cpu_allocation_ratio` / `ram_allocation_ratio`），详情中同时给出物理值；③ 容量单位：Cinder `*_gb` 按 GiB、Nova `memory_mb` 按 MiB 显示；④ 存储池文档仅列出部分字段，其余 capabilities 一并展示。

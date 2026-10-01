@@ -11,6 +11,7 @@ import (
 
 	"github.com/jibiao-ai/cloudwatch/internal/audit"
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
+	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
@@ -28,6 +29,7 @@ type Server struct {
 	Hosts     *hosts.Manager
 	Providers *provider.Manager
 	Monitor   *monitor.Manager
+	Capacity  *capacity.Manager
 }
 
 const maxBody = 8 << 20 // 设置里可能带 Logo / 背景图（base64），放宽到 8MB
@@ -130,6 +132,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/providers/{id}/impact", s.guard("provider:view", s.providerImpact))
 	mux.Handle("PUT /api/providers/{id}/write-switch", s.guard("provider:write_switch", s.providerWriteSwitch))
 	mux.Handle("POST /api/providers/{id}/sync", s.guard("provider:sync", s.providerSync))
+	// 容量管理（对接接口文档第 6 章）
+	mux.Handle("GET /api/capacity/overview", s.guard("capacity:view", s.capacityOverview))
+	mux.Handle("POST /api/capacity/collect", s.guard("capacity:collect", s.capacityCollect))
+	mux.Handle("GET /api/capacity/{kind}", s.guard("capacity:view", s.capacityList))
+	mux.Handle("GET /api/capacity/{kind}/{providerId}/{id}", s.guard("capacity:view", s.capacityDetail))
 	// 监控中心
 	mux.Handle("GET /api/monitor/overview", s.guard("monitor:view", s.monitorOverview))
 	mux.Handle("GET /api/monitor/{id}", s.guard("monitor:view", s.monitorSnapshot))

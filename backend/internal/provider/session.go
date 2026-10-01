@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // Conn 一个已认证的 OpenStack 平台连接：供性能监控 / 告警等模块调用 EMLA 等组件接口。
@@ -54,6 +55,20 @@ func (cn *Conn) ProjectID() string { return cn.Sess.ProjectID }
 // Nova 返回 Nova 基础地址（含 /v2.1）：优先服务目录 compute，缺省 <scheme>://nova.<根域名>/v2.1。
 func (cn *Conn) Nova() string {
 	return cn.Sess.endpoint("compute", cn.c.BaseURL(cn.scheme, "nova."+cn.Root)+"/v2.1")
+}
+
+// Cinder 返回 Cinder v3 基础地址（含项目 ID）：优先服务目录 volumev3 / block-storage，缺省 <scheme>://cinder.<根域名>/v3/<项目ID>。
+func (cn *Conn) Cinder() string {
+	return cn.Sess.endpoint("volumev3", cn.Sess.endpoint("block-storage", cn.c.BaseURL(cn.scheme, "cinder."+cn.Root)+"/v3/"+cn.Sess.ProjectID))
+}
+
+// Neutron 返回 Neutron 基础地址（含 /v2.0）：优先服务目录 network，缺省 <scheme>://neutron.<根域名>/v2.0。
+func (cn *Conn) Neutron() string {
+	u := strings.TrimRight(cn.Sess.endpoint("network", cn.c.BaseURL(cn.scheme, "neutron."+cn.Root)), "/")
+	if !strings.Contains(u, "/v2.0") {
+		u += "/v2.0"
+	}
+	return u
 }
 
 // Gnocchi 返回 Gnocchi 基础地址：<scheme>://gnocchi.<根域名>（接口文档约定的域名）。
