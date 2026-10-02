@@ -1,6 +1,7 @@
 import React from 'react';
 import CapacityBar from '../CapacityBar';
-import ConsoleLink from '../ConsoleLink';
+import { ConsoleIconLink } from '../ConsoleLink';
+import Tooltip from '../Tooltip';
 import { formatBytes, formatNumber, formatDateTime } from '../../utils/format';
 
 /** 后端 *Tone → 标签样式（颜色全部走主题变量） */
@@ -25,8 +26,12 @@ export const mb = (v) => formatBytes(Number(v) * 1024 ** 2, 2);
 export const gbCell = (v) => (v == null ? dash : <span className="tabular-nums text-[13px]">{gb(v)}</span>);
 
 /** 已用 / 总量 + 使用率条 */
-export const Usage = ({ used, total, fmt }) => (total > 0
-  ? <div className="w-[170px]"><div className="text-xs text-fg-muted tabular-nums mb-0.5">{fmt(used || 0)} / {fmt(total)}</div><CapacityBar compact used={used || 0} total={total} label="使用率" barOnly /></div>
+export const Usage = ({ used, total, fmt, name = '使用率' }) => (total > 0
+  ? (
+    <Tooltip block placement="top" content={`${name}：${((used || 0) / total * 100).toFixed(1)}%`}>
+      <div className="w-[170px] cursor-default"><div className="text-xs text-fg-muted tabular-nums mb-0.5">{fmt(used || 0)} / {fmt(total)}</div><CapacityBar compact used={used || 0} total={total} label={name} barOnly /></div>
+    </Tooltip>
+  )
   : dash);
 
 /** 通用列：UUID 与 所属云平台（含控制台超链接） */
@@ -36,8 +41,11 @@ export function PlatCell({ platform }) {
   if (!platform) return dash;
   return (
     <div className="min-w-0">
-      <div className="font-medium truncate max-w-[150px]" title={platform.name}>{platform.name}</div>
-      <ConsoleLink ip={platform.consoleIp} plain />
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="font-medium truncate max-w-[140px]" title={platform.name}>{platform.name}</span>
+        <ConsoleIconLink ip={platform.consoleIp} />
+      </div>
+      {platform.consoleIp && <div className="text-[13px] font-mono text-fg-muted">{platform.consoleIp}</div>}
     </div>
   );
 }

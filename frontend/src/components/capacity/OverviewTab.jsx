@@ -47,7 +47,7 @@ export default function OverviewTab({ ov, onJump }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div className="card p-4"><CapacityBar used={t.vcpusUsed} total={t.vcpusCap} format={n0} label="vCPU 使用率" /></div>
         <div className="card p-4"><CapacityBar used={t.memMbUsed} total={t.memMbCap} format={mb} label="内存使用率" /></div>
-        <div className="card p-4"><CapacityBar used={t.poolTotalGb - t.poolFreeGb} total={t.poolTotalGb} format={gb} label="集群存储使用率" /></div>
+        <div className="card p-4"><CapacityBar used={t.poolTotalGb - t.poolFreeGb} total={t.poolTotalGb} format={gb} label="存储使用率" /></div>
       </div>
       <div className="card p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 text-[13px]">
         {[['存储池总容量', t.poolTotalGb], ['剩余容量', t.poolFreeGb], ['已分配容量', t.poolAllocatedGb], ['精简置备总容量', t.poolProvisionedGb]].map(([k, v]) => <div key={k}><div className="text-xs text-fg-muted">{k}</div><div className="text-lg font-semibold text-fg tabular-nums">{gb(v)}</div></div>)}

@@ -33,7 +33,7 @@ export const FIELDS = {
   ],
   pools: [
     ['基本信息', [['后端名称（volume_backend_name）', 'backendName'], ['存储池名称', 'poolName'], ['完整名称（host@backend#pool）', 'name'], ...P.slice(1), ['供应商（vendor_name）', 'vendorText'], ['存储协议（storage_protocol）', 'protocolText'], ['后端状态（backend_state）', 'statusText'], ['驱动版本', 'driverVersion'], ['位置信息', 'locationInfo'], ['数据时间', 'timestamp']]],
-    ['容量', [['总容量', 'totalGb', 'gb'], ['剩余容量', 'freeGb', 'gb'], ['已用容量', 'usedGb', 'gb'], ['使用率（%）', 'usedPercent', 'num'], ['已分配容量', 'allocatedGb', 'gb'], ['精简置备总容量', 'provisionedGb', 'gb']]],
+    ['容量', [['总容量', 'totalGb', 'gb'], ['剩余容量', 'freeGb', 'gb'], ['已用容量', 'usedGb', 'gb'], ['存储使用率（%）', 'usedPercent', 'num'], ['已分配容量', 'allocatedGb', 'gb'], ['精简置备总容量', 'provisionedGb', 'gb']]],
     ['能力', [['精简置备', 'thin'], ['最大超分比', 'maxRatio', 'num'], ['预留比例（%）', 'reservedPercent', 'num'], ['多重挂载', 'multiattach'], ['复制', 'replication']]],
   ],
 };

@@ -1,4 +1,4 @@
-import ConsoleLink from '../components/ConsoleLink';
+import { ConsoleIconLink } from '../components/ConsoleLink';
 import React, { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from 'recharts';
@@ -121,7 +121,7 @@ export default function DashboardPage() {
               <tbody>
                 {ov.data.providers.map((p) => (
                   <tr key={p.id} className="hover:bg-hover/60 transition-colors">
-                    <td className="td"><div className="font-medium">{p.name}</div><div><ConsoleLink ip={p.consoleIp} className="!text-xs" /></div></td>
+                    <td className="td"><div className="flex items-center gap-1"><span className="font-medium">{p.name}</span><ConsoleIconLink ip={p.consoleIp} /></div>{p.consoleIp && <div className="text-xs font-mono text-fg-muted">{p.consoleIp}</div>}</td>
                     <td className="td"><span className={ENV_TAG[p.envType]}>{ENV_TYPES.find((e) => e.value === p.envType)?.label}</span></td>
                     <td className="td"><StatusDot status={p.status} label /></td>
                     <td className="td tabular-nums">{formatNumber(p.vms)}</td>

@@ -1,14 +1,17 @@
 import React from 'react';
-import ConsoleLink from '../ConsoleLink';
+import { ConsoleIconLink } from '../ConsoleLink';
 import CapacityBar from '../CapacityBar';
 
-/** 所属云平台：平台名称 + 控制台 IP 超链接（新标签页打开云平台控制台） */
+/** 所属云平台：平台名称 + 链接按钮同一行，控制台 IP 为下方普通文字 */
 export function PlatformCell({ platform }) {
   if (!platform) return <span className="text-fg-subtle">—</span>;
   return (
     <div className="min-w-0">
-      <div className="font-medium truncate max-w-[150px]" title={platform.name}>{platform.name}</div>
-      <ConsoleLink ip={platform.consoleIp} />
+      <div className="flex items-center gap-1 min-w-0">
+        <span className="font-medium truncate max-w-[140px]" title={platform.name}>{platform.name}</span>
+        <ConsoleIconLink ip={platform.consoleIp} />
+      </div>
+      {platform.consoleIp && <div className="text-[13px] font-mono text-fg-muted">{platform.consoleIp}</div>}
     </div>
   );
 }

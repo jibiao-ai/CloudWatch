@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Modal from '../Modal';
 import CustomSelect from '../CustomSelect';
-import ConsoleLink from '../ConsoleLink';
+import { ConsoleIconLink } from '../ConsoleLink';
 import TrendCard from './TrendCard';
 import { RANGES, formatRate } from '../../utils/monitorUtil';
 
@@ -12,7 +12,7 @@ export default function NodeDetailModal({ node, platform, providerId, refreshKey
   const common = { providerId, range, refreshKey, target: node.name };
   return (
     <Modal open title={`节点监控详情 · ${node.name}`} width={1020} onClose={onClose}
-      subtitle={<span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">{node.hostIp && <span>节点 IP：{node.hostIp}</span>}{platform && <span className="inline-flex items-center gap-1.5">所属云平台：{platform.name}<ConsoleLink ip={platform.consoleIp} /></span>}</span>}>
+      subtitle={<span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">{node.hostIp && <span>节点 IP：{node.hostIp}</span>}{platform && <span className="inline-flex items-center gap-1.5">所属云平台：{platform.name}<ConsoleIconLink ip={platform.consoleIp} />{platform.consoleIp && <span className="font-mono">{platform.consoleIp}</span>}</span>}</span>}>
       <div className="flex items-center justify-between gap-3 mb-3">
         <span className="text-xs text-fg-muted">趋势来自后台按平台同步间隔采集并落库的历史样本，采样点不足 2 个时显示「历史数据积累中」</span>
         <div className="w-[140px] shrink-0"><CustomSelect aria-label="趋势范围" value={range} onChange={setRange} options={RANGES} /></div>
