@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jibiao-ai/cloudwatch/internal/analytics"
 	"github.com/jibiao-ai/cloudwatch/internal/audit"
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
 	"github.com/jibiao-ai/cloudwatch/internal/capacity"
@@ -30,6 +31,7 @@ type Server struct {
 	Providers *provider.Manager
 	Monitor   *monitor.Manager
 	Capacity  *capacity.Manager
+	Analytics *analytics.Engine
 }
 
 const maxBody = 8 << 20 // 设置里可能带 Logo / 背景图（base64），放宽到 8MB
@@ -138,6 +140,20 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/capacity/{kind}", s.guard("capacity:view", s.capacityList))
 	mux.Handle("GET /api/capacity/{kind}/{providerId}/{id}", s.guard("capacity:view", s.capacityDetail))
 	// 资源拓扑（聚合 平台管理 / 资产管理 / 监控中心 / 告警中心 已落库数据）
+	mux.Handle("GET /api/analytics/overview", s.guard("analytics:view", s.analyticsOverview))
+	mux.Handle("GET /api/analytics/trend", s.guard("analytics:view", s.analyticsTrend))
+	mux.Handle("GET /api/analytics/base", s.guard("analytics:view", s.analyticsBase))
+	mux.Handle("GET /api/analytics/base/bands", s.guard("analytics:view", s.analyticsBaseBands))
+	mux.Handle("GET /api/analytics/vm", s.guard("analytics:view", s.analyticsVM))
+	mux.Handle("GET /api/analytics/vm/bands", s.guard("analytics:view", s.analyticsVMBands))
+	mux.Handle("GET /api/analytics/disk", s.guard("analytics:view", s.analyticsDisk))
+	mux.Handle("GET /api/analytics/list/{kind}", s.guard("analytics:view", s.analyticsList))
+	mux.Handle("GET /api/analytics/export/{kind}", s.guard("analytics:export", s.analyticsExport))
+	mux.Handle("GET /api/analytics/optimize/summary", s.guard("analytics:view", s.analyticsOptSummary))
+	mux.Handle("GET /api/analytics/optimize/list", s.guard("analytics:view", s.analyticsOptList))
+	mux.Handle("POST /api/analytics/optimize/ignore", s.guard("analytics:ignore", s.analyticsIgnore))
+	mux.Handle("GET /api/analytics/policies", s.guard("analytics:view", s.analyticsPolicies))
+	mux.Handle("PUT /api/analytics/policies/{kind}", s.guard("analytics:policy_update", s.analyticsPolicyUpdate))
 	mux.Handle("GET /api/topology/overview", s.guard("topology:view", s.topologyOverview))
 	mux.Handle("GET /api/topology/{providerId}", s.guard("topology:view", s.topologyGraph))
 	// 监控中心

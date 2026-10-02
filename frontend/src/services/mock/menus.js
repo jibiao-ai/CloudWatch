@@ -11,7 +11,17 @@ const TREE = [
   { code: 'capacity', name: '资产管理', icon: 'Database', children: [{ code: 'capacity-home', name: '资产总览', path: '/capacity', permission: 'capacity:view', icon: 'Database' }] },
   { code: 'alert', name: '告警中心', icon: 'BellRing', children: [{ code: 'alert-home', name: '告警列表', path: '/alerts', permission: 'alert:view', icon: 'BellRing' }] },
   { code: 'topology', name: '资源拓扑', icon: 'Network', children: [{ code: 'topology-home', name: '全链路拓扑', path: '/topology', permission: 'topology:view', icon: 'Network' }] },
-  { code: 'analytics', name: '运营分析', icon: 'ChartPie', children: [{ code: 'analytics-home', name: '运营报表', path: '/planned/analytics', permission: 'analytics:view', icon: 'ChartPie', planned: true }] },
+  {
+    code: 'analytics', name: '运营分析', icon: 'ChartPie',
+    children: [
+      { code: 'analytics-home', name: '总览', path: '/analytics', permission: 'analytics:view', icon: 'LayoutDashboard' },
+      { code: 'analytics-base', name: '基础资源分析', path: '/analytics/base', permission: 'analytics:view', icon: 'Server' },
+      { code: 'analytics-vm', name: '云主机分析', path: '/analytics/vm', permission: 'analytics:view', icon: 'Activity' },
+      { code: 'analytics-disk', name: '磁盘分析', path: '/analytics/disk', permission: 'analytics:view', icon: 'Database' },
+      { code: 'analytics-optimize', name: '云主机优化', path: '/analytics/optimize', permission: 'analytics:view', icon: 'Gauge' },
+      { code: 'analytics-policy', name: '优化策略', path: '/analytics/policy', permission: 'analytics:view', icon: 'SlidersHorizontal' },
+    ],
+  },
   {
     code: 'system', name: '系统管理', icon: 'Settings2',
     children: [

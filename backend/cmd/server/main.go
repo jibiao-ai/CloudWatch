@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jibiao-ai/cloudwatch/internal/analytics"
 	"github.com/jibiao-ai/cloudwatch/internal/api"
 	"github.com/jibiao-ai/cloudwatch/internal/audit"
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
@@ -56,10 +57,13 @@ func main() {
 	pm := provider.NewManager(d, provider.NewStore(d, box))
 	mm := monitor.NewManager(monitor.NewStore(d), pm, st)
 	cm := capacity.NewManager(capacity.NewStore(d), pm)
-	srv := &api.Server{DB: d, Providers: pm, Monitor: mm, Capacity: cm, Settings: st, Auth: au, Audit: audit.New(d), Retention: retention.New(d, st, au), Hosts: hm}
+	ast := analytics.NewStore(d)
+	sm := analytics.NewSampler(d, ast, cm.Store, mm.Store, pm)
+	srv := &api.Server{DB: d, Providers: pm, Monitor: mm, Capacity: cm, Settings: st, Auth: au, Audit: audit.New(d), Retention: retention.New(d, st, au), Hosts: hm, Analytics: &analytics.Engine{St: ast, Cap: cm.Store, Mon: mm.Store}}
 	srv.Retention.Start(ctx)
 	pm.Start(ctx) // 平台按「同步间隔」后台自动同步；重启时中断的任务置失败
 	cm.Start(ctx) // 资产管理：物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
+	sm.Start(ctx) // 运营分析：把资源数量 / 云主机使用率 / 状态历史按时间积累下来
 	mm.Start(ctx) // 性能指标采集 + 告警同步（间隔复用平台同步间隔）
 	hm.Start(ctx) // 启动即按库中配置同步 hosts / DNS / Docker，重启后自动恢复
 

@@ -26,6 +26,12 @@ const PerformancePage = lazy(() => import('./pages/PerformancePage'));
 const AlertCenterPage = lazy(() => import('./pages/AlertCenterPage'));
 const CapacityPage = lazy(() => import('./pages/CapacityPage'));
 const TopologyPage = lazy(() => import('./pages/TopologyPage'));
+const AnalyticsHomePage = lazy(() => import('./pages/AnalyticsHomePage'));
+const AnalyticsBasePage = lazy(() => import('./pages/AnalyticsBasePage'));
+const AnalyticsVMPage = lazy(() => import('./pages/AnalyticsVMPage'));
+const AnalyticsDiskPage = lazy(() => import('./pages/AnalyticsDiskPage'));
+const AnalyticsOptimizePage = lazy(() => import('./pages/AnalyticsOptimizePage'));
+const AnalyticsPolicyPage = lazy(() => import('./pages/AnalyticsPolicyPage'));
 const PlannedPage = lazy(() => import('./pages/PlannedPage'));
 
 /** 路由表：path + 权限码。菜单由后端权限树生成，这里的权限码用于路由守卫（无权限 → 403） */
@@ -35,6 +41,12 @@ const GUARDED = [
   ['/alerts', AlertCenterPage, 'alert:view'],
   ['/capacity', CapacityPage, 'capacity:view'],
   ['/topology', TopologyPage, 'topology:view'],
+  ['/analytics', AnalyticsHomePage, 'analytics:view'],
+  ['/analytics/base', AnalyticsBasePage, 'analytics:view'],
+  ['/analytics/vm', AnalyticsVMPage, 'analytics:view'],
+  ['/analytics/disk', AnalyticsDiskPage, 'analytics:view'],
+  ['/analytics/optimize', AnalyticsOptimizePage, 'analytics:view'],
+  ['/analytics/policy', AnalyticsPolicyPage, 'analytics:view'],
   ['/system/providers', PlatformManagePage, 'provider:view'],
   ['/system/users', UsersPage, 'user:view'],
   ['/system/roles', RolesPage, 'role:view'],
@@ -42,8 +54,8 @@ const GUARDED = [
   ['/system/domain', DomainConfigPage, 'domain:view'],
   ['/system/settings', SettingsPage, 'settings:view'],
 ];
-const PLANNED = ['resource-mgmt', 'resource-view', 'inspection', 'analytics'];
-const PLANNED_PERM = { 'resource-mgmt': 'resource:view', 'resource-view': 'resource:view', inspection: 'inspection:view', analytics: 'analytics:view' };
+const PLANNED = ['resource-mgmt', 'resource-view', 'inspection'];
+const PLANNED_PERM = { 'resource-mgmt': 'resource:view', 'resource-view': 'resource:view', inspection: 'inspection:view' };
 
 export default function App() {
   const navigate = useNavigate();

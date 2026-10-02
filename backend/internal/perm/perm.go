@@ -24,7 +24,7 @@ var Modules = []Module{
 	{"capacity", "capacity:view", []string{"capacity:collect"}},
 	{"alert", "alert:view", []string{"alert:ack", "alert:sync", "alert:export"}},
 	{"topology", "topology:view", nil},
-	{"analytics", "analytics:view", nil},
+	{"analytics", "analytics:view", []string{"analytics:ignore", "analytics:policy_update", "analytics:export"}},
 }
 
 func All() []string {
@@ -83,7 +83,14 @@ var tree = []MenuGroup{
 	{"capacity", "资产管理", "Database", []MenuItem{{Code: "capacity-home", Name: "资产总览", Path: "/capacity", Permission: "capacity:view", Icon: "Database"}}},
 	{"alert", "告警中心", "BellRing", []MenuItem{{Code: "alert-home", Name: "告警列表", Path: "/alerts", Permission: "alert:view", Icon: "BellRing"}}},
 	{"topology", "资源拓扑", "Network", []MenuItem{{Code: "topology-home", Name: "全链路拓扑", Path: "/topology", Permission: "topology:view", Icon: "Network"}}},
-	{"analytics", "运营分析", "ChartPie", []MenuItem{planned("analytics-home", "运营报表", "analytics", "analytics:view", "ChartPie")}},
+	{"analytics", "运营分析", "ChartPie", []MenuItem{
+		{Code: "analytics-home", Name: "总览", Path: "/analytics", Permission: "analytics:view", Icon: "LayoutDashboard"},
+		{Code: "analytics-base", Name: "基础资源分析", Path: "/analytics/base", Permission: "analytics:view", Icon: "Server"},
+		{Code: "analytics-vm", Name: "云主机分析", Path: "/analytics/vm", Permission: "analytics:view", Icon: "Activity"},
+		{Code: "analytics-disk", Name: "磁盘分析", Path: "/analytics/disk", Permission: "analytics:view", Icon: "Database"},
+		{Code: "analytics-optimize", Name: "云主机优化", Path: "/analytics/optimize", Permission: "analytics:view", Icon: "Gauge"},
+		{Code: "analytics-policy", Name: "优化策略", Path: "/analytics/policy", Permission: "analytics:view", Icon: "SlidersHorizontal"},
+	}},
 	{"system", "系统管理", "Settings2", []MenuItem{
 		{Code: "provider", Name: "平台管理", Path: "/system/providers", Permission: "provider:view", Icon: "Server"},
 		{Code: "user", Name: "用户管理", Path: "/system/users", Permission: "user:view", Icon: "Users"},

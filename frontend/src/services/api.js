@@ -250,6 +250,24 @@ export const topologyApi = {
   getGraph: (providerId) => get(`/topology/${encodeURIComponent(providerId)}`),
 };
 
+/* ============================ 运营分析 ============================ */
+export const analyticsApi = {
+  getOverview: () => get('/analytics/overview'),
+  getTrend: (params) => get('/analytics/trend', params),
+  getBase: (params) => get('/analytics/base', params),
+  getBaseBands: (params) => get('/analytics/base/bands', params),
+  getVM: (params) => get('/analytics/vm', params),
+  getVMBands: (params) => get('/analytics/vm/bands', params),
+  getDisk: (params) => get('/analytics/disk', params),
+  getList: (kind, params) => get(`/analytics/list/${kind}`, params),
+  exportList: (kind) => (params, opt) => blob(`/analytics/export/${kind}`, params, opt),
+  getOptSummary: () => get('/analytics/optimize/summary'),
+  getOptList: (params) => get('/analytics/optimize/list', params),
+  setIgnore: (data) => post('/analytics/optimize/ignore', data),
+  getPolicies: () => get('/analytics/policies'),
+  updatePolicy: (kind, data) => put(`/analytics/policies/${kind}`, data),
+};
+
 export const alertApi = {
   getAlertList: (params) => get('/alerts', params),
   getAlertStats: (params) => get('/alerts/stats', params),

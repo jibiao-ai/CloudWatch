@@ -299,3 +299,15 @@ npm run lint:rules          # 规则扫描（见下）
 - **关系与下钻**：选中任一节点高亮其上下游全链路并绘制连线（承载＝实线；挂载 / 网卡 / 存储＝虚线），可「仅看关联链路」；右侧告警面板点击即定位到关联资源；节点详情抽屉含健康度判定依据、使用率、关联告警、上下游、属性，并可「查看资产详情」打开资产管理详情抽屉。支持关键词 / 健康度 / 资源类型筛选与平台切换。
 - **健康度规则**：资产状态异常 → 异常；严重告警 → 异常、其他告警 → 告警；CPU / 内存 / 存储使用率 ≥85% 异常、≥70% 告警；计算节点承载异常云主机 → 告警；已关机 / 停止 → 已停止；状态未知 → 未知。平台健康度另含验证状态与采集失败。
 - **后端单元测试**：告警关联（UUID / 节点名 / IP / 计算节点优先）、负载阈值、自然排序、存储后端匹配。
+
+### 第28轮新增（运营分析：6 个页面）
+- **入口**：侧栏「运营分析」分组 —— 总览 `/analytics`、基础资源分析 `/analytics/base`、云主机分析 `/analytics/vm`、磁盘分析 `/analytics/disk`、云主机优化 `/analytics/optimize`、优化策略 `/analytics/policy`。权限 `analytics:view`（查看）、`analytics:ignore`（忽略 / 取消忽略建议）、`analytics:policy_update`（修改策略）、`analytics:export`（导出 Excel）；迁移 `0011_analytics.sql` 按角色补齐权限并预置 3 条策略。
+- **口径约定**：不涉及计费 / 组织 / 工作空间 / 区域 —— 页面里没有付费方式、组织架构分布；「区域 / 数据中心」直接用云账号（平台）名称，不单独成列；**集群** = 物理节点上报的 `cluster_id`（显示为「集群 N」，没有则「默认集群」）。
+- **总览**：云账号 / 云主机 / 磁盘 / 宿主机 / 存储器计数；资源明细（按云账号，每页 5 条）；基础资源**分配率**（3 个仪表盘）与**使用率**（3 个水球）；云主机趋势（近 7 天 / 30 天 / 半年 / 一年）；优化建议卡片（建议降配 / 升配 / 回收，点击进入对应建议）。
+- **基础资源分析**：标签「资源分析 / 宿主机明细 / 存储器明细」；筛选 云账号 → 集群 → 宿主机 / 存储器（级联）；基础资源分布环形图（宿主机 / 存储器切换）；宿主机上云主机分布（运行中 / 已停止堆叠）；按使用率分布折线（日期范围 + CPU / 内存 / 存储器切换，5 个区间 0-20% … 80-100%）。
+- **云主机分析**：云账号分布 / 运行状态环形图、云主机趋势、按使用率分布（CPU / 内存）；「资源明细」支持按名称或 IP 搜索、IP 多个时「更多」展开、列设置、刷新、导出 Excel。
+- **磁盘分析**：云账号分布 / 挂载状态（空闲 / 已挂载 / 其他）/ 磁盘类型环形图，单位可切「数量(块) / 容量(G)」；磁盘趋势；明细列 名称 / 云账号 / 集群·可用区 / 所属云主机 / 状态 / 大小(G)。
+- **云主机优化 + 优化策略**：3 类建议（降配 / 升配 / 回收）卡片可选，卡片右上角设置图标直达对应策略编辑；「优化资源 / 已忽略资源」切换，忽略 / 取消忽略（单个或批量，ConfirmModal 二次确认，落审计）；建议原因显示命中的实际值。策略可编辑：名称、启用、统计周期、条件（字段 + 运算符 + 取值，条件间 并且 / 或者，**并且优先于或者**），后端 422 字段级校验。默认策略：升配＝CPU 或内存最大值 ≥90%；降配＝CPU 或内存最大值 ≤1%；回收＝持续关机 ≥30 天 或 实例状态为待回收。
+- **数据来源与历史积累**：只读已落库的资产 / 监控快照，**不增加云平台接口调用**。后台采样器（每分钟）把云主机数量、磁盘数量 / 容量、各云主机 CPU / 内存使用率（日均 / 日最大）、云主机开关机状态起点写入 `analytics_*` 表（`analytics_counts / analytics_vm_usage / analytics_vm_state / analytics_state / analytics_policies / analytics_ignores`），存储器使用率写入 `metric_samples`。**趋势、使用率分布、关机 / 运行时长、优化建议都从部署之后开始积累**；低负载类条件（≤）需积满完整统计周期（默认 10 天）才会生效，避免数据不足时误报。
+- **后端**：新增 `backend/internal/analytics`（engine / analysis / optimize / policy / store / sampler），路由 `GET /api/analytics/{overview,trend,base,base/bands,vm,vm/bands,disk,list/{hosts|pools|vms|disks},export/{hosts|pools|vms|disks|opt},optimize/summary,optimize/list,policies}`、`POST /api/analytics/optimize/ignore`、`PUT /api/analytics/policies/{kind}`。单元测试覆盖策略求值（AND 先于 OR、低负载窗口、关机 / 运行门控）、校验、原因文案、使用率区间、分页、日期范围。
+- **前端**：新增 `components/analytics/`（Panel / Seg、Gauge、WaterCircle、Donut、BarDist、HostVmChart、TrendArea、BandsChart、BandsPanel、DonutPanel、DateRange、DetailTable、PolicyModal 等）与 6 个 `Analytics*Page.jsx`；图表配色全部取自 `useChartPalette()`（新增 `inverse` 色供水球文字使用）。

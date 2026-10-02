@@ -82,6 +82,7 @@ export function getChartPalette(isDark) {
     grid: cssRgb('border', isDark ? 0.9 : 1),
     axis: cssRgb('text-muted'),
     text: cssRgb('text'),
+    inverse: cssRgb('text-inverse'),
     tooltipBg: cssRgb('card'),
     tooltipBorder: cssRgb('border-strong'),
     primary,

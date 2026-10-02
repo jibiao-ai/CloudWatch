@@ -68,7 +68,7 @@ export const PERMISSION_MODULES = [
     ],
   },
   { code: 'topology', name: '资源拓扑', menu: 'topology:view', buttons: [] },
-  { code: 'analytics', name: '运营分析', menu: 'analytics:view', buttons: [] },
+  { code: 'analytics', name: '运营分析', menu: 'analytics:view', buttons: [{ code: 'analytics:ignore', name: '忽略建议' }, { code: 'analytics:policy_update', name: '修改优化策略' }, { code: 'analytics:export', name: '导出' }] },
 ];
 
 export const ALL_PERMISSION_CODES = PERMISSION_MODULES.flatMap((m) => [m.menu, ...m.buttons.map((b) => b.code)]);
