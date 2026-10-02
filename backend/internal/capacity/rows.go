@@ -294,6 +294,11 @@ func volumeRow(v map[string]any, vmName map[string]string, lk *lookups) Row {
 
 // ---- 虚拟网卡：GET /v2.0/ports ----
 
+// isFloatingPort 设备类型（device_owner）为 network:floatingip 的端口（浮动 IP）。
+func isFloatingPort(p map[string]any) bool {
+	return strings.EqualFold(strings.TrimSpace(str(p, "device_owner")), "network:floatingip")
+}
+
 func portRow(p map[string]any, netName, subCIDR, vmName map[string]string, okNet, okSub bool, lk *lookups) Row {
 	r := Row{"id": str(p, "id"), "name": str(p, "name"), "raw": p}
 	setLab(r, "status", portStatus, strings.ToLower(str(p, "status")))

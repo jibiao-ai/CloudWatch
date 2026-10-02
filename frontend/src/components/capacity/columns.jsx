@@ -20,8 +20,8 @@ const phys = [
 ];
 
 const nodes = [
-  { key: 'hostIp', title: '管理 IP', width: 130, sortable: true, render: (r) => txt(r.hostIp, 'font-mono') },
   { key: 'name', title: '节点名称', width: 170, sortable: true, render: (r) => <span className="font-medium" title={r.hostname}>{r.name}</span> },
+  { key: 'hostIp', title: '管理 IP', width: 130, sortable: true, render: (r) => txt(r.hostIp, 'font-mono') },
   platCol(),
   { key: 'vcpus', title: 'CPU 核数', width: 90, sortable: true, align: 'right', render: (r) => numCell(r.vcpus) },
   { key: 'vcpuPercent', title: 'vCPU（已用 / 容量）', width: 190, sortable: true, render: (r) => <Usage used={r.vcpusUsed} total={r.vcpusCap} fmt={(v) => `${v}`} name="vCPU 使用率" /> },
@@ -32,8 +32,8 @@ const nodes = [
 ];
 
 const vms = [
-  { key: 'ips', title: '主机 IP', width: 170, sortable: true, render: (r) => clip(r.ips, 160) },
   { key: 'name', title: '虚拟机名称', width: 180, sortable: true, render: (r) => <span className="font-medium truncate block max-w-[170px]" title={r.name}>{r.name || '—'}</span> },
+  { key: 'ips', title: '虚机 IP', width: 170, sortable: true, render: (r) => clip(r.ips, 160) },
   { key: 'flavor', title: '规格名称', width: 150, sortable: true, render: (r) => clip(r.flavor, 140) },
   uuidCol('UUID'), statusCol('status', '状态', 90), projCol(), platCol(),
   { key: 'node', title: '计算节点', width: 150, sortable: true, render: (r) => txt(r.node) },
@@ -78,7 +78,7 @@ export const COLUMNS = { phys, nodes, vms, volumes, ports, pools };
 export const PLACEHOLDER = {
   phys: '搜索序列号 / 型号 / CPU 型号 / 主机名 / 管理 IP / 带外 IP / 平台…',
   nodes: '搜索节点名称 / IP / 平台…',
-  vms: '搜索虚拟机名称 / UUID / 主机 IP / MAC / 计算节点 / 项目 / 规格 / 平台…',
+  vms: '搜索虚拟机名称 / UUID / 虚机 IP / MAC / 计算节点 / 项目 / 规格 / 平台…',
   volumes: '搜索云硬盘名称 / UUID / 项目 / 挂载虚拟机 / 类型 / 后端 / 平台…',
   ports: '搜索网卡名称 / UUID / 项目 / MAC / IP / 网络 / 挂载虚拟机 / 平台…',
   pools: '搜索存储池名称 / 供应商 / 协议 / 后端名称 / 平台…',

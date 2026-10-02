@@ -23,3 +23,13 @@ func TestPhysExcludesNova(t *testing.T) {
 		t.Error("fallback product should be recognized")
 	}
 }
+
+func TestPortFloatingAndNA(t *testing.T) {
+	if !isFloatingPort(map[string]any{"device_owner": "network:floatingip"}) || isFloatingPort(map[string]any{"device_owner": "compute:nova"}) {
+		t.Fatal("isFloatingPort")
+	}
+	r := portRow(map[string]any{"id": "p1", "status": "N/A"}, nil, nil, nil, false, false, &lookups{})
+	if r["statusText"] != "未知" {
+		t.Fatalf("status text: %v", r["statusText"])
+	}
+}

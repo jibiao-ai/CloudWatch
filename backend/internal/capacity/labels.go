@@ -33,7 +33,7 @@ var volStatus = map[string]lab{
 }
 
 var portStatus = map[string]lab{
-	"active": {"运行中", "success"}, "down": {"停止", "default"}, "build": {"创建中", "info"}, "error": {"异常", "danger"},
+	"active": {"运行中", "success"}, "down": {"停止", "default"}, "build": {"创建中", "info"}, "error": {"异常", "danger"}, "n/a": {"未知", "default"},
 }
 
 var physStatus = map[string]lab{"ready": {"就绪", "success"}, "discover": {"发现中", "info"}, "provisioning": {"部署中", "info"}, "deploying": {"部署中", "info"},
