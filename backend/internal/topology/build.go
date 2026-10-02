@@ -266,6 +266,7 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 	// ---- 告警中心：把未恢复告警关联到节点 ----
 	items := make([]AlertItem, 0, len(alerts.List))
 	var tot Alerts
+	seen, reasonAt := map[string]int{}, map[string]int{} // 同一资源的同名告警合并为「×N」
 	for _, a := range alerts.List {
 		nid := attach(a, physByName, physByIP, hostByName, vmByID)
 		items = append(items, AlertItem{ID: a.ID, Title: a.Name, Severity: a.Severity, Type: a.Type, NodeName: a.NodeName, HostIP: a.HostIP, NodeID: nid, FiredAt: a.FiredAt, Acked: a.Acked})
@@ -280,7 +281,13 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 					n.Health = worse(n.Health, HWarning)
 				}
 			}
-			n.Reasons = append(n.Reasons, "告警："+a.Name)
+			seen[nid+"|"+a.Name]++
+			if seen[nid+"|"+a.Name] == 1 {
+				n.Reasons = append(n.Reasons, "告警："+a.Name)
+				reasonAt[nid+"|"+a.Name] = len(n.Reasons) - 1
+			} else {
+				n.Reasons[reasonAt[nid+"|"+a.Name]] = fmt.Sprintf("告警：%s（×%d）", a.Name, seen[nid+"|"+a.Name])
+			}
 		}
 	}
 	// 父级健康度向上汇总：计算节点承载的云主机异常 → 计算节点 warning 提示（不覆盖自身状态）
