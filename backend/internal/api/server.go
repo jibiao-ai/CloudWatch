@@ -137,6 +137,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/capacity/collect", s.guard("capacity:collect", s.capacityCollect))
 	mux.Handle("GET /api/capacity/{kind}", s.guard("capacity:view", s.capacityList))
 	mux.Handle("GET /api/capacity/{kind}/{providerId}/{id}", s.guard("capacity:view", s.capacityDetail))
+	// 资源拓扑（聚合 平台管理 / 资产管理 / 监控中心 / 告警中心 已落库数据）
+	mux.Handle("GET /api/topology/overview", s.guard("topology:view", s.topologyOverview))
+	mux.Handle("GET /api/topology/{providerId}", s.guard("topology:view", s.topologyGraph))
 	// 监控中心
 	mux.Handle("GET /api/monitor/overview", s.guard("monitor:view", s.monitorOverview))
 	mux.Handle("GET /api/monitor/{id}", s.guard("monitor:view", s.monitorSnapshot))

@@ -242,3 +242,13 @@ func (s *Store) Detail(ctx context.Context, p Platform, kind, id string) (Row, b
 	}
 	return nil, false, nil
 }
+
+// Rows 某平台某类资源的全部行（已注入平台字段，不含 raw / 重字段外的任何裁剪；返回的是缓存切片，调用方只读不改）。
+func (s *Store) Rows(ctx context.Context, p Platform, kind string) ([]Row, *Meta, error) {
+	e, err := s.load(ctx, p)
+	if err != nil {
+		return nil, nil, err
+	}
+	m := e.meta
+	return e.rows[kind], &m, nil
+}

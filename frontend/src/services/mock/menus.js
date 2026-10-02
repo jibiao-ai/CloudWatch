@@ -10,7 +10,7 @@ const TREE = [
   { code: 'monitor', name: '监控中心', icon: 'Activity', children: [{ code: 'monitor-home', name: '监控总览', path: '/monitor', permission: 'monitor:view', icon: 'Activity' }] },
   { code: 'capacity', name: '资产管理', icon: 'Database', children: [{ code: 'capacity-home', name: '资产总览', path: '/capacity', permission: 'capacity:view', icon: 'Database' }] },
   { code: 'alert', name: '告警中心', icon: 'BellRing', children: [{ code: 'alert-home', name: '告警列表', path: '/alerts', permission: 'alert:view', icon: 'BellRing' }] },
-  { code: 'topology', name: '资源拓扑', icon: 'Network', children: [{ code: 'topology-home', name: '全链路拓扑', path: '/planned/topology', permission: 'topology:view', icon: 'Network', planned: true }] },
+  { code: 'topology', name: '资源拓扑', icon: 'Network', children: [{ code: 'topology-home', name: '全链路拓扑', path: '/topology', permission: 'topology:view', icon: 'Network' }] },
   { code: 'analytics', name: '运营分析', icon: 'ChartPie', children: [{ code: 'analytics-home', name: '运营报表', path: '/planned/analytics', permission: 'analytics:view', icon: 'ChartPie', planned: true }] },
   {
     code: 'system', name: '系统管理', icon: 'Settings2',

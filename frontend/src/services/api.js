@@ -244,6 +244,12 @@ export const capacityApi = {
   collect: (providerId) => post(`/capacity/collect${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`, {}, { timeout: 300000 }),
 };
 
+/* ============================ 资源拓扑（聚合 平台 / 资产 / 监控 / 告警） ============================ */
+export const topologyApi = {
+  getOverview: () => get('/topology/overview'),
+  getGraph: (providerId) => get(`/topology/${encodeURIComponent(providerId)}`),
+};
+
 export const alertApi = {
   getAlertList: (params) => get('/alerts', params),
   getAlertStats: (params) => get('/alerts/stats', params),
