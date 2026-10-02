@@ -196,7 +196,7 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 	var cols []analytics.Col
 	var title, link string
 	if kind == "opt" {
-		cols = []analytics.Col{{Key: "name", Title: "名称"}, {Key: "account", Title: "云账号"}, {Key: "ips", Title: "IP地址"}, {Key: "flavor", Title: "实例规格"},
+		cols = []analytics.Col{{Key: "name", Title: "名称"}, {Key: "platform", Title: "所属云平台"}, {Key: "ips", Title: "IP地址"}, {Key: "flavor", Title: "实例规格"},
 			{Key: "reason", Title: "建议原因"}, {Key: "cpuAvg", Title: "CPU平均使用率"}, {Key: "memAvg", Title: "内存平均使用率"}}
 		title, link = "云主机优化建议", "/analytics/optimize"
 		if rows, err = s.Analytics.OptRows(r.Context(), ps, q); err != nil {

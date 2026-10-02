@@ -10,7 +10,8 @@ export default function Breadcrumb() {
   const extra = useStore((s) => s.breadcrumbExtra);
   const trail = [{ name: '首页', to: '/dashboard' }];
   for (const g of menus) {
-    const hit = g.children.find((c) => pathname.startsWith(c.path));
+    // 同组内路径互为前缀（/analytics 与 /analytics/base）时，取最长匹配
+    const hit = g.children.filter((c) => pathname === c.path || pathname.startsWith(`${c.path}/`)).sort((a, b) => b.path.length - a.path.length)[0];
     if (hit) {
       if (g.children.length > 1 || g.code === 'system') trail.push({ name: g.name });
       trail.push({ name: hit.name, to: extra.length ? hit.path : undefined });

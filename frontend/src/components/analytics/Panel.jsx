@@ -1,4 +1,5 @@
 import React from 'react';
+import CustomSelect from '../CustomSelect';
 
 /** Panel —— 分析页的图表卡片：标题 + 右侧操作区 + 内容 */
 export default function Panel({ title, actions, children, className = '', bodyClassName = '' }) {
@@ -34,7 +35,20 @@ export function Seg({ items, value, onChange, label }) {
   );
 }
 
-/** Filter —— 筛选栏里的「标签 + 下拉」容器 */
+/** FilterBar —— 筛选栏（卡片）：「标签 + 下拉」组合，位于页签面板顶部 */
 export function FilterBar({ children }) {
-  return <div className="flex flex-wrap items-center gap-3 mb-4">{children}</div>;
+  return <div className="card px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">{children}</div>;
+}
+
+/**
+ * Filter —— 下拉筛选。默认带标签（用于 FilterBar）；bare=true 时只显示下拉（用于表格工具栏，占位文字为「全部…」，与资产管理一致）
+ */
+export function Filter({ label, options, value, onChange, width = 190, bare = false, placeholder, clearable = true }) {
+  const sel = (
+    <div style={{ width }}>
+      <CustomSelect size="sm" clearable={clearable} placeholder={placeholder || (bare ? `全部${label}` : '全部')} aria-label={label} options={options} value={value} onChange={(v) => onChange(v || '')} />
+    </div>
+  );
+  if (bare) return sel;
+  return <div className="flex items-center gap-1.5 text-xs text-fg-muted"><span>{label}</span>{sel}</div>;
 }

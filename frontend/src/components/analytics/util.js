@@ -9,7 +9,7 @@ export const defaultDates = () => {
 };
 export const RANGE_ITEMS = [{ value: '7d', label: '近7天' }, { value: '30d', label: '近30天' }, { value: '180d', label: '近半年' }, { value: '365d', label: '近一年' }];
 export const SPAN = { '7d': 7, '30d': 30, '180d': 180, '365d': 365 };
-/** 把后端 Opt2 列表按云账号过滤并转为 CustomSelect 选项 */
+/** 把后端 Opt2 列表按所属云平台过滤并转为 CustomSelect 选项 */
 export const optsOf = (list = [], pid, cluster) => list.filter((o) => (!pid || o.providerId === pid) && (!cluster || o.cluster === cluster)).map((o) => ({ value: o.value, label: o.label }));
 export const pctText = (v) => (v == null ? '-' : `${v}%`);
 /** 运行状态环形图配色：运行中 = 成功色，已停止 = 弱化色，异常 = 危险色，其他 = 警告色 */

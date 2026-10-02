@@ -152,7 +152,7 @@ func (e *Engine) suggestions(ctx context.Context, ps []*plat) ([]Suggest, error)
 	return out, nil
 }
 
-// Suggestions 四类建议汇总（含所有云账号）。
+// Suggestions 四类建议汇总（含所有所属云平台）。
 func (e *Engine) Suggestions(ctx context.Context, plats []capacity.Platform) ([]Suggest, error) {
 	ps, err := e.load(ctx, plats, "")
 	if err != nil {
@@ -176,6 +176,9 @@ func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQ
 		if c.isIgn != (q.Ignored == "1") || (!c.isIgn && !c.matched) {
 			continue
 		}
+		if q.Filter.ProviderID != "" && c.x.ID != q.Filter.ProviderID {
+			continue
+		}
 		r := c.row
 		ips := ipList(r)
 		if !match(q, map[string]string{"name": s(r, "name"), "ip": strings.Join(ips, " ")}) {
@@ -186,7 +189,7 @@ func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQ
 			reason = "当前已不满足策略条件"
 		}
 		row := map[string]any{
-			"id": s(r, "id"), "providerId": c.x.ID, "key": c.x.ID + "/" + s(r, "id"), "name": s(r, "name"), "account": c.x.Name,
+			"id": s(r, "id"), "providerId": c.x.ID, "key": c.x.ID + "/" + s(r, "id"), "name": s(r, "name"), "platform": c.x.Name, "consoleIp": c.x.ConsoleIP,
 			"ips": strings.Join(ips, ", "), "ipList": ips, "flavor": flavorText(r), "reason": reason,
 			"cpuAvg": nv(c.facts.CPUAvg), "cpuMax": nv(c.facts.CPUMax), "memAvg": nv(c.facts.MemAvg), "memMax": nv(c.facts.MemMax),
 			"status": strings.ToLower(s(r, "status")), "statusText": s(r, "statusText"),

@@ -9,7 +9,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 )
 
-// Opt2 筛选下拉项（带所属云账号，前端据此级联）。
+// Opt2 筛选下拉项（带所属所属云平台，前端据此级联）。
 type Opt2 struct {
 	Value      string `json:"value"`
 	Label      string `json:"label"`
@@ -44,10 +44,10 @@ type HostVM struct {
 
 // BaseOptions 筛选项。
 type BaseOptions struct {
-	Accounts []Opt2 `json:"accounts"`
-	Clusters []Opt2 `json:"clusters"`
-	Hosts    []Opt2 `json:"hosts"`
-	Pools    []Opt2 `json:"pools"`
+	Platforms []Opt2 `json:"platforms"`
+	Clusters  []Opt2 `json:"clusters"`
+	Hosts     []Opt2 `json:"hosts"`
+	Pools     []Opt2 `json:"pools"`
 }
 
 // Base 基础资源分析页。
@@ -64,9 +64,9 @@ func (e *Engine) Base(ctx context.Context, plats []capacity.Platform, flt Filter
 	if err != nil {
 		return nil, err
 	}
-	b := &Base{Options: BaseOptions{Accounts: []Opt2{}, Clusters: []Opt2{}, Hosts: []Opt2{}, Pools: []Opt2{}}, HostVMs: []HostVM{}}
+	b := &Base{Options: BaseOptions{Platforms: []Opt2{}, Clusters: []Opt2{}, Hosts: []Opt2{}, Pools: []Opt2{}}, HostVMs: []HostVM{}}
 	for _, x := range all {
-		b.Options.Accounts = append(b.Options.Accounts, Opt2{Value: x.ID, Label: x.Name, ProviderID: x.ID})
+		b.Options.Platforms = append(b.Options.Platforms, Opt2{Value: x.ID, Label: x.Name, ProviderID: x.ID})
 		for _, c := range x.clusterList() {
 			b.Options.Clusters = append(b.Options.Clusters, Opt2{Value: hostKey(x.ID, c), Label: c, ProviderID: x.ID})
 		}
@@ -202,11 +202,11 @@ func (e *Engine) BaseBands(ctx context.Context, plats []capacity.Platform, flt F
 // ---------- 宿主机 / 存储器明细 ----------
 
 // HostCols 宿主机明细导出列。
-var HostCols = []Col{{"name", "宿主机"}, {"account", "云账号"}, {"cluster", "集群"}, {"ip", "IP地址"}, {"stateText", "状态"}, {"runningVms", "运行中云主机"},
+var HostCols = []Col{{"name", "宿主机"}, {"platform", "所属云平台"}, {"cluster", "集群"}, {"ip", "IP地址"}, {"stateText", "状态"}, {"runningVms", "运行中云主机"},
 	{"vcpus", "vCPU(已分配/总量)"}, {"cpuAlloc", "CPU分配率"}, {"memAlloc", "内存分配率"}, {"cpuUse", "CPU使用率"}, {"memUse", "内存使用率"}}
 
 // PoolCols 存储器明细导出列。
-var PoolCols = []Col{{"name", "存储器"}, {"account", "云账号"}, {"backend", "后端名称"}, {"statusText", "状态"}, {"totalGb", "总容量(G)"}, {"usedGb", "已用(G)"}, {"usedPercent", "使用率"}, {"allocPercent", "分配率"}}
+var PoolCols = []Col{{"name", "存储器"}, {"platform", "所属云平台"}, {"backend", "后端名称"}, {"statusText", "状态"}, {"totalGb", "总容量(G)"}, {"usedGb", "已用(G)"}, {"usedPercent", "使用率"}, {"allocPercent", "分配率"}}
 
 // Col 导出列。
 type Col struct{ Key, Title string }
@@ -236,7 +236,7 @@ func (e *Engine) HostRows(ctx context.Context, plats []capacity.Platform, q List
 				mu = v
 			}
 			rows = append(rows, map[string]any{
-				"key": hostKey(x.ID, name), "name": name, "account": x.Name, "cluster": x.clusterOf(name), "ip": s(h, "hostIp"),
+				"key": hostKey(x.ID, name), "name": name, "platform": x.Name, "consoleIp": x.ConsoleIP, "cluster": x.clusterOf(name), "ip": s(h, "hostIp"),
 				"state": s(h, "state"), "stateText": s(h, "stateText"), "runningVms": fv(h, "runningVms"),
 				"vcpus":    trimNum(fv(h, "vcpusUsed")) + " / " + trimNum(fv(h, "vcpusCap")),
 				"cpuAlloc": nv(f(h, "vcpuPercent")), "memAlloc": nv(f(h, "memPercent")), "cpuUse": nv(cu), "memUse": nv(mu),
@@ -263,7 +263,7 @@ func (e *Engine) PoolRows(ctx context.Context, plats []capacity.Platform, q List
 				alloc = fv(p, "provisionedGb")
 			}
 			rows = append(rows, map[string]any{
-				"key": hostKey(x.ID, name), "name": name, "account": x.Name, "backend": s(p, "backendName"),
+				"key": hostKey(x.ID, name), "name": name, "platform": x.Name, "consoleIp": x.ConsoleIP, "backend": s(p, "backendName"),
 				"status": s(p, "status"), "statusText": s(p, "statusText"),
 				"totalGb": nv(f(p, "totalGb")), "usedGb": nv(f(p, "usedGb")), "usedPercent": nv(f(p, "usedPercent")), "allocPercent": nv(pct(alloc, fv(p, "totalGb"))),
 			})
@@ -276,15 +276,15 @@ func (e *Engine) PoolRows(ctx context.Context, plats []capacity.Platform, q List
 
 // VMAnalysis 云主机分析页。
 type VMAnalysis struct {
-	Accounts []Dist   `json:"accounts"`
-	Status   []Dist   `json:"status"`
-	Options  VMOption `json:"options"`
+	Platforms []Dist   `json:"platforms"`
+	Status    []Dist   `json:"status"`
+	Options   VMOption `json:"options"`
 }
 
 // VMOption 云主机分析筛选项。
 type VMOption struct {
-	Accounts []Opt2 `json:"accounts"`
-	Hosts    []Opt2 `json:"hosts"`
+	Platforms []Opt2 `json:"platforms"`
+	Hosts     []Opt2 `json:"hosts"`
 }
 
 func (e *Engine) VMAnalysis(ctx context.Context, plats []capacity.Platform, flt Filter) (*VMAnalysis, error) {
@@ -292,11 +292,11 @@ func (e *Engine) VMAnalysis(ctx context.Context, plats []capacity.Platform, flt 
 	if err != nil {
 		return nil, err
 	}
-	out := &VMAnalysis{Options: VMOption{Accounts: []Opt2{}, Hosts: []Opt2{}}}
+	out := &VMAnalysis{Options: VMOption{Platforms: []Opt2{}, Hosts: []Opt2{}}}
 	var ps []*plat
 	acc, st := map[string]int{}, map[string]int{}
 	for _, x := range all {
-		out.Options.Accounts = append(out.Options.Accounts, Opt2{Value: x.ID, Label: x.Name, ProviderID: x.ID})
+		out.Options.Platforms = append(out.Options.Platforms, Opt2{Value: x.ID, Label: x.Name, ProviderID: x.ID})
 		for _, h := range x.hosts {
 			out.Options.Hosts = append(out.Options.Hosts, Opt2{Value: hostKey(x.ID, s(h, "name")), Label: s(h, "name"), ProviderID: x.ID, Cluster: hostKey(x.ID, x.clusterOf(s(h, "name")))})
 		}
@@ -311,7 +311,7 @@ func (e *Engine) VMAnalysis(ctx context.Context, plats []capacity.Platform, flt 
 			st[stateGroupText[stateGroup(s(v, "status"))]]++
 		}
 	}
-	out.Accounts, out.Status = distOf(acc), distOf(st)
+	out.Platforms, out.Status = distOf(acc), distOf(st)
 	return out, nil
 }
 
@@ -343,7 +343,7 @@ func (e *Engine) VMBands(ctx context.Context, plats []capacity.Platform, flt Fil
 }
 
 // VMCols 云主机明细导出列。
-var VMCols = []Col{{"name", "名称"}, {"account", "云账号"}, {"flavor", "实例规格"}, {"ips", "IP地址"}, {"statusText", "状态"}, {"host", "宿主机"},
+var VMCols = []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"flavor", "实例规格"}, {"ips", "IP地址"}, {"statusText", "状态"}, {"host", "宿主机"},
 	{"cpuAvg", "CPU平均使用率"}, {"cpuMax", "CPU最大使用率"}, {"memAvg", "内存平均使用率"}, {"memMax", "内存最大使用率"}}
 
 func (e *Engine) VMRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
@@ -364,7 +364,7 @@ func (e *Engine) VMRows(ctx context.Context, plats []capacity.Platform, q ListQu
 			}
 			u := use[x.ID+"/"+s(r, "id")]
 			row := map[string]any{
-				"key": x.ID + "/" + s(r, "id"), "name": s(r, "name"), "account": x.Name, "flavor": flavorText(r),
+				"key": x.ID + "/" + s(r, "id"), "name": s(r, "name"), "platform": x.Name, "consoleIp": x.ConsoleIP, "flavor": flavorText(r),
 				"ips": strings.Join(ips, ", "), "ipList": ips, "status": strings.ToLower(s(r, "status")), "statusText": s(r, "statusText"),
 				"host":   s(r, "node"),
 				"cpuAvg": nil, "cpuMax": nil, "memAvg": nil, "memMax": nil,
@@ -382,11 +382,11 @@ func (e *Engine) VMRows(ctx context.Context, plats []capacity.Platform, q ListQu
 
 // DiskAnalysis 磁盘分析页（unit=gb 时数值为容量 GB，否则为块数）。
 type DiskAnalysis struct {
-	Accounts []Dist `json:"accounts"`
-	Mount    []Dist `json:"mount"`
-	Types    []Dist `json:"types"`
-	Options  []Opt2 `json:"accounts_opt"`
-	Unit     string `json:"unit"`
+	Platforms []Dist `json:"platforms"`
+	Mount     []Dist `json:"mount"`
+	Types     []Dist `json:"types"`
+	Options   []Opt2 `json:"platforms_opt"`
+	Unit      string `json:"unit"`
 }
 
 func mountOf(status string) string {
@@ -432,12 +432,12 @@ func (e *Engine) DiskAnalysis(ctx context.Context, plats []capacity.Platform, pi
 			typ[t] += n
 		}
 	}
-	out.Accounts, out.Mount, out.Types = distOf(acc), distOf(mnt), distOf(typ)
+	out.Platforms, out.Mount, out.Types = distOf(acc), distOf(mnt), distOf(typ)
 	return out, nil
 }
 
 // DiskCols 磁盘明细导出列。
-var DiskCols = []Col{{"name", "名称"}, {"account", "云账号"}, {"az", "集群/可用区"}, {"server", "所属云主机"}, {"statusText", "状态"}, {"sizeGb", "大小(G)"}}
+var DiskCols = []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"az", "集群/可用区"}, {"server", "所属云主机"}, {"statusText", "状态"}, {"sizeGb", "大小(G)"}}
 
 func (e *Engine) DiskRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
 	ps, err := e.load(ctx, plats, q.Filter.ProviderID)
@@ -451,7 +451,7 @@ func (e *Engine) DiskRows(ctx context.Context, plats []capacity.Platform, q List
 				continue
 			}
 			rows = append(rows, map[string]any{
-				"key": x.ID + "/" + s(v, "id"), "name": s(v, "name"), "account": x.Name, "az": s(v, "az"),
+				"key": x.ID + "/" + s(v, "id"), "name": s(v, "name"), "platform": x.Name, "consoleIp": x.ConsoleIP, "az": s(v, "az"),
 				"server": s(v, "serverNames"), "status": s(v, "status"), "statusText": s(v, "statusText"),
 				"sizeGb": nv(f(v, "sizeGb")), "volumeType": s(v, "volumeType"),
 			})

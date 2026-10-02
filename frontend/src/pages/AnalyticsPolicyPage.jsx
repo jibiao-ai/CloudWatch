@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, Pencil } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
-import LoadingButton from '../components/LoadingButton';
+import { Pencil } from 'lucide-react';
+import AnalyticsShell from '../components/analytics/Shell';
 import DataTable from '../components/DataTable';
 import Tooltip from '../components/Tooltip';
 import PolicyModal from '../components/analytics/PolicyModal';
@@ -31,11 +30,15 @@ export default function AnalyticsPolicyPage() {
     ...(canEdit ? [{ key: 'op', title: '操作', width: 80, sticky: 'right', render: (p) => <button type="button" className="btn-ghost btn-icon" aria-label={`编辑${p.name}`} onClick={() => setEditing(p)}><Pencil size={15} /></button> }] : []),
   ];
   return (
-    <div className="space-y-4">
-      <PageHeader title="运营分析 · 优化策略" description="定义「建议升配 / 建议降配 / 建议回收」的判定条件与统计周期；保存后立即生效，并反映到总览与云主机优化"
-        actions={<LoadingButton icon={RefreshCw} loading={q.refreshing} onClick={q.reload}>刷新</LoadingButton>} />
-      <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload} empty={{ title: '暂无策略' }} />
-      <PolicyModal policy={editing} fields={q.data?.fields || []} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); q.reload(); }} />
-    </div>
+    <AnalyticsShell title="运营分析 · 优化策略" description="定义「建议升配 / 建议降配 / 建议回收」的判定条件与统计周期；保存后立即生效，并反映到总览与云主机优化"
+      idPrefix="an-policy" onRefresh={q.reload}>
+      {() => (
+        <>
+          <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload} empty={{ title: '暂无策略' }}
+            toolbar={<h3 className="text-sm font-semibold text-fg">优化策略</h3>} />
+          <PolicyModal policy={editing} fields={q.data?.fields || []} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); q.reload(); }} />
+        </>
+      )}
+    </AnalyticsShell>
   );
 }

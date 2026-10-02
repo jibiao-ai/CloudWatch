@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"sort"
 	"strings"
 	"time"
 )
@@ -355,10 +356,20 @@ func (s *Store) policies(ctx context.Context) ([]Policy, error) {
 		p.Reason = p.ReasonText()
 		out = append(out, p)
 	}
+	// 展示顺序固定为 Kinds（降配 / 升配 / 回收），不依赖库里的 sort_no
+	idx := func(k string) int {
+		for i, x := range Kinds {
+			if x == k {
+				return i
+			}
+		}
+		return len(Kinds)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return idx(out[i].Kind) < idx(out[j].Kind) })
 	return out, rows.Err()
 }
 
-// Policies 四条优化策略（按页面展示顺序：升配 / 回收 / 降配）。
+// Policies 三条优化策略（按页面展示顺序：降配 / 升配 / 回收）。
 func (s *Store) Policies(ctx context.Context) ([]Policy, error) { return s.policies(ctx) }
 
 // SavePolicy 更新一条策略（名称 / 启用 / 统计周期 / 条件）。

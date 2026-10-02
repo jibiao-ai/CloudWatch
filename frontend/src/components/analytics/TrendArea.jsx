@@ -6,7 +6,7 @@ import { useChartPalette } from '../../hooks/useChartPalette';
 import { formatDateTime, pad } from '../../utils/format';
 
 /**
- * TrendArea —— 数量趋势（多云账号各一条线）。series: [{providerId,name,points:[{t,v}]}]
+ * TrendArea —— 数量趋势（每个所属云平台各一条线）。series: [{providerId,name,points:[{t,v}]}]
  * 不同账号的时间桶对齐，按 t 合并为宽表。
  */
 export default function TrendArea({ series = [], unit = '', height = 220, spanMs }) {

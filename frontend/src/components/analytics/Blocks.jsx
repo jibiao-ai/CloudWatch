@@ -40,9 +40,9 @@ export function UsePanel({ rates, loading }) {
 }
 
 /** TrendPanel —— 数量趋势：近 7 天 / 30 天 / 半年 / 一年。kind: vm | disk；providerId / unit 变化时重新加载 */
-export function TrendPanel({ title, kind, providerId = '', unit = '', suffix = '' }) {
+export function TrendPanel({ title, kind, providerId = '', unit = '', suffix = '', refreshKey = 0 }) {
   const [rng, setRng] = useState('7d');
-  const tr = useAsync(() => analyticsApi.getTrend({ kind, range: rng, providerId, unit }), [kind, rng, providerId, unit]);
+  const tr = useAsync(() => analyticsApi.getTrend({ kind, range: rng, providerId, unit }), [kind, rng, providerId, unit, refreshKey]);
   return (
     <Panel title={title} actions={<Seg label="时间范围" items={RANGE_ITEMS} value={rng} onChange={setRng} />}>
       {tr.loading ? <Skeleton.Block className="h-[220px]" /> : tr.error ? <ErrorState error={tr.error} onRetry={tr.reload} />

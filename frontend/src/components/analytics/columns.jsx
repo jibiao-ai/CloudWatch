@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { pctText } from './util';
+import { PlatCell } from '../capacity/capUtil';
 
 const stateTag = (text, status) => {
   const s = String(status || '').toLowerCase();
   const cls = ['active', 'up', 'enabled', 'in-use', 'available', 'running'].includes(s) ? 'tag-success' : ['error', 'down', 'disabled', 'critical'].includes(s) ? 'tag-danger' : ['shutoff', 'stopped'].includes(s) ? 'tag-default' : 'tag-warning';
   return <span className={cls}>{text || '-'}</span>;
 };
+/** 所属云平台列：平台名 + 控制台 IP + 控制台链接（与资产管理一致） */
+export const platCol = () => ({ key: 'platform', title: '所属云平台', width: 170, sortable: true, render: (r) => <PlatCell platform={{ name: r.platform, consoleIp: r.consoleIp }} /> });
 const num = (v) => (v == null ? '-' : v);
 const pct = (key, title, extra = {}) => ({ key, title, width: 110, align: 'right', sortable: true, render: (r) => <span className="tabular-nums">{pctText(r[key])}</span>, ...extra });
 
@@ -25,7 +28,7 @@ export function IpCell({ list = [] }) {
 
 export const HOST_COLS = [
   { key: 'name', title: '宿主机', width: 190, sortable: true },
-  { key: 'account', title: '云账号', width: 130, sortable: true },
+  platCol(),
   { key: 'cluster', title: '集群', width: 110, sortable: true },
   { key: 'ip', title: 'IP地址', width: 130, render: (r) => <span className="tabular-nums">{r.ip || '-'}</span> },
   { key: 'stateText', title: '状态', width: 90, render: (r) => stateTag(r.stateText, r.state) },
@@ -36,7 +39,7 @@ export const HOST_COLS = [
 
 export const POOL_COLS = [
   { key: 'name', title: '存储器', width: 190, sortable: true },
-  { key: 'account', title: '云账号', width: 130, sortable: true },
+  platCol(),
   { key: 'backend', title: '后端名称', width: 150, render: (r) => r.backend || '-' },
   { key: 'statusText', title: '状态', width: 90, render: (r) => stateTag(r.statusText, r.status) },
   { key: 'totalGb', title: '总容量(G)', width: 110, align: 'right', sortable: true, render: (r) => <span className="tabular-nums">{num(r.totalGb)}</span> },
@@ -46,7 +49,7 @@ export const POOL_COLS = [
 
 export const VM_COLS = [
   { key: 'name', title: '名称', width: 200, sortable: true },
-  { key: 'account', title: '云账号', width: 130, sortable: true },
+  platCol(),
   { key: 'flavor', title: '实例规格', width: 150, render: (r) => r.flavor || '-' },
   { key: 'ips', title: 'IP地址', width: 170, render: (r) => <IpCell list={r.ipList} /> },
   { key: 'statusText', title: '状态', width: 90, render: (r) => stateTag(r.statusText, r.status) },
@@ -57,7 +60,7 @@ export const VM_COLS = [
 
 export const DISK_COLS = [
   { key: 'name', title: '名称', width: 200, sortable: true },
-  { key: 'account', title: '云账号', width: 130, sortable: true },
+  platCol(),
   { key: 'az', title: '集群/可用区', width: 120, render: (r) => r.az || '-' },
   { key: 'server', title: '所属云主机', width: 180, render: (r) => r.server || '-' },
   { key: 'statusText', title: '状态', width: 90, render: (r) => stateTag(r.statusText, r.status) },

@@ -24,10 +24,11 @@ type plat struct {
 	capacity.Platform
 	vms, vols, hosts, pools, phys []capacity.Row
 	snap                          *monitor.Snapshot
+	meta                          *capacity.Meta    // 资产管理最近一次采集状态
 	clusters                      map[string]string // 计算节点名 → 集群
 }
 
-// Filter 通用筛选（云账号 / 集群 / 宿主机 / 存储器）。宿主机、存储器、集群的取值均为 "平台ID/名称"。
+// Filter 通用筛选（所属云平台 / 集群 / 宿主机 / 存储器）。宿主机、存储器、集群的取值均为 "平台ID/名称"。
 type Filter struct {
 	ProviderID, Cluster, Host, Pool string
 }
@@ -42,7 +43,7 @@ func (e *Engine) load(ctx context.Context, plats []capacity.Platform, pid string
 		}
 		x := &plat{Platform: p, clusters: map[string]string{}}
 		var err error
-		if x.vms, _, err = e.Cap.Rows(ctx, p, "vms"); err != nil {
+		if x.vms, x.meta, err = e.Cap.Rows(ctx, p, "vms"); err != nil {
 			return nil, err
 		}
 		x.vols, _, _ = e.Cap.Rows(ctx, p, "volumes")
@@ -177,22 +178,25 @@ func (e *Engine) rates(ps []*plat, flt Filter) Rates {
 
 // ---------- 总览 ----------
 
-// AccountRow 云账号明细。
-type AccountRow struct {
-	ProviderID string `json:"providerId"`
-	Name       string `json:"name"`
-	EnvType    string `json:"envType"`
-	VMs        int    `json:"vms"`
-	Disks      int    `json:"disks"`
-	Hosts      int    `json:"hosts"`
-	Pools      int    `json:"pools"`
-	Collected  bool   `json:"collected"`
+// PlatformRow 所属云平台汇总（资源数量 + 资产采集状态）。
+type PlatformRow struct {
+	ProviderID  string     `json:"providerId"`
+	Name        string     `json:"name"`
+	EnvType     string     `json:"envType"`
+	ConsoleIP   string     `json:"consoleIp"`
+	VMs         int        `json:"vms"`
+	Disks       int        `json:"disks"`
+	Hosts       int        `json:"hosts"`
+	Pools       int        `json:"pools"`
+	CollectedAt *time.Time `json:"collectedAt"`
+	OK          bool       `json:"ok"`
+	Error       string     `json:"error"`
 }
 
 // Overview 总览页数据。
 type Overview struct {
 	Totals      map[string]int `json:"totals"`
-	Accounts    []AccountRow   `json:"accounts"`
+	Platforms   []PlatformRow  `json:"platforms"`
 	Rates       RatesOut       `json:"rates"`
 	Suggestions []Suggest      `json:"suggestions"`
 }
@@ -210,16 +214,19 @@ func (r Rates) out() RatesOut {
 	}
 }
 
-// Overview 汇总所有云账号。
+// Overview 汇总所有所属云平台。
 func (e *Engine) Overview(ctx context.Context, plats []capacity.Platform) (*Overview, error) {
 	ps, err := e.load(ctx, plats, "")
 	if err != nil {
 		return nil, err
 	}
-	o := &Overview{Totals: map[string]int{"accounts": len(ps)}, Accounts: []AccountRow{}}
+	o := &Overview{Totals: map[string]int{"platforms": len(ps)}, Platforms: []PlatformRow{}}
 	for _, x := range ps {
-		o.Accounts = append(o.Accounts, AccountRow{ProviderID: x.ID, Name: x.Name, EnvType: x.EnvType, VMs: len(x.vms), Disks: len(x.vols), Hosts: len(x.hosts), Pools: len(x.pools),
-			Collected: x.snap.CollectedAt != nil || len(x.vms)+len(x.hosts) > 0})
+		row := PlatformRow{ProviderID: x.ID, Name: x.Name, EnvType: x.EnvType, ConsoleIP: x.ConsoleIP, VMs: len(x.vms), Disks: len(x.vols), Hosts: len(x.hosts), Pools: len(x.pools)}
+		if x.meta != nil {
+			row.CollectedAt, row.OK, row.Error = x.meta.CollectedAt, x.meta.OK, x.meta.Error
+		}
+		o.Platforms = append(o.Platforms, row)
 		o.Totals["vms"] += len(x.vms)
 		o.Totals["disks"] += len(x.vols)
 		o.Totals["hosts"] += len(x.hosts)
@@ -234,7 +241,7 @@ func (e *Engine) Overview(ctx context.Context, plats []capacity.Platform) (*Over
 
 // ---------- 趋势 ----------
 
-// TrendSeries 一个云账号的趋势线。
+// TrendSeries 一个所属云平台的趋势线。
 type TrendSeries struct {
 	ProviderID string  `json:"providerId"`
 	Name       string  `json:"name"`

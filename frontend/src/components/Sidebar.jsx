@@ -72,6 +72,7 @@ export default function Sidebar({ mode }) {
                     <NavLink
                       key={item.code}
                       to={item.path}
+                      end={g.children.some((o) => o !== item && o.path.startsWith(`${item.path}/`))}
                       aria-label={iconOnly ? item.name : undefined}
                       className={({ isActive }) =>
                         `group flex items-center gap-2.5 h-9 rounded-md text-[13.5px] transition ${iconOnly ? 'justify-center px-0' : 'px-2.5'} ${
