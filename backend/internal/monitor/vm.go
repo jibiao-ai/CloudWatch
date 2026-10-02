@@ -106,6 +106,7 @@ type novaServer struct {
 	Host     string `json:"OS-EXT-SRV-ATTR:host"`
 	Hyp      string `json:"OS-EXT-SRV-ATTR:hypervisor_hostname"`
 	Flavor   struct {
+		ID    string `json:"id"`
 		VCPUs int    `json:"vcpus"`
 		RAM   int    `json:"ram"`
 		Disk  int    `json:"disk"`
@@ -145,7 +146,7 @@ func collectVMs(ctx context.Context, cn *provider.Conn) ([]VM, error) {
 			}
 			node := shortHost(first(s.Host, s.Hyp))
 			out = append(out, VM{ID: s.ID, Name: s.Name, Status: strings.ToUpper(s.Status), Node: node, IPs: strings.Join(ips, ", "),
-				Flavor: s.Flavor.Name, VCPUs: s.Flavor.VCPUs, RAMMB: s.Flavor.RAM, DiskGB: s.Flavor.Disk, AZ: s.AZ, ProjectID: s.TenantID, CreatedAt: s.Created})
+				Flavor: s.Flavor.Name, FlavorID: s.Flavor.ID, VCPUs: s.Flavor.VCPUs, RAMMB: s.Flavor.RAM, DiskGB: s.Flavor.Disk, AZ: s.AZ, ProjectID: s.TenantID, CreatedAt: s.Created})
 		}
 		u = ""
 		for _, l := range doc.Links {
@@ -156,6 +157,42 @@ func collectVMs(ctx context.Context, cn *provider.Conn) ([]VM, error) {
 	}
 	sort.Slice(out, func(i, j int) bool { return naturalLess(out[i].Name, out[j].Name) })
 	return out, nil
+}
+
+// fillVMFlavors 云主机详情只带规格 ID（微版本 < 2.47）或 original_name，vCPU / 内存需到 Nova 规格详情补齐。
+// GET {nova}/flavors/detail?is_public=None → 按规格 ID 补 规格名称 / vCPU / 内存 / 磁盘；返回规格条数。
+func fillVMFlavors(ctx context.Context, cn *provider.Conn, vms []VM) (int, error) {
+	var doc struct {
+		Flavors []struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			VCPUs int    `json:"vcpus"`
+			RAM   int    `json:"ram"`
+			Disk  int    `json:"disk"`
+		} `json:"flavors"`
+	}
+	if err := cn.GetJSON(ctx, cn.Nova()+"/flavors/detail?is_public=None", &doc); err != nil {
+		return 0, err
+	}
+	byID := map[string]int{}
+	byName := map[string]int{}
+	for i, f := range doc.Flavors {
+		byID[f.ID] = i
+		byName[f.Name] = i
+	}
+	for i := range vms {
+		v := &vms[i]
+		idx, ok := byID[v.FlavorID]
+		if !ok {
+			idx, ok = byName[v.Flavor]
+		}
+		if !ok {
+			continue
+		}
+		f := doc.Flavors[idx]
+		v.Flavor, v.VCPUs, v.RAMMB, v.DiskGB = first(f.Name, v.Flavor), f.VCPUs, f.RAM, f.Disk
+	}
+	return len(doc.Flavors), nil
 }
 
 // ---------- Gnocchi：云主机性能 ----------

@@ -44,6 +44,7 @@ type Result struct {
 	Storage  []Series
 	Steps    []Step
 	Samples  []SamplePoint // 写入 metric_samples 的历史点
+	flavorN  int           // 规格条数（仅用于采集明细「条数」）
 }
 
 // SamplePoint 历史样本。
@@ -56,10 +57,10 @@ type SamplePoint struct {
 // Collect 依次调用各 EMLA 接口；任一接口失败只记入 Steps，不中断其它接口。全部失败视为采集失败。
 func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	r := &Result{Nodes: []Node{}, Disks: []Disk{}, VMs: []VM{}, Services: []Service{}, Storage: []Series{}}
-	step := func(key, label string, fn func() error) {
+	step := func(key, label, path string, fn func() error) {
 		t0 := time.Now()
 		err := fn()
-		s := Step{Key: key, Label: label, OK: err == nil, DurationMs: time.Since(t0).Milliseconds()}
+		s := Step{Key: key, Label: label, Path: path, OK: err == nil, DurationMs: time.Since(t0).Milliseconds()}
 		if err != nil {
 			s.Error = err.Error()
 			if len(s.Error) > 300 {
@@ -70,7 +71,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	}
 	sum := &r.Summary
 
-	step("storage_capacity", "存储集群实际容量", func() error {
+	step("storage_capacity", "存储集群实际容量", pathStorage, func() error {
 		ms, err := emlaGet(ctx, cn, pathStorage, filter(storageCapMetrics))
 		if err != nil {
 			return err
@@ -119,10 +120,10 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return nil
 		}
 	}
-	step("vcpu", "虚机 vCPU 使用情况", usage("dashboard_instances_vcpu_usage", &sum.VCPU))
-	step("memory", "云主机内存使用情况", usage("dashboard_instances_memory_usage", &sum.Memory))
+	step("vcpu", "虚机 vCPU 使用情况", pathDashboard, usage("dashboard_instances_vcpu_usage", &sum.VCPU))
+	step("memory", "云主机内存使用情况", pathDashboard, usage("dashboard_instances_memory_usage", &sum.Memory))
 
-	step("instances", "云主机状态分布", func() error {
+	step("instances", "云主机状态分布", pathDashboard, func() error {
 		ms, err := emlaGet(ctx, cn, pathDashboard, filter("dashboard_instances_state"))
 		if err != nil {
 			return err
@@ -161,10 +162,10 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return nil
 		}
 	}
-	step("control_health", "平台控制面健康状态", health("dashboard_control_plane_service_health", &sum.ControlPlaneHealth))
-	step("storage_health", "存储服务健康状态", health("dashboard_storage_service_health", &sum.StorageServiceHealth))
+	step("control_health", "平台控制面健康状态", pathDashboard, health("dashboard_control_plane_service_health", &sum.ControlPlaneHealth))
+	step("storage_health", "存储服务健康状态", pathDashboard, health("dashboard_storage_service_health", &sum.StorageServiceHealth))
 
-	step("iops", "存储集群 IOPS", func() error {
+	step("iops", "存储集群 IOPS", pathDashboard, func() error {
 		rd, err := emlaGet(ctx, cn, pathDashboard, filter("dashboard_storage_cluster_iops_read"))
 		if err != nil {
 			return err
@@ -183,7 +184,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("services", "平台控制服务状态", func() error {
+	step("services", "平台控制服务状态", pathServices, func() error {
 		ms, err := emlaGet(ctx, cn, pathServices, nil)
 		if err != nil {
 			return err
@@ -208,7 +209,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("storage_cluster", "存储集群状态", func() error {
+	step("storage_cluster", "存储集群状态", pathStorage, func() error {
 		ms, err := emlaGet(ctx, cn, pathStorage, nil)
 		if err != nil {
 			return err
@@ -232,7 +233,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("disks", "物理节点磁盘信息", func() error {
+	step("disks", "物理节点磁盘信息", pathStorage, func() error {
 		ms, err := emlaGet(ctx, cn, pathStorage, filter("storage_cluster_disk_info"))
 		if err != nil {
 			return err
@@ -257,7 +258,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("nodes", "物理节点资源", func() error {
+	step("nodes", "物理节点资源", pathNodes, func() error {
 		ms, err := emlaGet(ctx, cn, pathNodes, filter(nodeMetrics))
 		if err != nil {
 			return err
@@ -269,7 +270,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("hypervisors", "宿主机总核数 / 已用核数（Nova）", func() error {
+	step("hypervisors", "宿主机总核数 / 已用核数（Nova）", "/v2.1/os-hypervisors/detail", func() error {
 		hv, err := collectHypervisors(ctx, cn)
 		if err != nil {
 			return err
@@ -277,7 +278,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		mergeHypervisors(r.Nodes, hv)
 		return nil
 	})
-	step("node_network", "节点网络收发流量", func() error {
+	step("node_network", "节点网络收发流量", seriesPath, func() error {
 		rx, err := seriesByNode(ctx, cn, exprNetRx, sumF)
 		if err != nil {
 			return err
@@ -290,7 +291,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		mergeNodeSeries(r.Nodes, tx, func(n *Node, v *float64) { n.NetTx = v })
 		return nil
 	})
-	step("node_disk_io", "节点磁盘 I/O 使用率", func() error {
+	step("node_disk_io", "节点磁盘 I/O 使用率", seriesPath, func() error {
 		io, err := seriesByNode(ctx, cn, exprDiskIO, maxF)
 		if err != nil {
 			return err
@@ -304,7 +305,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("vms", "云主机列表（Nova）", func() error {
+	step("vms", "云主机列表（Nova）", "/v2.1/servers/detail?all_tenants=true", func() error {
 		vms, err := collectVMs(ctx, cn)
 		if err != nil {
 			return err
@@ -313,7 +314,12 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 	if len(r.VMs) > 0 {
-		step("vm_metrics", "云主机 CPU / 内存（Gnocchi）", func() error {
+		step("vm_flavors", "云主机规格（Nova，补充 vCPU / 内存）", "/v2.1/flavors/detail", func() error {
+			n, err := fillVMFlavors(ctx, cn, r.VMs)
+			r.flavorN = n
+			return err
+		})
+		step("vm_metrics", "云主机 CPU / 内存（Gnocchi）", "/v1/resource/generic/{id}/metric/{cpu_util|memory.util}/measures", func() error {
 			okN, err := fillVMMetrics(ctx, cn, r.VMs)
 			if okN == 0 && err != nil {
 				return err
@@ -322,8 +328,29 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		})
 	}
 
+	fillStepCounts(r)
 	r.Samples = samplesOf(r)
 	return r
+}
+
+// fillStepCounts 采集明细「条数」：列表类接口为返回/解析的条数，单值类指标接口成功记 1。
+func fillStepCounts(r *Result) {
+	withMetric := 0
+	for _, v := range r.VMs {
+		if v.CPUPercent != nil || v.MemPercent != nil {
+			withMetric++
+		}
+	}
+	list := map[string]int{"services": len(r.Services), "storage_cluster": len(r.Storage), "disks": len(r.Disks), "nodes": len(r.Nodes), "hypervisors": len(r.Nodes),
+		"vms": len(r.VMs), "vm_flavors": r.flavorN, "vm_metrics": withMetric, "node_network": len(r.Nodes), "node_disk_io": len(r.Nodes)}
+	for i := range r.Steps {
+		s := &r.Steps[i]
+		if n, ok := list[s.Key]; ok {
+			s.Count = n
+		} else if s.OK {
+			s.Count = 1
+		}
+	}
 }
 
 // pickServiceLabels 服务指标上对展示有用的标签。

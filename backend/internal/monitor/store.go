@@ -127,6 +127,11 @@ FROM monitor_snapshots WHERE provider_id=?`, id).Scan(&col, &sn.OK, &sn.Error, &
 	sn.Services = unmarshal(svcs, sn.Services)
 	sn.Storage = unmarshal(sto, sn.Storage)
 	sn.Steps = unmarshal(steps, sn.Steps)
+	for i := range sn.Steps { // 兼容旧快照：缺少请求路径时按接口标识回填
+		if sn.Steps[i].Path == "" {
+			sn.Steps[i].Path = stepPaths[sn.Steps[i].Key]
+		}
+	}
 	return sn, nil
 }
 
@@ -176,4 +181,12 @@ func (s *Store) Trend(ctx context.Context, id, metric, target string, since time
 		out = append(out, Point{T: all[(i+j-1)/2].T, V: sum / float64(j-i)})
 	}
 	return out, nil
+}
+
+// stepPaths 各采集步骤对应的请求路径（旧快照回填用）。
+var stepPaths = map[string]string{
+	"storage_capacity": pathStorage, "storage_cluster": pathStorage, "disks": pathStorage,
+	"vcpu": pathDashboard, "memory": pathDashboard, "instances": pathDashboard, "control_health": pathDashboard, "storage_health": pathDashboard, "iops": pathDashboard,
+	"services": pathServices, "nodes": pathNodes, "hypervisors": "/v2.1/os-hypervisors/detail", "node_network": seriesPath, "node_disk_io": seriesPath,
+	"vms": "/v2.1/servers/detail?all_tenants=true", "vm_flavors": "/v2.1/flavors/detail", "vm_metrics": "/v1/resource/generic/{id}/metric/{cpu_util|memory.util}/measures",
 }

@@ -68,6 +68,7 @@ type VM struct {
 	Node       string   `json:"node"` // 所在物理节点（OS-EXT-SRV-ATTR:host 去掉域名后缀）
 	IPs        string   `json:"ips"`
 	Flavor     string   `json:"flavor"`
+	FlavorID   string   `json:"-"`
 	VCPUs      int      `json:"vcpus"`
 	RAMMB      int      `json:"ramMb"`
 	DiskGB     int      `json:"diskGb"`
@@ -117,7 +118,9 @@ type Series struct {
 type Step struct {
 	Key        string `json:"key"`
 	Label      string `json:"label"`
+	Path       string `json:"path"` // 请求路径（采集明细展示，与资产管理一致）
 	OK         bool   `json:"ok"`
+	Count      int    `json:"count"` // 返回 / 解析条数
 	Error      string `json:"error,omitempty"`
 	DurationMs int64  `json:"durationMs"`
 }
@@ -149,6 +152,7 @@ const (
 	pathServices  = "/apis/monitoring/v1/ecms/services"
 	pathNodes     = "/apis/monitoring/v1/ecms/nodes"
 	pathAlerts    = "/apis/monitoring/v1/ecms/alerts"
+	seriesPath    = "/apis/monitoring/v1/projects/{project_id}/series/query"
 )
 
 var storageCapMetrics = "storage_actual_capacity_free_bytes|storage_actual_capacity_usage_bytes|storage_actual_capacity_total_bytes"
