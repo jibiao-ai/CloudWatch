@@ -263,9 +263,10 @@ func fillVMMetrics(ctx context.Context, cn *provider.Conn, vms []VM) (okN int, f
 			defer func() { <-sem }()
 			c, err1 := gnocchiMeasures(ctx, cn, v.ID, gCPU, since, 300)
 			m, err2 := gnocchiMeasures(ctx, cn, v.ID, gMem, since, 300)
+			w, _ := gnocchiMeasures(ctx, cn, v.ID, gDiskW, since, 300) // 写速率缺失不影响 CPU / 内存采集结论
 			mu.Lock()
 			defer mu.Unlock()
-			v.CPUPercent, v.MemPercent = last(c), last(m)
+			v.CPUPercent, v.MemPercent, v.WriteBps = last(c), last(m), last(w)
 			if err1 == nil || err2 == nil {
 				okN++
 			} else if firstErr == nil {

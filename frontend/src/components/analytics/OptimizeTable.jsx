@@ -18,9 +18,10 @@ import { formatDateTime } from '../../utils/format';
 const VIEWS = [{ value: '0', label: '优化资源' }, { value: '1', label: '已忽略资源' }];
 const FIELDS = [{ value: 'name', label: '名称' }, { value: 'ip', label: 'IP地址' }];
 const pctCol = (key, title) => ({ key, title, width: 120, align: 'right', render: (r) => <span className="tabular-nums">{pctText(r[key])}</span> });
+const rateCol = (key, title) => ({ key, title, width: 150, align: 'right', render: (r) => <span className="tabular-nums">{r[key] == null ? '-' : `${r[key]} KiB/s`}</span> });
 const toParams = (q) => ({ kind: q.kind, ignored: q.ignored, field: q.field, keyword: q.keyword, providerId: q.providerId });
 
-/** OptimizeTable —— 某一类优化建议的列表（优化资源 / 已忽略资源）：搜索、所属云平台筛选、忽略 / 取消忽略、导出 */
+/** OptimizeTable —— 某一类优化建议（僵尸型 / 资源过剩 / 资源不足 / 长期关机）的列表（优化资源 / 已忽略资源）：搜索、所属云平台筛选、忽略 / 取消忽略、导出 */
 export default function OptimizeTable({ kind, kindName, platforms, refreshKey, onChanged }) {
   const toast = useToast();
   const canIgnore = useCan('analytics:ignore');
@@ -50,7 +51,9 @@ export default function OptimizeTable({ kind, kindName, platforms, refreshKey, o
     { key: 'ips', title: 'IP地址', width: 170, render: (r) => <IpCell list={r.ipList} /> },
     { key: 'flavor', title: '实例规格', width: 140, render: (r) => r.flavor || '-' },
     { key: 'reason', title: '建议原因', width: 320, render: (r) => <Tooltip content={r.reason}><span className="block max-w-[310px] truncate text-[13px] text-fg-muted">{r.reason}</span></Tooltip> },
-    pctCol('cpuAvg', 'CPU平均使用率'), pctCol('memAvg', '内存平均使用率'),
+    ...(kind === 'zombie' ? [rateCol('writeAvg', '写I/O平均速率')] : []),
+    ...(kind === 'excess' || kind === 'shortage' ? [pctCol('cpuAvg', 'CPU平均使用率'), pctCol('memAvg', '内存平均使用率')] : []),
+    ...(kind === 'longoff' ? [{ key: 'statusText', title: '实例状态', width: 110, render: (r) => r.statusText || '-' }, { key: 'shutdownDays', title: '持续关机', width: 110, align: 'right', render: (r) => <span className="tabular-nums">{r.shutdownDays == null ? '-' : `${r.shutdownDays} 天`}</span> }] : []),
     ...(ignoredView ? [{ key: 'ignoredBy', title: '忽略人 / 时间', width: 190, render: (r) => <span className="text-[13px] text-fg-muted">{r.ignoredBy} · {formatDateTime(r.ignoredAt)}</span> }] : []),
     ...(canIgnore ? [{ key: 'op', title: '操作', width: 90, sticky: 'right', render: (r) => (
       <button type="button" className="text-primary-text hover:underline text-[13px]" onClick={() => setConfirm([r])}>{ignoredView ? '取消忽略' : '忽略'}</button>
@@ -74,7 +77,7 @@ export default function OptimizeTable({ kind, kindName, platforms, refreshKey, o
           <span className="text-[13px] text-fg-muted">共 {list.total} 项</span>
           {canExport && <ExportButton fn={analyticsApi.exportList('opt')} params={toParams(query)} title="云主机优化建议" filters={{ 类型: kindName, 范围: ignoredView ? '已忽略' : '优化资源' }} />}
         </>}
-        empty={filtered ? { title: '没有匹配的结果', description: '请调整搜索关键字或筛选条件' } : { title: ignoredView ? '没有已忽略的资源' : '暂无优化建议', description: ignoredView ? '被忽略的云主机会出现在这里，可随时取消忽略' : '当前没有云主机命中该策略；使用率类策略需积累满统计周期的数据后才会产生建议' }} />
+        empty={filtered ? { title: '没有匹配的结果', description: '请调整搜索关键字或筛选条件' } : { title: ignoredView ? '没有已忽略的资源' : '暂无优化建议', description: ignoredView ? '被忽略的云主机会出现在这里，可随时取消忽略' : '当前没有云主机命中该策略；使用率与写 I/O 类策略需积累满统计周期的数据后才会产生建议' }} />
       <ConfirmModal open={!!confirm} title={ignoredView ? '取消忽略' : '忽略优化建议'} loading={busy}
         description={ignoredView ? '取消后，若这些云主机仍满足策略条件，将重新出现在「优化资源」中。' : '忽略后这些云主机不再计入该类优化建议，可在「已忽略资源」中恢复。'}
         targets={(confirm || []).map((r) => r.name)} confirmText={ignoredView ? '取消忽略' : '忽略'} onConfirm={run} onCancel={() => setConfirm(null)} />

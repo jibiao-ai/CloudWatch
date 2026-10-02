@@ -11,7 +11,7 @@ import (
 func fp(v float64) *float64 { return &v }
 
 func upgrade() Policy {
-	p := Policy{Kind: KindUpgrade, Name: "建议升配", Enabled: true, WindowDays: 10, Conds: []Cond{
+	p := Policy{Kind: KindShortage, Name: "建议升配", Enabled: true, WindowDays: 10, Conds: []Cond{
 		{Field: "cpuMax", Op: ">=", Value: 90.0}, {Field: "memMax", Op: ">=", Value: 90.0, Join: "OR"}}}
 	if e := p.Validate(); len(e) > 0 {
 		panic(e)
@@ -21,22 +21,22 @@ func upgrade() Policy {
 
 func TestEvalOr(t *testing.T) {
 	p := upgrade()
-	ok, why := p.Eval(VMFacts{CPUMax: fp(95), MemMax: fp(10), DaysWithData: 1})
+	ok, why := p.Eval(VMFacts{Status: "active", CPUMax: fp(95), MemMax: fp(10), DaysWithData: 1})
 	if !ok || !strings.Contains(why, "CPU使用率最大值 95.0%") {
 		t.Fatalf("want hit, got %v %q", ok, why)
 	}
-	if ok, _ := p.Eval(VMFacts{CPUMax: fp(50), MemMax: fp(60)}); ok {
+	if ok, _ := p.Eval(VMFacts{Status: "active", CPUMax: fp(50), MemMax: fp(60)}); ok {
 		t.Fatal("should not hit")
 	}
 }
 
 func TestEvalLowNeedsFullWindow(t *testing.T) {
-	p := Policy{Kind: KindDowngrade, Name: "建议降配", Enabled: true, WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: "<=", Value: 1.0}}}
+	p := Policy{Kind: KindExcess, Name: "建议降配", Enabled: true, WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: "<=", Value: 1.0}}}
 	_ = p.Validate()
-	if ok, _ := p.Eval(VMFacts{CPUMax: fp(0.5), DaysWithData: 3}); ok {
+	if ok, _ := p.Eval(VMFacts{Status: "active", CPUMax: fp(0.5), DaysWithData: 3}); ok {
 		t.Fatal("window not full must not hit")
 	}
-	if ok, _ := p.Eval(VMFacts{CPUMax: fp(0.5), DaysWithData: 10}); !ok {
+	if ok, _ := p.Eval(VMFacts{Status: "active", CPUMax: fp(0.5), DaysWithData: 10}); !ok {
 		t.Fatal("full window should hit")
 	}
 }
@@ -94,7 +94,7 @@ func TestValidate(t *testing.T) {
 
 func TestReasonText(t *testing.T) {
 	p := upgrade()
-	want := "针对过去10天的数据分析,CPU使用率最大值 大于等于 90% OR 内存使用率最大值 大于等于 90%,建议升配"
+	want := "针对过去10天的数据分析,CPU使用率最大值 大于等于 90% OR 内存使用率最大值 大于等于 90%,建议提高其计算资源分配"
 	if got := p.ReasonText(); got != want {
 		t.Fatalf("got %q", got)
 	}
@@ -168,5 +168,83 @@ func TestStateGroup(t *testing.T) {
 		if stateGroup(c) != g {
 			t.Errorf("%s", c)
 		}
+	}
+}
+
+func mk(kind, name string, conds ...Cond) Policy {
+	p := Policy{Kind: kind, Name: name, Enabled: true, WindowDays: 10, Conds: conds}
+	if e := p.Validate(); len(e) > 0 {
+		panic(e)
+	}
+	return p
+}
+
+func TestZombie(t *testing.T) {
+	p := mk(KindZombie, "僵尸型虚拟机", Cond{Field: "status", Op: "=", Value: "active"}, Cond{Field: "writeAvg", Op: "<", Value: 1.0, Join: "AND"})
+	if ok, why := p.Eval(VMFacts{Status: "active", WriteAvg: fp(0.35), WriteDays: 10}); !ok || !strings.Contains(why, "写I/O平均速率 0.35KiB/s") {
+		t.Fatalf("zombie should hit: %v %q", ok, why)
+	}
+	if ok, _ := p.Eval(VMFacts{Status: "active", WriteAvg: fp(0.35), WriteDays: 4}); ok {
+		t.Fatal("window not full must not hit")
+	}
+	if ok, _ := p.Eval(VMFacts{Status: "active", WriteAvg: fp(1.0), WriteDays: 10}); ok {
+		t.Fatal("1KiB/s is not < 1")
+	}
+	if ok, _ := p.Eval(VMFacts{Status: "shutoff", WriteAvg: fp(0), WriteDays: 10}); ok {
+		t.Fatal("shutoff vm is not a zombie")
+	}
+	if ok, _ := p.Eval(VMFacts{Status: "active", WriteDays: 10}); ok {
+		t.Fatal("no write data must not hit")
+	}
+}
+
+func TestExcessAndShortage(t *testing.T) {
+	ex := mk(KindExcess, "资源过剩虚拟机", Cond{Field: "cpuMax", Op: "<", Value: 10.0}, Cond{Field: "memMax", Op: "<", Value: 10.0, Join: "OR"})
+	if ok, _ := ex.Eval(VMFacts{Status: "active", CPUMax: fp(9.9), MemMax: fp(50), DaysWithData: 10}); !ok {
+		t.Fatal("cpu persistently <10 should hit")
+	}
+	if ok, _ := ex.Eval(VMFacts{Status: "active", CPUMax: fp(10), MemMax: fp(50), DaysWithData: 10}); ok {
+		t.Fatal("10 is not < 10")
+	}
+	if ok, _ := ex.Eval(VMFacts{Status: "active", CPUMax: fp(1), MemMax: fp(1), DaysWithData: 9}); ok {
+		t.Fatal("9 of 10 days must not hit")
+	}
+	if ok, _ := ex.Eval(VMFacts{Status: "shutoff", CPUMax: fp(1), MemMax: fp(1), DaysWithData: 10}); ok {
+		t.Fatal("usage rules only apply to running vms")
+	}
+	sh := mk(KindShortage, "资源不足虚拟机", Cond{Field: "cpuMin", Op: ">", Value: 90.0}, Cond{Field: "memMin", Op: ">", Value: 90.0, Join: "OR"})
+	if ok, why := sh.Eval(VMFacts{Status: "active", CPUMin: fp(90.5), MemMin: fp(30), DaysWithData: 10}); !ok || !strings.Contains(why, "CPU使用率最小值 90.5%") {
+		t.Fatalf("cpu persistently >90 should hit: %v %q", ok, why)
+	}
+	if ok, _ := sh.Eval(VMFacts{Status: "active", CPUMin: fp(60), CPUMax: fp(99), MemMin: fp(30), DaysWithData: 10}); ok {
+		t.Fatal("a single dip below 90 breaks 'persistently'")
+	}
+	if ok, _ := sh.Eval(VMFacts{Status: "active", CPUMin: fp(95), MemMin: fp(95), DaysWithData: 3}); ok {
+		t.Fatal("window not full must not hit")
+	}
+	if want := "针对过去10天的数据分析,CPU使用率最小值 大于 90% OR 内存使用率最小值 大于 90%,建议提高其计算资源分配"; sh.ReasonText() != want {
+		t.Fatalf("got %q", sh.ReasonText())
+	}
+}
+
+func TestLongOff(t *testing.T) {
+	p := mk(KindLongOff, "长期关机虚机", Cond{Field: "shutdownDays", Op: ">=", Value: 30.0}, Cond{Field: "status", Op: "=", Value: "soft_deleted", Join: "OR"})
+	if ok, _ := p.Eval(VMFacts{Status: "shutoff", ShutdownDays: 30}); !ok {
+		t.Fatal("30 days should hit")
+	}
+	if ok, _ := p.Eval(VMFacts{Status: "shutoff", ShutdownDays: 29.9}); ok {
+		t.Fatal("29.9 days must not hit")
+	}
+	if ok, _ := p.Eval(VMFacts{Status: "soft_deleted"}); !ok {
+		t.Fatal("pending-recycle should hit")
+	}
+	if !strings.HasSuffix(p.ReasonText(), "建议删除以释放计算、存储资源") {
+		t.Fatal(p.ReasonText())
+	}
+}
+
+func TestKinds(t *testing.T) {
+	if len(Kinds) != 4 || !IsKind("zombie") || IsKind("downgrade") {
+		t.Fatal("kinds")
 	}
 }

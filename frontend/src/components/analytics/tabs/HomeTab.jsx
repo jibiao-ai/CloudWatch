@@ -25,7 +25,7 @@ export default function HomeTab({ d, tick, onOpt }) {
       </div>
       <TrendPanel title="云主机趋势" kind="vm" suffix=" 台" refreshKey={tick} />
       <Panel title="云主机优化建议">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {(d.suggestions || []).map((s) => (
             <button key={s.kind} type="button" onClick={() => onOpt(s.kind)} className="text-left rounded-lg border border-line px-4 py-3 hover:bg-hover transition flex items-center justify-between gap-2">
               <span>

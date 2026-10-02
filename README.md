@@ -328,3 +328,16 @@ npm run lint:rules          # 规则扫描（见下）
 - 页签与优化类型同步到地址栏：`/analytics?tab=base|vm|disk|optimize|policy`、`&kind=downgrade|upgrade|recycle`；旧路径 `/analytics/base` 等自动重定向到对应页签。
 - 导出审计中的跳转链接同步改为 `/analytics?tab=…`；权限码与后端接口不变。
 - 页面文件：`pages/AnalyticsPage.jsx` + `components/analytics/tabs/{Home,Base,VM,Disk,Optimize,Policy}Tab.jsx`（原 6 个 `Analytics*Page.jsx` 已删除）。
+
+## 第31轮：运营分析「优化策略」改为四类建议（Bug 修复）
+
+- 新增并默认启用 4 条可编辑策略（统计周期 10 天），替换原「建议降配 / 升配 / 回收」：
+  1. **僵尸型虚拟机**（`zombie`）：实例状态为开机，且最近 10 天平均写 I/O 速率 < 1 KiB/s；建议关机观察或回收。
+  2. **资源过剩虚拟机**（`excess`）：最近 10 天 CPU 使用率持续 < 10% **或** 内存使用率持续 < 10%（取日最大值）；建议降低计算资源分配。
+  3. **资源不足虚拟机**（`shortage`）：最近 10 天 CPU 使用率持续 > 90% **或** 内存使用率持续 > 90%（取日最小值）；建议提高计算资源分配。
+  4. **长期关机虚机**（`longoff`）：持续关机 ≥ 30 天 **或** 实例状态为待回收；建议删除以释放计算、存储资源。
+- 策略引擎：新增字段 `cpuMin` / `memMin`（统计周期内日最小使用率）、`writeAvg`（平均写 I/O，KiB/s）；「持续」类条件（`<`、`<=` 或 `*Min` 的 `>`）必须积满完整统计周期的数据才生效；使用率 / 写 I/O 条件仅对「开机」云主机生效，关机天数仅对「已关机」生效。
+- 数据采集：监控读取 Gnocchi `disk.write.bytes.rate`（失败不影响其它指标），采样器按日累计写入 `analytics_vm_usage`（新增 `cpu_min / mem_min / w_sum / w_n` 列）。
+- 迁移 `0012_analytics_policies_v2.sql`：加列；已有「忽略」记录按 降配→过剩、升配→不足、回收→长期关机 映射；删除旧 3 条策略并写入新 4 条。
+- 页面：云主机优化页签 4 个分段（带数量），各类型列不同（僵尸：写 I/O 平均速率；过剩 / 不足：CPU / 内存平均使用率；长期关机：实例状态 + 持续关机天数）；总览建议卡片 4 列；导出新增「写I/O平均速率(KiB/s)」「持续关机(天)」。URL：`/analytics?tab=optimize&kind=zombie|excess|shortage|longoff`。
+- 注意：新增指标（最小值、写 I/O）自部署后开始积累，过剩 / 不足 / 僵尸需积满 10 天才会出结果；长期关机立即生效。

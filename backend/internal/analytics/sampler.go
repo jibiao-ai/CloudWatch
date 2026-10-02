@@ -93,8 +93,13 @@ func (m *Sampler) One(ctx context.Context, p capacity.Platform) error {
 	if snap.CollectedAt != nil && snap.CollectedAt.After(cur.mon) {
 		var list []UsageSample
 		for _, v := range snap.VMs {
-			if v.CPUPercent != nil || v.MemPercent != nil {
-				list = append(list, UsageSample{VM: v.ID, CPU: v.CPUPercent, Mem: v.MemPercent})
+			if v.CPUPercent != nil || v.MemPercent != nil || v.WriteBps != nil {
+				u := UsageSample{VM: v.ID, CPU: v.CPUPercent, Mem: v.MemPercent}
+				if v.WriteBps != nil {
+					kib := *v.WriteBps / 1024
+					u.Write = &kib
+				}
+				list = append(list, u)
 			}
 		}
 		if err := m.St.addUsage(ctx, p.ID, snap.CollectedAt.In(CST), list); err != nil {

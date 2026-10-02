@@ -8,7 +8,7 @@ import { useAsync } from '../../../hooks/useAsync';
 import { useCan } from '../../../hooks/useCan';
 import { formatDateTime } from '../../../utils/format';
 
-/** PolicyTab —— 运营分析 · 优化策略：降配 / 升配 / 回收的判定条件，保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
+/** PolicyTab —— 运营分析 · 优化策略：僵尸型 / 资源过剩 / 资源不足 / 长期关机的判定条件，保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
 export default function PolicyTab({ tick, openKind, onOpened, onSaved }) {
   const canEdit = useCan('analytics:policy_update');
   const q = useAsync(() => analyticsApi.getPolicies(), [tick]);

@@ -105,6 +105,8 @@ func pct(a, b float64) *float64 {
 
 func round1(v float64) float64 { return math.Round(v*10) / 10 }
 
+func round2(v float64) float64 { return math.Round(v*100) / 100 }
+
 func ptr(v float64) *float64 { return &v }
 
 // stateGroup 云主机状态归类：running 运行中 / stopped 已停止 / error 异常 / other 其他（过渡态）。

@@ -2,7 +2,7 @@ import React from 'react';
 import { Seg } from '../Panel';
 import OptimizeTable from '../OptimizeTable';
 
-/** OptimizeTab —— 运营分析 · 云主机优化：降配 / 升配 / 回收三类建议（带数量）切换，各自可忽略 / 取消忽略 */
+/** OptimizeTab —— 运营分析 · 云主机优化：僵尸型 / 资源过剩 / 资源不足 / 长期关机四类建议（带数量）切换，各自可忽略 / 取消忽略 */
 export default function OptimizeTab({ d, tick, reloadOv, kind, onKind }) {
   const list = d.suggestions || [];
   const cur = list.find((s) => s.kind === kind);

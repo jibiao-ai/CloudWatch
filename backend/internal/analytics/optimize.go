@@ -60,7 +60,8 @@ func factsOf(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time)
 	status := strings.ToLower(s(r, "status"))
 	v := VMFacts{Status: status}
 	if u != nil {
-		v.CPUAvg, v.CPUMax, v.MemAvg, v.MemMax, v.DaysWithData = u.CPUAvg, u.CPUMax, u.MemAvg, u.MemMax, u.Days
+		v.CPUAvg, v.CPUMax, v.CPUMin, v.MemAvg, v.MemMax, v.MemMin = u.CPUAvg, u.CPUMax, u.CPUMin, u.MemAvg, u.MemMax, u.MemMin
+		v.WriteAvg, v.DaysWithData, v.WriteDays = u.WriteAvg, u.Days, u.WriteDays
 	}
 	if hasState && st.Status == status {
 		d := round1(now.Sub(st.Since).Hours() / 24)
@@ -152,7 +153,7 @@ func (e *Engine) suggestions(ctx context.Context, ps []*plat) ([]Suggest, error)
 	return out, nil
 }
 
-// Suggestions 四类建议汇总（含所有所属云平台）。
+// Suggestions 各类建议汇总（含所有所属云平台）。
 func (e *Engine) Suggestions(ctx context.Context, plats []capacity.Platform) ([]Suggest, error) {
 	ps, err := e.load(ctx, plats, "")
 	if err != nil {
@@ -194,6 +195,10 @@ func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQ
 			"cpuAvg": nv(c.facts.CPUAvg), "cpuMax": nv(c.facts.CPUMax), "memAvg": nv(c.facts.MemAvg), "memMax": nv(c.facts.MemMax),
 			"status": strings.ToLower(s(r, "status")), "statusText": s(r, "statusText"),
 		}
+		row["writeAvg"] = nv(c.facts.WriteAvg)
+		if c.facts.Status == "shutoff" {
+			row["shutdownDays"] = c.facts.ShutdownDays
+		}
 		if c.isIgn {
 			row["ignoredBy"], row["ignoredAt"] = c.ignored.CreatedBy, c.ignored.CreatedAt
 		}
@@ -213,7 +218,7 @@ func (e *Engine) OptList(ctx context.Context, plats []capacity.Platform, q ListQ
 
 // SetIgnore 忽略 / 取消忽略：items 仅需 providerId + vmId，云主机名称由已采集数据补全。
 func (e *Engine) SetIgnore(ctx context.Context, plats []capacity.Platform, kind string, items []Ignore, on bool, by string) (int, error) {
-	if kind != KindDowngrade && kind != KindUpgrade && kind != KindRecycle {
+	if !IsKind(kind) {
 		return 0, fmt.Errorf("建议类型不合法")
 	}
 	names := map[string]string{}
@@ -242,7 +247,7 @@ func (e *Engine) SetIgnore(ctx context.Context, plats []capacity.Platform, kind 
 	return e.St.SetIgnore(ctx, kind, valid, on, by)
 }
 
-// PolicyList 四条策略（含编辑器用的字段定义）。
+// PolicyList 全部策略（含编辑器用的字段定义）。
 type PolicyList struct {
 	List   []Policy   `json:"list"`
 	Fields []FieldDef `json:"fields"`

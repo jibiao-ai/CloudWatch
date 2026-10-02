@@ -18,7 +18,7 @@ const TABS = [
   { key: 'optimize', label: '云主机优化' },
   { key: 'policy', label: '优化策略' },
 ];
-const KINDS = ['downgrade', 'upgrade', 'recycle'];
+const KINDS = ['zombie', 'excess', 'shortage', 'longoff'];
 
 /**
  * AnalyticsPage —— 运营分析（总览 / 资源分析 / 云主机分析 / 磁盘分析 / 云主机优化 / 优化策略）：
@@ -28,7 +28,7 @@ export default function AnalyticsPage() {
   const [sp, setSp] = useSearchParams();
   const canPolicy = useCan('analytics:policy_update');
   const tab = TABS.some((t) => t.key === sp.get('tab')) ? sp.get('tab') : 'home';
-  const kind = KINDS.includes(sp.get('kind')) ? sp.get('kind') : 'downgrade';
+  const kind = KINDS.includes(sp.get('kind')) ? sp.get('kind') : 'zombie';
   const go = useCallback((next) => setSp(next, { replace: true }), [setSp]);
   const openPolicy = sp.get('open');
 

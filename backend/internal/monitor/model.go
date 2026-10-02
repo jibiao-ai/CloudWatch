@@ -77,6 +77,7 @@ type VM struct {
 	CreatedAt  string   `json:"createdAt"`
 	CPUPercent *float64 `json:"cpuPercent"`
 	MemPercent *float64 `json:"memPercent"`
+	WriteBps   *float64 `json:"diskWriteBps"` // 最近一次 disk.write.bytes.rate（字节/秒，各磁盘合计）
 }
 
 // Disk 物理磁盘（来自 storage_cluster_disk_info）。

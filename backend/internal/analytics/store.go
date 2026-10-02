@@ -147,10 +147,10 @@ func (s *Store) putStates(ctx context.Context, id string, upsert map[string]vmSt
 
 // ---- 云主机使用率（按天汇总） ----
 
-// UsageSample 一台云主机一次采样的 CPU / 内存使用率（nil 表示该项未采到）。
+// UsageSample 一台云主机一次采样的 CPU / 内存使用率与写 I/O 速率 KiB/s（nil 表示该项未采到）。
 type UsageSample struct {
-	VM       string
-	CPU, Mem *float64
+	VM              string
+	CPU, Mem, Write *float64
 }
 
 func (s *Store) addUsage(ctx context.Context, id string, day time.Time, list []UsageSample) error {
@@ -162,27 +162,35 @@ func (s *Store) addUsage(ctx context.Context, id string, day time.Time, list []U
 		return err
 	}
 	defer tx.Rollback()
-	st, err := tx.PrepareContext(ctx, `INSERT INTO analytics_vm_usage(provider_id,vm_id,day,cpu_sum,cpu_n,cpu_max,mem_sum,mem_n,mem_max) VALUES(?,?,?,?,?,?,?,?,?)
-ON DUPLICATE KEY UPDATE cpu_sum=cpu_sum+VALUES(cpu_sum),cpu_n=cpu_n+VALUES(cpu_n),cpu_max=GREATEST(cpu_max,VALUES(cpu_max)),
-mem_sum=mem_sum+VALUES(mem_sum),mem_n=mem_n+VALUES(mem_n),mem_max=GREATEST(mem_max,VALUES(mem_max))`)
+	// 注意：ON DUPLICATE KEY UPDATE 的赋值从左到右执行，*_min 必须在 *_n 自增之前计算
+	st, err := tx.PrepareContext(ctx, `INSERT INTO analytics_vm_usage(provider_id,vm_id,day,cpu_sum,cpu_n,cpu_max,cpu_min,mem_sum,mem_n,mem_max,mem_min,w_sum,w_n) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+ON DUPLICATE KEY UPDATE
+cpu_min=IF(VALUES(cpu_n)=0,cpu_min,IF(cpu_n=0,VALUES(cpu_min),LEAST(cpu_min,VALUES(cpu_min)))),
+mem_min=IF(VALUES(mem_n)=0,mem_min,IF(mem_n=0,VALUES(mem_min),LEAST(mem_min,VALUES(mem_min)))),
+cpu_sum=cpu_sum+VALUES(cpu_sum),cpu_n=cpu_n+VALUES(cpu_n),cpu_max=GREATEST(cpu_max,VALUES(cpu_max)),
+mem_sum=mem_sum+VALUES(mem_sum),mem_n=mem_n+VALUES(mem_n),mem_max=GREATEST(mem_max,VALUES(mem_max)),
+w_sum=w_sum+VALUES(w_sum),w_n=w_n+VALUES(w_n)`)
 	if err != nil {
 		return err
 	}
 	defer st.Close()
 	d := day.Format("2006-01-02")
 	for _, u := range list {
-		var cs, cm, ms, mm float64
-		var cn, mn int
+		var cs, cm, cl, ms, mm, ml, ws float64
+		var cn, mn, wn int
 		if u.CPU != nil {
-			cs, cm, cn = *u.CPU, *u.CPU, 1
+			cs, cm, cl, cn = *u.CPU, *u.CPU, *u.CPU, 1
 		}
 		if u.Mem != nil {
-			ms, mm, mn = *u.Mem, *u.Mem, 1
+			ms, mm, ml, mn = *u.Mem, *u.Mem, *u.Mem, 1
 		}
-		if cn+mn == 0 {
+		if u.Write != nil {
+			ws, wn = *u.Write, 1
+		}
+		if cn+mn+wn == 0 {
 			continue
 		}
-		if _, err := st.ExecContext(ctx, id, u.VM, d, cs, cn, cm, ms, mn, mm); err != nil {
+		if _, err := st.ExecContext(ctx, id, u.VM, d, cs, cn, cm, cl, ms, mn, mm, ml, ws, wn); err != nil {
 			return err
 		}
 	}
@@ -191,13 +199,15 @@ mem_sum=mem_sum+VALUES(mem_sum),mem_n=mem_n+VALUES(mem_n),mem_max=GREATEST(mem_m
 
 // Usage 一台云主机在统计窗口内的使用率汇总。
 type Usage struct {
-	CPUAvg, CPUMax, MemAvg, MemMax *float64
-	Days                           int // 有数据的天数
+	CPUAvg, CPUMax, CPUMin *float64
+	MemAvg, MemMax, MemMin *float64
+	WriteAvg               *float64 // 写 I/O 平均速率 KiB/s
+	Days, WriteDays        int      // 有使用率数据的天数 / 有写 I/O 数据的天数
 }
 
 // usageSince 各云主机自 since（含，按天）起的使用率汇总，键为 providerID + "/" + vmID。providerID 为空表示全部平台。
 func (s *Store) usageSince(ctx context.Context, providerID string, since time.Time) (map[string]*Usage, error) {
-	q := `SELECT provider_id,vm_id,SUM(cpu_sum),SUM(cpu_n),MAX(cpu_max),SUM(mem_sum),SUM(mem_n),MAX(mem_max),COUNT(DISTINCT day) FROM analytics_vm_usage WHERE day>=?`
+	q := `SELECT provider_id,vm_id,SUM(cpu_sum),SUM(cpu_n),MAX(cpu_max),MIN(IF(cpu_n>0,cpu_min,NULL)),SUM(mem_sum),SUM(mem_n),MAX(mem_max),MIN(IF(mem_n>0,mem_min,NULL)),SUM(w_sum),SUM(w_n),COUNT(DISTINCT day),COUNT(DISTINCT IF(w_n>0,day,NULL)) FROM analytics_vm_usage WHERE day>=?`
 	args := []any{since.Format("2006-01-02")}
 	if providerID != "" {
 		q += ` AND provider_id=?`
@@ -211,18 +221,28 @@ func (s *Store) usageSince(ctx context.Context, providerID string, since time.Ti
 	out := map[string]*Usage{}
 	for rows.Next() {
 		var pid, vid string
-		var cs, ms float64
-		var cn, mn, days int
+		var cs, ms, ws float64
+		var cn, mn, wn, days, wdays int
 		var cm, mm float64
-		if err := rows.Scan(&pid, &vid, &cs, &cn, &cm, &ms, &mn, &mm, &days); err != nil {
+		var cl, ml sql.NullFloat64
+		if err := rows.Scan(&pid, &vid, &cs, &cn, &cm, &cl, &ms, &mn, &mm, &ml, &ws, &wn, &days, &wdays); err != nil {
 			return nil, err
 		}
-		u := &Usage{Days: days}
+		u := &Usage{Days: days, WriteDays: wdays}
 		if cn > 0 {
 			u.CPUAvg, u.CPUMax = ptr(round1(cs/float64(cn))), ptr(round1(cm))
+			if cl.Valid {
+				u.CPUMin = ptr(round1(cl.Float64))
+			}
 		}
 		if mn > 0 {
 			u.MemAvg, u.MemMax = ptr(round1(ms/float64(mn))), ptr(round1(mm))
+			if ml.Valid {
+				u.MemMin = ptr(round1(ml.Float64))
+			}
+		}
+		if wn > 0 {
+			u.WriteAvg = ptr(round2(ws / float64(wn)))
 		}
 		out[pid+"/"+vid] = u
 	}
@@ -356,7 +376,7 @@ func (s *Store) policies(ctx context.Context) ([]Policy, error) {
 		p.Reason = p.ReasonText()
 		out = append(out, p)
 	}
-	// 展示顺序固定为 Kinds（降配 / 升配 / 回收），不依赖库里的 sort_no
+	// 展示顺序固定为 Kinds（僵尸型 / 资源过剩 / 资源不足 / 长期关机），不依赖库里的 sort_no
 	idx := func(k string) int {
 		for i, x := range Kinds {
 			if x == k {
@@ -369,7 +389,7 @@ func (s *Store) policies(ctx context.Context) ([]Policy, error) {
 	return out, rows.Err()
 }
 
-// Policies 三条优化策略（按页面展示顺序：降配 / 升配 / 回收）。
+// Policies 四条优化策略（按页面展示顺序）。
 func (s *Store) Policies(ctx context.Context) ([]Policy, error) { return s.policies(ctx) }
 
 // SavePolicy 更新一条策略（名称 / 启用 / 统计周期 / 条件）。

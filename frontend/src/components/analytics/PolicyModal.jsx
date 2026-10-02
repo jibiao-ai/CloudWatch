@@ -39,7 +39,7 @@ export default function PolicyModal({ policy, fields, onClose, onSaved }) {
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="策略名称" required error={errs.name}><input className="field" value={form.name} maxLength={32} onChange={(e) => setForm({ ...form, name: e.target.value })} /></FormField>
-          <FormField label="统计周期（天）" required error={errs.windowDays} hint="使用率类条件取该周期内的平均值 / 最大值；数据不足整个周期时低负载条件不生效">
+          <FormField label="统计周期（天）" required error={errs.windowDays} hint="使用率 / 写 I/O 类条件取该周期内的平均 / 最大 / 最小值；「持续」型条件（偏低或最小值偏高）在数据不足整个周期时不生效">
             <input className="field" type="number" min={1} max={90} value={form.windowDays} onChange={(e) => setForm({ ...form, windowDays: e.target.value })} />
           </FormField>
         </div>
@@ -59,7 +59,7 @@ export default function PolicyModal({ policy, fields, onClose, onSaved }) {
                   <div className="w-[96px]"><CustomSelect size="sm" aria-label={`条件${i + 1}运算符`} options={f.ops.map((o) => ({ value: o, label: o }))} value={c.op} onChange={(v) => setCond(i, { op: v })} /></div>
                   {f.type === 'enum'
                     ? <div className="w-[130px]"><CustomSelect size="sm" aria-label={`条件${i + 1}取值`} options={f.options} value={c.value} onChange={(v) => setCond(i, { value: v })} /></div>
-                    : <div className="flex items-center gap-1.5"><input className="field !h-8 !w-[90px]" type="number" min={0} aria-label={`条件${i + 1}取值`} value={c.value} onChange={(e) => setCond(i, { value: e.target.value })} /><span className="text-xs text-fg-muted">{f.unit}</span></div>}
+                    : <div className="flex items-center gap-1.5"><input className="field !h-8 !w-[90px]" type="number" min={0} step="any" aria-label={`条件${i + 1}取值`} value={c.value} onChange={(e) => setCond(i, { value: e.target.value })} /><span className="text-xs text-fg-muted">{f.unit}</span></div>}
                   <button type="button" className="btn-ghost btn-icon" aria-label={`删除条件${i + 1}`} disabled={form.conds.length <= 1} onClick={() => del(i)}><Trash2 size={15} /></button>
                 </li>
               );

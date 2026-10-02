@@ -197,7 +197,7 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 	var title, link string
 	if kind == "opt" {
 		cols = []analytics.Col{{Key: "name", Title: "名称"}, {Key: "platform", Title: "所属云平台"}, {Key: "ips", Title: "IP地址"}, {Key: "flavor", Title: "实例规格"},
-			{Key: "reason", Title: "建议原因"}, {Key: "cpuAvg", Title: "CPU平均使用率"}, {Key: "memAvg", Title: "内存平均使用率"}}
+			{Key: "reason", Title: "建议原因"}, {Key: "cpuAvg", Title: "CPU平均使用率"}, {Key: "memAvg", Title: "内存平均使用率"}, {Key: "writeAvg", Title: "写I/O平均速率(KiB/s)"}, {Key: "shutdownDays", Title: "持续关机(天)"}}
 		title, link = "云主机优化建议", "/analytics?tab=optimize"
 		if rows, err = s.Analytics.OptRows(r.Context(), ps, q); err != nil {
 			return err
@@ -270,7 +270,7 @@ func (s *Server) analyticsOptList(w http.ResponseWriter, r *http.Request, _ *aut
 	}
 	q := anQuery(r)
 	if q.Kind == "" {
-		q.Kind = analytics.KindDowngrade
+		q.Kind = analytics.Kinds[0]
 	}
 	pg, err := s.Analytics.OptList(r.Context(), ps, q)
 	if err != nil {
@@ -347,7 +347,7 @@ func (s *Server) analyticsPolicyUpdate(w http.ResponseWriter, r *http.Request, p
 		return err
 	}
 	in.Kind = r.PathValue("kind")
-	if in.Kind != analytics.KindDowngrade && in.Kind != analytics.KindUpgrade && in.Kind != analytics.KindRecycle {
+	if !analytics.IsKind(in.Kind) {
 		return httpx.Err(404, "策略不存在")
 	}
 	if errs := in.Validate(); len(errs) > 0 {

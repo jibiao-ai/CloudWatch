@@ -9,13 +9,32 @@ import (
 
 // 优化策略类型（与页面四张建议卡片一一对应）。
 const (
-	KindDowngrade = "downgrade"
-	KindUpgrade   = "upgrade"
-	KindRecycle   = "recycle"
+	KindZombie   = "zombie"   // 僵尸型虚拟机：开机但写 I/O 近乎为零
+	KindExcess   = "excess"   // 资源过剩虚拟机：CPU / 内存持续偏低 → 建议降低计算资源分配
+	KindShortage = "shortage" // 资源不足虚拟机：CPU / 内存持续偏高 → 建议提高计算资源分配
+	KindLongOff  = "longoff"  // 长期关机虚机：持续关机或待回收 → 建议删除释放资源
 )
 
-// Kinds 页面展示顺序：降配 / 升配 / 回收。
-var Kinds = []string{KindDowngrade, KindUpgrade, KindRecycle}
+// Kinds 页面展示顺序：僵尸型 / 资源过剩 / 资源不足 / 长期关机。
+var Kinds = []string{KindZombie, KindExcess, KindShortage, KindLongOff}
+
+// IsKind 是否为合法的策略类型。
+func IsKind(k string) bool {
+	for _, x := range Kinds {
+		if x == k {
+			return true
+		}
+	}
+	return false
+}
+
+// kindAdvice 各类策略「建议原因」末尾的处置建议。
+var kindAdvice = map[string]string{
+	KindZombie:   "建议确认用途后关停或删除",
+	KindExcess:   "建议降低其计算资源分配",
+	KindShortage: "建议提高其计算资源分配",
+	KindLongOff:  "建议删除以释放计算、存储资源",
+}
 
 // Cond 一个条件：field op value；Join 为与「上一条件」的连接（AND 优先于 OR）。
 type Cond struct {
@@ -61,11 +80,14 @@ var numOps = []string{">=", ">", "<=", "<"}
 var Fields = []FieldDef{
 	{Key: "cpuMax", Label: "CPU使用率最大值", Type: "percent", Unit: "%", Ops: numOps},
 	{Key: "cpuAvg", Label: "CPU使用率平均值", Type: "percent", Unit: "%", Ops: numOps},
+	{Key: "cpuMin", Label: "CPU使用率最小值", Type: "percent", Unit: "%", Ops: numOps},
 	{Key: "memMax", Label: "内存使用率最大值", Type: "percent", Unit: "%", Ops: numOps},
 	{Key: "memAvg", Label: "内存使用率平均值", Type: "percent", Unit: "%", Ops: numOps},
+	{Key: "memMin", Label: "内存使用率最小值", Type: "percent", Unit: "%", Ops: numOps},
+	{Key: "writeAvg", Label: "写I/O平均速率", Type: "rate", Unit: "KiB/s", Ops: numOps},
 	{Key: "shutdownDays", Label: "持续关机时长", Type: "days", Unit: "天", Ops: numOps},
 	{Key: "runningDays", Label: "持续运行时长", Type: "days", Unit: "天", Ops: numOps},
-	{Key: "status", Label: "实例状态", Type: "enum", Ops: []string{"="}, Options: []Opt{{"soft_deleted", "待回收"}, {"shutoff", "已关机"}, {"error", "异常"}}},
+	{Key: "status", Label: "实例状态", Type: "enum", Ops: []string{"="}, Options: []Opt{{"active", "运行中"}, {"soft_deleted", "待回收"}, {"shutoff", "已关机"}, {"error", "异常"}}},
 }
 
 func fieldOf(key string) *FieldDef {
@@ -78,11 +100,16 @@ func fieldOf(key string) *FieldDef {
 }
 
 func (c *Cond) isUsage() bool {
-	return strings.HasPrefix(c.Field, "cpu") || strings.HasPrefix(c.Field, "mem")
+	return strings.HasPrefix(c.Field, "cpu") || strings.HasPrefix(c.Field, "mem") || strings.HasPrefix(c.Field, "write")
 }
 
 // lowOp 「越低越命中」的比较（需要完整观察窗口，避免刚开始采样就误判为低负载）。
 func (c *Cond) lowOp() bool { return c.Op == "<=" || c.Op == "<" }
+
+// sustained 「持续」型条件：越低越命中，或取最小值判断「持续偏高」；都需要积累满整个统计周期的数据才生效。
+func (c *Cond) sustained() bool {
+	return c.isUsage() && (c.lowOp() || strings.HasSuffix(c.Field, "Min"))
+}
 
 // Validate 校验并规范化策略条件，返回字段级错误。
 func (p *Policy) Validate() map[string]string {
@@ -132,8 +159,11 @@ func (p *Policy) Validate() map[string]string {
 		default:
 			n, ok := toNum(c.Value)
 			max := 100.0
-			if fd.Type == "days" {
+			switch fd.Type {
+			case "days":
 				max = 3650
+			case "rate":
+				max = 1048576
 			}
 			if !ok || n < 0 || n > max {
 				e["conds"] = fmt.Sprintf("第 %d 个条件的数值需在 0-%v 之间", i+1, max)
@@ -186,6 +216,13 @@ func condText(c Cond, window int) string {
 	return fmt.Sprintf("%s %s %s", fd.Label, opText, val)
 }
 
+// trimNum2 最多两位小数（写速率常小于 1，一位小数会显示成 0）。
+func trimNum2(n float64) string {
+	s := fmt.Sprintf("%.2f", n)
+	s = strings.TrimRight(s, "0")
+	return strings.TrimSuffix(s, ".")
+}
+
 func trimNum(n float64) string {
 	s := fmt.Sprintf("%.1f", n)
 	return strings.TrimSuffix(s, ".0")
@@ -209,16 +246,22 @@ func (p *Policy) ReasonText() string {
 		}
 		b.WriteString(condText(c, p.WindowDays))
 	}
-	b.WriteString("," + p.Name)
+	adv := kindAdvice[p.Kind]
+	if adv == "" {
+		adv = p.Name
+	}
+	b.WriteString("," + adv)
 	return b.String()
 }
 
 // VMFacts 评估一台云主机所需的事实数据。
 type VMFacts struct {
-	CPUAvg, CPUMax, MemAvg, MemMax *float64
-	DaysWithData                   int
-	ShutdownDays, RunningDays      float64
-	Status                         string
+	CPUAvg, CPUMax, CPUMin    *float64
+	MemAvg, MemMax, MemMin    *float64
+	WriteAvg                  *float64 // 写 I/O 平均速率（KiB/s）
+	DaysWithData, WriteDays   int      // 有使用率数据的天数 / 有写 I/O 数据的天数
+	ShutdownDays, RunningDays float64
+	Status                    string
 }
 
 // Hit 一次命中：被命中的条件文案（用于「建议原因」展示实际值）。
@@ -232,7 +275,14 @@ func (p *Policy) condEval(c Cond, v VMFacts) hit {
 		if val == nil || c.num == nil {
 			return hit{}
 		}
-		if c.isUsage() && c.lowOp() && v.DaysWithData < p.WindowDays { // 低负载判断需积累满整个统计周期
+		if c.isUsage() && v.Status != "active" { // 使用率类条件只对当前运行中的云主机生效
+			return hit{}
+		}
+		days := v.DaysWithData
+		if c.Field == "writeAvg" {
+			days = v.WriteDays
+		}
+		if c.sustained() && days < p.WindowDays { // 「持续」型判断需积累满整个统计周期，避免刚开始采样就误判
 			return hit{}
 		}
 		ok := false
@@ -261,6 +311,21 @@ func (p *Policy) condEval(c Cond, v VMFacts) hit {
 		h = cmp(v.CPUAvg)
 		if v.CPUAvg != nil {
 			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.CPUAvg)
+		}
+	case "cpuMin":
+		h = cmp(v.CPUMin)
+		if v.CPUMin != nil {
+			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.CPUMin)
+		}
+	case "memMin":
+		h = cmp(v.MemMin)
+		if v.MemMin != nil {
+			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.MemMin)
+		}
+	case "writeAvg":
+		h = cmp(v.WriteAvg)
+		if v.WriteAvg != nil {
+			actual = fmt.Sprintf("%s %sKiB/s", fd.Label, trimNum2(*v.WriteAvg))
 		}
 	case "memMax":
 		h = cmp(v.MemMax)
