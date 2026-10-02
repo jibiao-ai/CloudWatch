@@ -251,7 +251,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	if okPort {
 		r.Ports = make([]Row, 0, len(port.items))
 		for _, p := range port.items {
-			if isFloatingPort(p) { // 浮动 IP 对应的端口不属于虚拟网卡
+			if !isComputePort(p) { // 虚拟网卡只保留设备类型为云主机（compute:*）的端口
 				continue
 			}
 			r.Ports = append(r.Ports, portRow(p, netName, subCIDR, vmName, okNet, okSub, lk))

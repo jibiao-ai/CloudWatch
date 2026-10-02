@@ -188,10 +188,10 @@ func (s *Store) load(ctx context.Context, p Platform) (*entry, error) {
 				}
 			}
 		}
-		if kind == "ports" { // 兼容已入库的旧快照：排除设备类型为浮动 IP 的网卡
+		if kind == "ports" { // 兼容已入库的旧快照：仅保留设备类型为云主机的网卡
 			rows = make([]Row, 0, len(all))
 			for _, r := range all {
-				if strings.EqualFold(toStr(r["deviceOwner"]), "network:floatingip") {
+				if !isComputeOwner(toStr(r["deviceOwner"])) {
 					continue
 				}
 				if strings.EqualFold(toStr(r["status"]), "n/a") { // 旧快照中状态为 N/A 的统一显示「未知」

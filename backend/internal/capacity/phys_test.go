@@ -25,8 +25,10 @@ func TestPhysExcludesNova(t *testing.T) {
 }
 
 func TestPortFloatingAndNA(t *testing.T) {
-	if !isFloatingPort(map[string]any{"device_owner": "network:floatingip"}) || isFloatingPort(map[string]any{"device_owner": "compute:nova"}) {
-		t.Fatal("isFloatingPort")
+	for owner, want := range map[string]bool{"compute:nova": true, "compute:az1": true, "network:floatingip": false, "network:dhcp": false, "network:router_interface": false, "": false} {
+		if got := isComputePort(map[string]any{"device_owner": owner}); got != want {
+			t.Fatalf("owner %q: got %v want %v", owner, got, want)
+		}
 	}
 	r := portRow(map[string]any{"id": "p1", "status": "N/A"}, nil, nil, nil, false, false, &lookups{})
 	if r["statusText"] != "未知" {
