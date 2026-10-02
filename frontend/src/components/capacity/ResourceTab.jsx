@@ -7,7 +7,8 @@ import { useListQuery } from '../../hooks/useListQuery';
 import { COLUMNS, PLACEHOLDER, TITLE } from './columns';
 import DetailDrawer from './DetailDrawer';
 
-const DEFAULT_SORT = { phys: 'hostname', nodes: 'name', vms: 'name', volumes: 'name', ports: 'name', pools: 'backendName' };
+// 各页签默认按「所属云平台」排序
+const DEFAULT_SORT_KEY = 'providerName';
 
 /**
  * ResourceTab —— 资产管理单类资源列表：全部平台聚合；服务端搜索 / 状态与平台筛选 / 排序 / 分页（默认 10 条/页，与告警中心一致）
@@ -16,7 +17,7 @@ const DEFAULT_SORT = { phys: 'hostname', nodes: 'name', vms: 'name', volumes: 'n
 export default function ResourceTab({ kind, platforms, refreshKey, onCounted }) {
   const [facets, setFacets] = useState([]);
   const [all, setAll] = useState(0);
-  const initSort = { key: DEFAULT_SORT[kind], order: 'asc' };
+  const initSort = { key: DEFAULT_SORT_KEY, order: 'asc' };
   const list = useListQuery(`capacity-${kind}`, async (q) => {
     const res = await capacityApi.list(kind, { keyword: q.keyword, providerId: q.providerId, status: q.status, sortKey: q.sort?.key, sortOrder: q.sort?.order, page: q.page, pageSize: q.pageSize });
     setFacets(res.facets || []);

@@ -5,20 +5,18 @@ import CapacityBar from '../CapacityBar';
 import StatusDot from '../StatusDot';
 import DataTable from '../DataTable';
 import SearchInput from '../SearchInput';
-import { PlatformCell } from '../monitor/cells';
 import { useClientTable } from '../../hooks/useClientTable';
 import { formatNumber, formatDateTime, fromNow, formatBytes } from '../../utils/format';
-import { gb, mb, Tag, numCell } from './capUtil';
-import StepsPanel from './StepsPanel';
+import { gb, mb, Tag, numCell, PlatCell } from './capUtil';
 
 const KIND_LABEL = { phys: '物理节点', nodes: '计算节点', vms: '虚拟机', volumes: '云硬盘', ports: '虚拟网卡', pools: '集群存储' };
 const n0 = (v) => formatNumber(Math.round(v || 0));
 
-/** 总览：全部平台资产 KPI + 容量条 + 状态分布 + 各平台汇总（搜索 / 排序 / 分页）+ 采集明细 */
+/** 总览：全部平台资产 KPI + 容量条 + 状态分布 + 各平台汇总（搜索 / 排序 / 分页）；采集明细已独立为「采集明细」页签 */
 export default function OverviewTab({ ov, onJump }) {
   const t = ov.totals;
   const columns = useMemo(() => [
-    { key: 'name', title: '所属云平台', width: 190, sortable: true, render: (p) => <PlatformCell platform={p} /> },
+    { key: 'name', title: '所属云平台', width: 190, sortable: true, render: (p) => <PlatCell platform={p} /> },
     { key: 'state', title: '采集状态', width: 120, sortable: true, sortBy: (p) => (p.collectedAt ? (p.ok ? 2 : 1) : 0), render: (p) => <StatusDot status={p.collectedAt ? (p.ok ? 'online' : 'warning') : 'unknown'} label={p.collectedAt ? (p.ok ? '正常' : '部分失败') : '未采集'} /> },
     { key: 'collectedAt', title: '最近采集', width: 160, sortable: true, render: (p) => <span className="text-[13px] tabular-nums" title={p.collectedAt ? fromNow(p.collectedAt) : ''}>{p.collectedAt ? formatDateTime(p.collectedAt) : '—'}</span> },
     { key: 'phys', title: '物理节点', width: 90, sortable: true, align: 'right', sortBy: (p) => p.sum.phys, render: (p) => numCell(p.sum.phys, n0) },
@@ -68,7 +66,6 @@ export default function OverviewTab({ ov, onJump }) {
         sort={tbl.sort} onSortChange={tbl.setSort}
         toolbar={<><h3 className="text-sm font-semibold text-fg mr-2">各云平台资产汇总</h3><SearchInput value={tbl.keyword} onChange={tbl.setKeyword} placeholder="搜索平台名称 / 控制台 IP" width={260} /></>}
         empty={{ title: '暂无已对接的云平台', description: '请先在「平台管理」中新增并验证平台' }} />
-      <StepsPanel platforms={ov.platforms} />
     </div>
   );
 }

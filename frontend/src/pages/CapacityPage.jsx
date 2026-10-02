@@ -8,6 +8,7 @@ import ErrorState from '../components/ErrorState';
 import LoadingButton from '../components/LoadingButton';
 import OverviewTab from '../components/capacity/OverviewTab';
 import ResourceTab from '../components/capacity/ResourceTab';
+import StepsPanel from '../components/capacity/StepsPanel';
 import { KINDS } from '../components/capacity/capUtil';
 import { capacityApi } from '../services/api';
 import { useAsync } from '../hooks/useAsync';
@@ -15,7 +16,7 @@ import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
 
-/** CapacityPage —— 资产管理（总览 / 物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储）：聚合全部已对接云平台，数据来自第 6 章 Nova / Cinder / Neutron 接口 */
+/** CapacityPage —— 资产管理（总览 / 物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储 / 采集明细）：聚合全部已对接云平台，数据来自第 6 章 Nova / Cinder / Neutron 接口 */
 export default function CapacityPage() {
   const toast = useToast();
   const canCollect = useCan('capacity:collect');
@@ -40,7 +41,7 @@ export default function CapacityPage() {
   const total = d ? d.platforms.length : 0;
   const okN = d ? d.platforms.filter((p) => p.collectedAt && p.ok).length : 0;
   const last = d ? d.platforms.map((p) => p.collectedAt).filter(Boolean).sort().pop() : null;
-  const tabs = [{ key: 'overview', label: '总览' }, ...KINDS.map((k) => ({ key: k.key, label: k.label, count: d ? d.totals[k.count] : undefined }))];
+  const tabs = [{ key: 'overview', label: '总览' }, ...KINDS.map((k) => ({ key: k.key, label: k.label, count: d ? d.totals[k.count] : undefined })), { key: 'steps', label: '采集明细' }];
 
   return (
     <div className="bg-bg">
@@ -58,7 +59,7 @@ export default function CapacityPage() {
           </div>
           <Tabs items={tabs} value={tab} onChange={setTab} className="mb-4" idPrefix="cap" />
           <div id="cap-panel" role="tabpanel" aria-labelledby={`cap-${tab}`}>
-            {tab === 'overview' ? <OverviewTab ov={d} onJump={setTab} /> : <ResourceTab key={tab} kind={tab} platforms={d.platforms} refreshKey={tick} />}
+            {tab === 'overview' ? <OverviewTab ov={d} onJump={setTab} /> : tab === 'steps' ? <StepsPanel platforms={d.platforms} /> : <ResourceTab key={tab} kind={tab} platforms={d.platforms} refreshKey={tick} />}
           </div>
         </>
       )}
