@@ -320,3 +320,11 @@ npm run lint:rules          # 规则扫描（见下）
 - **优化策略**：同样使用统一外壳；列表固定按 降配 / 升配 / 回收 展示。
 - **术语调整**：「云账号」统一改为「所属云平台」—— 页面标签 / 筛选 / 表头 / 环形图标题（所属云平台分布）/ 空态文案 / 导出 Excel 列标题；API 字段随之改名（`accounts`→`platforms`，`account`→`platform`，`accounts_opt`→`platforms_opt`，总览 `totals.accounts`→`totals.platforms`）。
 - **其他修复**：侧栏「运营分析」分组内路径互为前缀（`/analytics` 与 `/analytics/base`）时，原来「总览」会在所有子页同时高亮、面包屑也始终显示「总览」，现改为精确匹配 / 最长匹配。
+
+## 第30轮：运营分析合并为单一菜单（Bug 修复）
+
+- 问题：运营分析在侧栏展开为 6 个子菜单（总览 / 基础资源分析 / 云主机分析 / 磁盘分析 / 云主机优化 / 优化策略），与「资产管理」（一个菜单、功能为页内页签）不一致。
+- 修复：菜单树（后端 `perm.go` + 前端 mock 菜单）中 `analytics` 组只保留 1 个入口 `/analytics`；新增 `AnalyticsPage`，六个功能作为同一页面的页签：总览 / 资源分析 / 云主机分析 / 磁盘分析 / 云主机优化 / 优化策略（页签内的「宿主机明细 / 存储器明细 / 资源明细」「建议降配 / 升配 / 回收」为页内分段切换）。
+- 页签与优化类型同步到地址栏：`/analytics?tab=base|vm|disk|optimize|policy`、`&kind=downgrade|upgrade|recycle`；旧路径 `/analytics/base` 等自动重定向到对应页签。
+- 导出审计中的跳转链接同步改为 `/analytics?tab=…`；权限码与后端接口不变。
+- 页面文件：`pages/AnalyticsPage.jsx` + `components/analytics/tabs/{Home,Base,VM,Disk,Optimize,Policy}Tab.jsx`（原 6 个 `Analytics*Page.jsx` 已删除）。

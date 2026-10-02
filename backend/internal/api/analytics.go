@@ -198,7 +198,7 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 	if kind == "opt" {
 		cols = []analytics.Col{{Key: "name", Title: "名称"}, {Key: "platform", Title: "所属云平台"}, {Key: "ips", Title: "IP地址"}, {Key: "flavor", Title: "实例规格"},
 			{Key: "reason", Title: "建议原因"}, {Key: "cpuAvg", Title: "CPU平均使用率"}, {Key: "memAvg", Title: "内存平均使用率"}}
-		title, link = "云主机优化建议", "/analytics/optimize"
+		title, link = "云主机优化建议", "/analytics?tab=optimize"
 		if rows, err = s.Analytics.OptRows(r.Context(), ps, q); err != nil {
 			return err
 		}
@@ -208,7 +208,7 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 			return httpx.Err(404, "未知的明细类型")
 		}
 		cols, title = c, t
-		link = map[string]string{"hosts": "/analytics/base", "pools": "/analytics/base", "vms": "/analytics/vm", "disks": "/analytics/disk"}[kind]
+		link = map[string]string{"hosts": "/analytics?tab=base", "pools": "/analytics?tab=base", "vms": "/analytics?tab=vm", "disks": "/analytics?tab=disk"}[kind]
 		if rows, err = fn(r, ps, q); err != nil {
 			return err
 		}
@@ -314,7 +314,7 @@ func (s *Server) analyticsIgnore(w http.ResponseWriter, r *http.Request, p *auth
 	if !in.Ignore {
 		act, txt = "unignore", "取消忽略"
 	}
-	s.rec(r, p, "analytics", act, txt+"优化建议 "+strconv.Itoa(len(in.Items))+" 台", "/analytics/optimize", in, err, t0)
+	s.rec(r, p, "analytics", act, txt+"优化建议 "+strconv.Itoa(len(in.Items))+" 台", "/analytics?tab=optimize", in, err, t0)
 	if err != nil {
 		if strings.Contains(err.Error(), "不合法") {
 			return httpx.Err(400, err.Error())

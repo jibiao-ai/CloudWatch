@@ -26,12 +26,7 @@ const PerformancePage = lazy(() => import('./pages/PerformancePage'));
 const AlertCenterPage = lazy(() => import('./pages/AlertCenterPage'));
 const CapacityPage = lazy(() => import('./pages/CapacityPage'));
 const TopologyPage = lazy(() => import('./pages/TopologyPage'));
-const AnalyticsHomePage = lazy(() => import('./pages/AnalyticsHomePage'));
-const AnalyticsBasePage = lazy(() => import('./pages/AnalyticsBasePage'));
-const AnalyticsVMPage = lazy(() => import('./pages/AnalyticsVMPage'));
-const AnalyticsDiskPage = lazy(() => import('./pages/AnalyticsDiskPage'));
-const AnalyticsOptimizePage = lazy(() => import('./pages/AnalyticsOptimizePage'));
-const AnalyticsPolicyPage = lazy(() => import('./pages/AnalyticsPolicyPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const PlannedPage = lazy(() => import('./pages/PlannedPage'));
 
 /** 路由表：path + 权限码。菜单由后端权限树生成，这里的权限码用于路由守卫（无权限 → 403） */
@@ -41,12 +36,7 @@ const GUARDED = [
   ['/alerts', AlertCenterPage, 'alert:view'],
   ['/capacity', CapacityPage, 'capacity:view'],
   ['/topology', TopologyPage, 'topology:view'],
-  ['/analytics', AnalyticsHomePage, 'analytics:view'],
-  ['/analytics/base', AnalyticsBasePage, 'analytics:view'],
-  ['/analytics/vm', AnalyticsVMPage, 'analytics:view'],
-  ['/analytics/disk', AnalyticsDiskPage, 'analytics:view'],
-  ['/analytics/optimize', AnalyticsOptimizePage, 'analytics:view'],
-  ['/analytics/policy', AnalyticsPolicyPage, 'analytics:view'],
+  ['/analytics', AnalyticsPage, 'analytics:view'],
   ['/system/providers', PlatformManagePage, 'provider:view'],
   ['/system/users', UsersPage, 'user:view'],
   ['/system/roles', RolesPage, 'role:view'],
@@ -103,6 +93,10 @@ export default function App() {
           <Route path="/login" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
           <Route element={<RequireAuth><MainLayout /></RequireAuth>}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* 运营分析旧子路径 → 同一页面的对应页签 */}
+            {[['base', 'base'], ['vm', 'vm'], ['disk', 'disk'], ['optimize', 'optimize'], ['policy', 'policy']].map(([p, t]) => (
+              <Route key={p} path={`/analytics/${p}`} element={<Navigate to={`/analytics?tab=${t}`} replace />} />
+            ))}
             {GUARDED.map(([path, Page, code]) => (
               <Route key={path} path={path} element={<RequirePermission code={code}><Page /></RequirePermission>} />
             ))}
