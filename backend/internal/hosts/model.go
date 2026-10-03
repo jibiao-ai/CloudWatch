@@ -16,7 +16,7 @@ const (
 )
 
 // DefaultComponents 与接口文档一致：<组件>.<根域名>。
-var DefaultComponents = []string{"keystone", "neutron", "nova", "cinder", "glance", "gnocchi", "coaster"}
+var DefaultComponents = []string{"keystone", "neutron", "nova", "cinder", "glance", "gnocchi", "coaster", "emla"}
 
 type HostLine struct {
 	IP   string `json:"ip"`
