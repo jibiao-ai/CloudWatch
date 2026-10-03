@@ -188,22 +188,11 @@ func (s *Server) inspectionExport(w http.ResponseWriter, r *http.Request, p *aut
 	if err != nil {
 		return err
 	}
-	name := "巡检报告_" + safeName(rep.Title) + "_" + rep.FinishedAt.In(analytics.CST).Format("20060102_1504") + ".docx"
+	name := "云平台自动化巡检报告_" + rep.FinishedAt.In(analytics.CST).Format("20060102_1504") + ".docx"
 	h := w.Header()
 	h.Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 	h.Set("Content-Disposition", `attachment; filename="inspection-report-`+strconv.FormatInt(id, 10)+`.docx"; filename*=UTF-8''`+url.PathEscape(name))
 	h.Set("Content-Length", strconv.Itoa(len(data)))
 	_, _ = w.Write(data)
 	return nil
-}
-
-func safeName(s string) string {
-	s = strings.NewReplacer("/", "-", "\\", "-", ":", "-", "*", "", "?", "", "\"", "", "<", "", ">", "", "|", "", " ", "_", "\r", "", "\n", "").Replace(strings.TrimSpace(s))
-	if r := []rune(s); len(r) > 40 {
-		s = string(r[:40])
-	}
-	if s == "" {
-		s = "云平台"
-	}
-	return s
 }
