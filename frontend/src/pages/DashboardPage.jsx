@@ -8,6 +8,7 @@ import Skeleton from '../components/Skeleton';
 import ErrorState from '../components/ErrorState';
 import { KpiRow, CapacityRow } from '../components/dashboard/KpiCapacity';
 import TrendCard from '../components/dashboard/TrendCard';
+import Carousel from '../components/Carousel';
 import PlatformTable from '../components/dashboard/PlatformTable';
 import { TopLoadCard } from '../components/dashboard/TopLoad';
 import { RecentAlerts, Suggestions } from '../components/dashboard/SidePanels';
@@ -28,6 +29,29 @@ export default function DashboardPage() {
   const byPid = (l) => (l || []).filter((n) => !pid || n.providerId === pid);
   const rows = (d?.platforms || []).filter((p) => !pid || p.id === pid);
 
+  const slides = d ? [
+    d.perms.monitor && { key: 'trend', label: '资源使用率趋势', node: <TrendCard state={tr} range={range} onRange={setRange} /> },
+    d.perms.monitor && {
+      key: 'top', label: 'CPU / 内存 TOP 5',
+      node: (
+        <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+          <TopLoadCard metric="cpu" rows={byPid(d.topCpu)} />
+          <TopLoadCard metric="mem" rows={byPid(d.topMem)} />
+        </div>
+      ),
+    },
+    (d.perms.alert || d.perms.analytics) && {
+      key: 'alerts', label: '告警与优化建议',
+      node: (
+        <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+          {d.perms.alert && <RecentAlerts rows={(d.recentAlerts || []).filter((a) => !pid || a.providerId === pid)} />}
+          {d.perms.analytics && <Suggestions rows={d.suggestions} />}
+        </div>
+      ),
+    },
+    { key: 'platforms', label: '各平台概况', node: <PlatformTable rows={rows} perms={d.perms} /> },
+  ].filter(Boolean) : [];
+
   return (
     <div ref={boxRef} className="bg-bg space-y-5">
       <PageHeader
@@ -43,22 +67,7 @@ export default function DashboardPage() {
         <>
           <KpiRow data={d} />
           {d.perms.capacity && <CapacityRow totals={d.totals} />}
-          {d.perms.monitor && (
-            <>
-              <TrendCard state={tr} range={range} onRange={setRange} />
-              <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
-                <TopLoadCard metric="cpu" rows={byPid(d.topCpu)} />
-                <TopLoadCard metric="mem" rows={byPid(d.topMem)} />
-              </div>
-            </>
-          )}
-          {(d.perms.alert || d.perms.analytics) && (
-            <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
-              {d.perms.alert && <RecentAlerts rows={(d.recentAlerts || []).filter((a) => !pid || a.providerId === pid)} />}
-              {d.perms.analytics && <Suggestions rows={d.suggestions} />}
-            </div>
-          )}
-          <PlatformTable rows={rows} perms={d.perms} />
+          <Carousel ariaLabel="平台概览分页" idPrefix="dash-slide" slides={slides} />
         </>
       )}
     </div>

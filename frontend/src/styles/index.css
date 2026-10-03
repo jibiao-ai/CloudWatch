@@ -147,6 +147,10 @@ input:-webkit-autofill {
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
+/* 轮播倒计时进度条 */
+.carousel-progress { width: 0; animation: carousel-progress linear forwards; }
+@keyframes carousel-progress { from { width: 0; } to { width: 100%; } }
+
 /* 品牌渐变（登录页/概览 Banner）—— 跟随主色 */
 .brand-gradient {
   background:

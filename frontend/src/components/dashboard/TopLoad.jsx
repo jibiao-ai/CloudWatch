@@ -6,7 +6,7 @@ import ChartTooltip from '../ChartTooltip';
 import { useChartPalette } from '../../hooks/useChartPalette';
 
 /** 平台概览三张图表卡（使用率趋势 / CPU TOP5 / 内存 TOP5）统一高度 */
-export const DASH_CARD_H = 'h-[450px]';
+export const DASH_CARD_H = 'h-[480px]';
 
 const META = {
   cpu: { title: 'CPU 使用率 TOP 5', sub: '物理节点 CPU 使用率最高的 5 个节点', idx: 0, name: 'CPU 使用率' },
@@ -36,7 +36,7 @@ export function TopLoadCard({ metric, rows }) {
             <ResponsiveContainer>
               <BarChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke={pal.grid} strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" interval={0} stroke={pal.axis} tick={{ fill: pal.axis, fontSize: 11 }} tickLine={false} axisLine={{ stroke: pal.grid }} tickFormatter={(t) => (t.length > 12 ? `${t.slice(0, 11)}…` : t)} />
+                <XAxis dataKey="label" interval={0} stroke={pal.axis} tick={{ fill: pal.axis, fontSize: 11 }} tickLine={false} axisLine={{ stroke: pal.grid }} tickFormatter={(t) => (t.length > 18 ? `${t.slice(0, 17)}…` : t)} />
                 <YAxis stroke={pal.axis} tick={{ fill: pal.axis, fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 100]} unit="%" width={42} />
                 <RTooltip cursor={{ fill: pal.grid, opacity: 0.4 }} content={<ChartTooltip labelFormatter={(t) => t} valueFormatter={(v) => `${Number(v).toFixed(1)}%`} />} />
                 <Bar dataKey="v" name={m.name} radius={[3, 3, 0, 0]} maxBarSize={36}>
