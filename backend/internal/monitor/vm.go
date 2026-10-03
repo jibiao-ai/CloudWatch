@@ -32,7 +32,7 @@ func isIP(s string) bool {
 	return s != ""
 }
 
-// ---------- Nova：宿主机核数 ----------
+// ---------- Nova：计算节点核数 ----------
 
 type hypervisor struct {
 	Host   string
@@ -43,7 +43,7 @@ type hypervisor struct {
 	HasVMs bool
 }
 
-// collectHypervisors GET {nova}/os-hypervisors/detail → 每台宿主机的总核数 / 已分配核数 / 运行中云主机数。
+// collectHypervisors GET {nova}/os-hypervisors/detail → 每台计算节点的总核数 / 已分配核数 / 运行中云主机数。
 func collectHypervisors(ctx context.Context, cn *provider.Conn) ([]hypervisor, error) {
 	var doc struct {
 		Hypervisors []struct {
@@ -58,7 +58,7 @@ func collectHypervisors(ctx context.Context, cn *provider.Conn) ([]hypervisor, e
 		return nil, err
 	}
 	if len(doc.Hypervisors) == 0 {
-		return nil, fmt.Errorf("未返回宿主机信息")
+		return nil, fmt.Errorf("未返回计算节点信息")
 	}
 	out := make([]hypervisor, 0, len(doc.Hypervisors))
 	for _, h := range doc.Hypervisors {

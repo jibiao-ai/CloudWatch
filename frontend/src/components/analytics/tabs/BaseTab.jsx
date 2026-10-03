@@ -17,7 +17,7 @@ const METRICS = [{ value: 'cpu', label: 'CPU使用率' }, { value: 'mem', label:
 const EMPTY = { providerId: '', host: '', pool: '' };
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
 
-/** BaseTab —— 运营分析 · 资源分析：宿主机 / 集群存储的分配率、使用率（含每套存储后端）、分布；宿主机与集群存储的明细在「监控中心」 */
+/** BaseTab —— 运营分析 · 资源分析：宿主机 / 集群存储的分配率、使用率（含每套存储后端）、分布；计算节点与集群存储的明细在「监控中心」 */
 export default function BaseTab({ tick, keyword, onClearKeyword }) {
   const [flt, setFlt] = useState(EMPTY);
   const [dist, setDist] = useState('host');
@@ -42,7 +42,7 @@ export default function BaseTab({ tick, keyword, onClearKeyword }) {
         {f('host', '宿主机', optsOf(o.hosts, flt.providerId), 170)}
         {f('pool', '集群存储', optsOf(o.pools, flt.providerId), 190)}
         <span className="ml-auto flex items-center gap-4 text-[13px] whitespace-nowrap">
-          <Link to="/monitor?tab=hosts" className="text-primary-text hover:underline">在监控中心查看宿主机信息</Link>
+          <Link to="/monitor?tab=hosts" className="text-primary-text hover:underline">在监控中心查看计算节点信息</Link>
           <Link to="/monitor?tab=pools" className="text-primary-text hover:underline">在监控中心查看集群存储信息</Link>
         </span>
       </FilterBar>

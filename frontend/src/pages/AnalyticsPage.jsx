@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
   const openPolicy = sp.get('open');
 
   return (
-    <AnalyticsShell title="运营分析" description="汇总全部所属云平台下的云主机、磁盘、宿主机与集群存储：资源分配率 / 使用率、分布与趋势、虚拟机侧与物理侧优化建议及优化策略；明细请到监控中心（虚拟机 / 宿主机 / 集群存储）与资产管理查看，数据来自采集快照，使用率与趋势随时间持续积累"
+    <AnalyticsShell title="运营分析" description="汇总全部所属云平台下的云主机、磁盘、宿主机与集群存储：资源分配率 / 使用率、分布与趋势、虚拟机侧与物理侧优化建议及优化策略；明细请到监控中心（虚拟机 / 计算节点 / 集群存储）与资产管理查看，数据来自采集快照，使用率与趋势随时间持续积累"
       tabs={TABS} tab={tab} onTab={(k) => go(k === 'home' ? {} : { tab: k })} idPrefix="an"
       searchPlaceholder={SEARCH[tab]}>
       {(d, tick, reloadOv, kw, clearKw) => {

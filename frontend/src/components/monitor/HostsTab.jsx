@@ -5,10 +5,10 @@ import { PlatformCell, PctCell, num } from './cells';
 import { Tag } from '../capacity/capUtil';
 import { formatNumber } from '../../utils/format';
 
-/** HostsTab —— 宿主机：分配率（Nova 超分配：已分配 / 容量）与使用率（监控实时），比率统一 1 位小数；样式与物理节点一致，无「集群」列 */
+/** HostsTab —— 计算节点：分配率（Nova 超分配：已分配 / 容量）与使用率（监控实时），比率统一 1 位小数；样式与物理节点一致，无「集群」列 */
 export default function HostsTab({ platform, initialKeyword, q }) {
   const columns = useMemo(() => [
-    { key: 'name', title: '宿主机', width: 150, sortable: true, render: (h) => <span className="font-medium">{h.name}</span> },
+    { key: 'name', title: '计算节点', width: 150, sortable: true, render: (h) => <span className="font-medium">{h.name}</span> },
     { key: 'ip', title: '节点 IP', width: 130, sortable: true, render: (h) => <code className="text-[13px]">{h.ip || '—'}</code> },
     { key: 'platform', title: '所属云平台', width: 170, sortable: true, sortBy: () => platform?.name, render: () => <PlatformCell platform={platform} /> },
     { key: 'stateText', title: '运行状态', width: 96, sortable: true, render: (h) => <Tag text={h.stateText} tone={h.stateTone} /> },
@@ -21,8 +21,8 @@ export default function HostsTab({ platform, initialKeyword, q }) {
   ], [platform]);
   return (
     <DataState q={q}>
-      {(d) => <MonTable columns={columns} rows={d.list} keyFn={(h) => h.name} initialKeyword={initialKeyword} placeholder="搜索宿主机名称 / IP / 云平台"
-        searchText={(h) => `${h.name} ${h.ip} ${platform?.name || ''} ${platform?.consoleIp || ''} ${h.stateText || ''}`} emptyTitle="暂无宿主机数据" initialSort={{ key: 'name', order: 'asc' }} />}
+      {(d) => <MonTable columns={columns} rows={d.list} keyFn={(h) => h.name} initialKeyword={initialKeyword} placeholder="搜索计算节点名称 / IP / 云平台"
+        searchText={(h) => `${h.name} ${h.ip} ${platform?.name || ''} ${platform?.consoleIp || ''} ${h.stateText || ''}`} emptyTitle="暂无计算节点数据" initialSort={{ key: 'name', order: 'asc' }} />}
     </DataState>
   );
 }

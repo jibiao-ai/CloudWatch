@@ -270,7 +270,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 		return nil
 	})
 
-	step("hypervisors", "宿主机总核数 / 已用核数（Nova）", "/v2.1/os-hypervisors/detail", func() error {
+	step("hypervisors", "计算节点总核数 / 已用核数（Nova）", "/v2.1/os-hypervisors/detail", func() error {
 		hv, err := collectHypervisors(ctx, cn)
 		if err != nil {
 			return err

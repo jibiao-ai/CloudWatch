@@ -13,7 +13,7 @@ export default function NodesTab({ snap, platform, providerId, initialKeyword, r
     { key: 'hostIp', title: '节点 IP', width: 130, sortable: true, render: (n) => <code className="text-[13px]">{n.hostIp || '—'}</code> },
     { key: 'platform', title: '所属云平台', width: 170, sortable: true, sortBy: () => platform?.name, render: () => <PlatformCell platform={platform} /> },
     { key: 'coresTotal', title: '总核数', width: 90, sortable: true, align: 'right', render: (n) => <span className="tabular-nums">{num(n.coresTotal, formatNumber)}</span> },
-    { key: 'coresUsed', title: '使用核数', width: 100, sortable: true, align: 'right', render: (n) => <span className="tabular-nums" title="Nova 宿主机已分配 vCPU（vcpus_used）">{num(n.coresUsed, formatNumber)}</span> },
+    { key: 'coresUsed', title: '使用核数', width: 100, sortable: true, align: 'right', render: (n) => <span className="tabular-nums" title="Nova 计算节点已分配 vCPU（vcpus_used）">{num(n.coresUsed, formatNumber)}</span> },
     { key: 'cpuPercent', title: 'CPU 使用率', width: 170, sortable: true, render: (n) => <PctCell value={n.cpuPercent} /> },
     { key: 'memPercent', title: '内存使用率', width: 170, sortable: true, render: (n) => <PctCell value={n.memPercent} /> },
     { key: 'memTotal', title: '内存总量', width: 100, sortable: true, align: 'right', render: (n) => <span className="tabular-nums">{n.memTotal != null ? formatBytes(n.memTotal) : '—'}</span> },

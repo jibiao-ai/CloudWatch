@@ -233,7 +233,7 @@ export const monitorApi = {
   collect: (id) => post(`/monitor/${id}/collect`, {}, { timeout: 120000 }),
   getTrend: (id, params) => get(`/monitor/${id}/trend`, params, { skipErrorToast: true }),
   /** 云主机监控详情：后端实时向 Gnocchi 取 CPU / 内存 / 磁盘读写速率曲线 */
-  /** 监控中心「宿主机」：分配率（Nova 超分配）+ 使用率（实时） */
+  /** 监控中心「计算节点」：分配率（Nova 超分配）+ 使用率（实时） */
   getHosts: (id) => get(`/monitor/${id}/hosts`),
   /** 监控中心「集群存储」：存储后端容量 / 分配率 / 使用率 */
   getPools: (id) => get(`/monitor/${id}/pools`),

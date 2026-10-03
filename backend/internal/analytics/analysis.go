@@ -271,7 +271,7 @@ func (e *Engine) BaseBands(ctx context.Context, plats []capacity.Platform, flt F
 // Col 导出列。
 type Col struct{ Key, Title string }
 
-// HostRows 监控中心「宿主机」：某一云平台的宿主机分配率（来自 Nova 超分配）与使用率（监控中心实时），比率统一保留 1 位小数。
+// HostRows 监控中心「计算节点」：某一云平台的宿主机分配率（来自 Nova 超分配）与使用率（监控中心实时），比率统一保留 1 位小数。
 func (e *Engine) HostRows(ctx context.Context, plats []capacity.Platform, providerID string) ([]map[string]any, error) {
 	ps, err := e.load(ctx, plats, providerID)
 	if err != nil {

@@ -121,7 +121,7 @@ func (s *Server) monitorVMMetrics(w http.ResponseWriter, r *http.Request, _ *aut
 	return nil
 }
 
-// monitorHosts GET /monitor/{id}/hosts  监控中心「宿主机」：分配率（Nova 超分配）+ 使用率（监控实时）
+// monitorHosts GET /monitor/{id}/hosts  监控中心「计算节点」：分配率（Nova 超分配）+ 使用率（监控实时）
 func (s *Server) monitorHosts(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	id := r.PathValue("id")
 	if _, err := s.Providers.Store.Get(r.Context(), id); err != nil {

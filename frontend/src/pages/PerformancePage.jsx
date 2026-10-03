@@ -24,7 +24,7 @@ import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
 import { RANGES } from '../utils/monitorUtil';
 
-/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 宿主机 / 磁盘状态 / 虚拟机 / 集群存储 / 采集明细）：数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
+/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 计算节点 / 磁盘状态 / 虚拟机 / 集群存储 / 采集明细）：数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
 export default function PerformancePage() {
   const toast = useToast();
   const canCollect = useCan('monitor:collect');
@@ -47,7 +47,7 @@ export default function PerformancePage() {
   }, [spKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!pid && plats.data?.length) setPid(plats.data[0].id); }, [plats.data, pid]);
   const snap = useAsync(() => (pid ? monitorApi.getSnapshot(pid) : Promise.resolve(null)), [pid, tick]);
-  const hosts = useAsync(() => (pid ? monitorApi.getHosts(pid) : Promise.resolve(null)), [pid, tick]); // 宿主机 / 集群存储：页签角标与列表共用同一份数据
+  const hosts = useAsync(() => (pid ? monitorApi.getHosts(pid) : Promise.resolve(null)), [pid, tick]); // 计算节点 / 集群存储：页签角标与列表共用同一份数据
   const pools = useAsync(() => (pid ? monitorApi.getPools(pid) : Promise.resolve(null)), [pid, tick]);
   const d = snap.data;
   const platform = (plats.data || []).find((p) => p.id === pid);
@@ -62,12 +62,12 @@ export default function PerformancePage() {
       r.ok ? toast.success('采集完成', `耗时 ${r.durationMs} ms，告警中 ${r.alertFiring} 条`) : toast.error('采集失败', r.error);
     } catch (e) { toast.error('采集失败', e.message); } finally { setBusy(false); }
   };
-  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'hosts', label: '宿主机', count: hosts.data?.list.length }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'pools', label: '集群存储', count: pools.data?.list.length }, { key: 'steps', label: '采集明细' }];
+  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'hosts', label: '计算节点', count: hosts.data?.list.length }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'pools', label: '集群存储', count: pools.data?.list.length }, { key: 'steps', label: '采集明细' }];
   const common = { snap: d, platform, providerId: pid, refreshKey: tick, initialKeyword: jump.kw };
 
   return (
     <div className="bg-bg">
-      <PageHeader title="监控中心" description="对接平台 EMLA / Nova / Gnocchi 接口：总览、服务状态、物理节点、宿主机、磁盘状态、虚拟机、集群存储、采集明细；后台周期采集，趋势来自已落库的历史样本"
+      <PageHeader title="监控中心" description="对接平台 EMLA / Nova / Gnocchi 接口：总览、服务状态、物理节点、计算节点、磁盘状态、虚拟机、集群存储、采集明细；后台周期采集，趋势来自已落库的历史样本"
         actions={<>
           <div className="w-[240px]"><CustomSelect aria-label="选择平台" placeholder="选择平台" value={pid} onChange={setPid} options={(plats.data || []).map((p) => ({ value: p.id, label: p.name }))} /></div>
           <div className="w-[140px]"><CustomSelect aria-label="趋势范围" value={range} onChange={setRange} options={RANGES} /></div>
