@@ -17,12 +17,14 @@ type Sample struct {
 type Metric struct {
 	Name    string   `json:"name"`
 	Samples []Sample `json:"samples"`
+	Err     string   `json:"err,omitempty"` // EMLA 在 results[].error 里透出的平台侧错误（HTTP 200 外壳 + 内部 500）
 }
 
 // emlaDoc 对应 {"results":[{"metric_name":"x","data":{"resultType":"vector","result":[{"metric":{...},"value":[ts,"v"]}]}}]}
 type emlaDoc struct {
 	Results []struct {
-		MetricName string `json:"metric_name"`
+		MetricName string          `json:"metric_name"`
+		Error      json.RawMessage `json:"error"`
 		Data       struct {
 			ResultType string `json:"resultType"`
 			Result     []struct {
@@ -69,7 +71,7 @@ func ParseEMLA(raw []byte) ([]Metric, error) {
 	}
 	out := make([]Metric, 0, len(d.Results))
 	for _, r := range d.Results {
-		m := Metric{Name: r.MetricName, Samples: []Sample{}}
+		m := Metric{Name: r.MetricName, Samples: []Sample{}, Err: briefEMLAErr(r.Error)}
 		for _, s := range r.Data.Result {
 			if len(s.Value) < 2 {
 				continue
@@ -115,4 +117,42 @@ func (m *Metric) ByLabel(label, val string) (float64, bool) {
 		}
 	}
 	return 0, false
+}
+
+// briefEMLAErr 把 results[].error（字符串化的 JSON：{"error":{"message":..,"code":500,"title":..}}）压缩成一句话。
+func briefEMLAErr(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	s := string(raw)
+	var str string
+	if json.Unmarshal(raw, &str) == nil {
+		s = str
+	}
+	var d struct {
+		Error struct {
+			Message string `json:"message"`
+			Code    int    `json:"code"`
+			Title   string `json:"title"`
+		} `json:"error"`
+	}
+	if json.Unmarshal([]byte(s), &d) == nil && (d.Error.Code != 0 || d.Error.Message != "") {
+		out := "平台侧"
+		if d.Error.Code != 0 {
+			out += "返回 HTTP " + strconv.Itoa(d.Error.Code)
+		} else {
+			out += "返回错误"
+		}
+		if d.Error.Title != "" {
+			out += " " + d.Error.Title
+		}
+		if d.Error.Message != "" {
+			out += "：" + d.Error.Message
+		}
+		return out
+	}
+	if len(s) > 200 {
+		s = s[:200] + "…"
+	}
+	return "平台侧返回错误：" + s
 }

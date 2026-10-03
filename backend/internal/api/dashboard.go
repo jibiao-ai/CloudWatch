@@ -149,7 +149,7 @@ func (s *Server) dashboardOverview(w http.ResponseWriter, r *http.Request, p *au
 			x.AlertFiring = sn.AlertFiring
 			x.SvcTotal = len(sn.Services)
 			for _, sv := range sn.Services {
-				if sv.State != nil && *sv.State != 0 {
+				if sv.Healthy != nil && !*sv.Healthy {
 					x.SvcBad++
 				}
 			}

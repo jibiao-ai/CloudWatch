@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"time"
 
@@ -171,11 +172,12 @@ func (s *Server) monitorVMUsage(w http.ResponseWriter, r *http.Request, _ *auth.
 	return nil
 }
 
-// visibleNodes 监控中心「物理节点」：与资产管理同口径，排除型号为 OpenStack Nova 的虚拟机（按短主机名 / IP 匹配资产管理排除的那批）。
+// visibleNodes 监控中心「物理节点」：与资产管理同口径，排除型号为 OpenStack Nova 的虚拟机（按短主机名 / IP 匹配资产管理排除的那批）；
+// 并按资产管理「物理节点」的 CPU 核数补全总核数（Nova 只覆盖计算节点，控制 / 存储节点没有核数）。
 func (s *Server) visibleNodes(ctx context.Context, pl capacity.Platform, nodes []monitor.Node) []monitor.Node {
 	nova, err := s.Capacity.Store.NovaKeys(ctx, pl)
-	if err != nil || len(nova) == 0 {
-		return nodes
+	if err != nil {
+		nova = nil
 	}
 	out := make([]monitor.Node, 0, len(nodes))
 	for _, n := range nodes {
@@ -183,6 +185,26 @@ func (s *Server) visibleNodes(ctx context.Context, pl capacity.Platform, nodes [
 			continue
 		}
 		out = append(out, n)
+	}
+	cores, err := s.Capacity.Store.PhysCores(ctx, pl)
+	if err != nil || len(cores) == 0 {
+		return out
+	}
+	for i := range out {
+		n := &out[i]
+		if n.CoresTotal == nil { // Nova 已给出的核数优先；其余按资产管理匹配
+			t, ok := cores[capacity.ShortName(n.Name)]
+			if !ok && n.HostIP != "" {
+				t, ok = cores[n.HostIP]
+			}
+			if ok {
+				n.CoresTotal = &t
+			}
+		}
+		if n.CoresUsed == nil && n.CoresTotal != nil && n.CPUPercent != nil { // 无 Nova 已分配 vCPU：按 CPU 使用率估算
+			u := math.Round(*n.CPUPercent**n.CoresTotal) / 100
+			n.CoresUsed, n.CoresEst = &u, true
+		}
 	}
 	return out
 }

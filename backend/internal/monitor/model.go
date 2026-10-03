@@ -48,8 +48,9 @@ type Node struct {
 	CPUSystem   *float64 `json:"-"`
 	CPUIowait   *float64 `json:"-"`
 	CoresTotal  *float64 `json:"coresTotal"` // Nova hypervisor vcpus
-	CoresUsed   *float64 `json:"coresUsed"`  // Nova hypervisor vcpus_used（已分配 vCPU）
-	VMCount     *float64 `json:"vmCount"`    // Nova hypervisor running_vms
+	CoresUsed   *float64 `json:"coresUsed"`  // Nova hypervisor vcpus_used（已分配 vCPU）；非计算节点无此值时按 CPU 使用率 × 总核数估算（CoresEst=true）
+	CoresEst    bool     `json:"coresEst,omitempty"`
+	VMCount     *float64 `json:"vmCount"` // Nova hypervisor running_vms
 	MemTotal    *float64 `json:"memTotal"`
 	MemFree     *float64 `json:"memFree"`
 	MemCached   *float64 `json:"memCached"`
@@ -107,7 +108,8 @@ type Disk struct {
 // Service 控制服务状态（来自 /ecms/services）。
 type Service struct {
 	Name      string            `json:"name"`
-	State     *float64          `json:"state"`     // 0 健康，1 不健康（多序列取最大值），null 未返回数值
+	State     *float64          `json:"state"`     // 指标原始值（多序列取最坏值），null 未返回数值；是否健康按指标口径判定，见 service_rules.go
+	Healthy   *bool             `json:"healthy"`   // 按指标口径判定的健康状态；null 未采集到数值
 	Instances int               `json:"instances"` // 该指标返回的序列数
 	Labels    map[string]string `json:"labels,omitempty"`
 	At        float64           `json:"at,omitempty"` // 指标时间戳（秒）

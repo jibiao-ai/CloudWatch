@@ -107,6 +107,9 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 				return err
 			}
 			m := Find(ms, name)
+			if m != nil && m.Err != "" {
+				return fmt.Errorf("%s（指标 %s）", m.Err, name)
+			}
 			if m == nil || len(m.Samples) == 0 {
 				return fmt.Errorf("未返回指标 %s", name)
 			}
@@ -120,15 +123,18 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return nil
 		}
 	}
-	step("vcpu", "虚机 vCPU 使用情况", pathDashboard, usage("dashboard_instances_vcpu_usage", &sum.VCPU))
-	step("memory", "云主机内存使用情况", pathDashboard, usage("dashboard_instances_memory_usage", &sum.Memory))
+	step("vcpu", "虚机 vCPU 使用情况", pathDashboard+"?metrics_filter=dashboard_instances_vcpu_usage", usage("dashboard_instances_vcpu_usage", &sum.VCPU))
+	step("memory", "云主机内存使用情况", pathDashboard+"?metrics_filter=dashboard_instances_memory_usage", usage("dashboard_instances_memory_usage", &sum.Memory))
 
-	step("instances", "云主机状态分布", pathDashboard, func() error {
+	step("instances", "云主机状态分布", pathDashboard+"?metrics_filter=dashboard_instances_state", func() error {
 		ms, err := emlaGet(ctx, cn, pathDashboard, filter("dashboard_instances_state"))
 		if err != nil {
 			return err
 		}
 		m := Find(ms, "dashboard_instances_state")
+		if m != nil && m.Err != "" {
+			return fmt.Errorf("%s（指标 dashboard_instances_state）", m.Err)
+		}
 		if m == nil || len(m.Samples) == 0 {
 			return fmt.Errorf("未返回云主机状态")
 		}
@@ -154,6 +160,9 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			if err != nil {
 				return err
 			}
+			if m := Find(ms, name); m != nil && m.Err != "" {
+				return fmt.Errorf("%s（指标 %s）", m.Err, name)
+			}
 			v, ok := Find(ms, name).First()
 			if !ok {
 				return fmt.Errorf("未返回指标 %s", name)
@@ -162,10 +171,10 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return nil
 		}
 	}
-	step("control_health", "平台控制面健康状态", pathDashboard, health("dashboard_control_plane_service_health", &sum.ControlPlaneHealth))
-	step("storage_health", "存储服务健康状态", pathDashboard, health("dashboard_storage_service_health", &sum.StorageServiceHealth))
+	step("control_health", "平台控制面健康状态", pathDashboard+"?metrics_filter=dashboard_control_plane_service_health", health("dashboard_control_plane_service_health", &sum.ControlPlaneHealth))
+	step("storage_health", "存储服务健康状态", pathDashboard+"?metrics_filter=dashboard_storage_service_health", health("dashboard_storage_service_health", &sum.StorageServiceHealth))
 
-	step("iops", "存储集群 IOPS", pathDashboard, func() error {
+	step("iops", "存储集群 IOPS", pathDashboard+"?metrics_filter=dashboard_storage_cluster_iops_read|write", func() error {
 		rd, err := emlaGet(ctx, cn, pathDashboard, filter("dashboard_storage_cluster_iops_read"))
 		if err != nil {
 			return err
@@ -190,16 +199,24 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return err
 		}
 		for _, m := range ms {
+			if !IsShownService(m.Name) { // 只保留对照表内的 35 个服务指标
+				continue
+			}
 			sv := Service{Name: m.Name, Instances: len(m.Samples)}
+			k := kindOf(m.Name)
 			for i, sp := range m.Samples {
-				if sv.State == nil || sp.Value > *sv.State {
-					v := sp.Value
+				v := sp.Value
+				if sv.State == nil {
 					sv.State = &v
+				} else {
+					w := k.worse(*sv.State, v) // 多序列取最坏值
+					sv.State = &w
 				}
 				if i == 0 {
 					sv.At, sv.Labels = sp.At, pickServiceLabels(sp.Labels)
 				}
 			}
+			applyHealth(&sv)
 			r.Services = append(r.Services, sv)
 		}
 		sort.Slice(r.Services, func(i, j int) bool { return r.Services[i].Name < r.Services[j].Name })

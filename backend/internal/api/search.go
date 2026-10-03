@@ -241,9 +241,9 @@ func (s *Server) searchMonitor(ctx context.Context, plats []capacity.Platform, w
 
 func healthTag(sv monitor.Service) (string, string) {
 	switch {
-	case sv.State == nil:
+	case sv.Healthy == nil:
 		return "未采集", "default"
-	case *sv.State == 0:
+	case *sv.Healthy:
 		return "正常", "success"
 	}
 	return "异常", "danger"

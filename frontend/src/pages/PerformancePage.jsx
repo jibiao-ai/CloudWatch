@@ -127,7 +127,7 @@ export default function PerformancePage() {
             <div id="mon-panel" role="tabpanel" aria-labelledby={`mon-${tab}`}>
               {tab === 'steps' ? <StepsTab key={jump.n} {...common} rows={rows.steps} allTotal={allTotals.steps} />
                 : !hasData ? <div className="card"><EmptyState title="暂无监控数据" description={canCollect ? '点击右上角「立即采集」，或等待后台按同步间隔自动采集' : '等待后台按同步间隔自动采集'} /></div>
-                  : tab === 'overview' ? <OverviewTab items={items} rows={rows} plat={plat} range={range} refreshKey={tick} onJump={goto} />
+                  : tab === 'overview' ? <OverviewTab items={items} rows={rows} hosts={hostsQ.data?.list || []} plat={plat} range={range} refreshKey={tick} onJump={goto} />
                     : tab === 'nodes' ? <NodesTab key={jump.n} {...common} rows={rows.nodes} allTotal={allTotals.nodes} />
                       : tab === 'hosts' ? <HostsTab key={jump.n} {...common} q={hostsQ} allTotal={allTotals.hosts} />
                         : tab === 'disks' ? <DisksTab key={jump.n} {...common} rows={rows.disks} allTotal={allTotals.disks} />

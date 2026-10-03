@@ -268,6 +268,30 @@ func (s *Store) NovaKeys(ctx context.Context, p Platform) (map[string]bool, erro
 	return e.nova, nil
 }
 
+// PhysCores 某平台资产管理「物理节点」的 CPU 核数索引：键为小写短主机名 / 完整主机名 / FQDN / 管理 IP / 带外 IP。
+// 监控中心物理节点按此匹配补全「总核数」（Nova 计算节点接口只覆盖计算节点，控制 / 存储节点没有核数）。
+func (s *Store) PhysCores(ctx context.Context, p Platform) (map[string]float64, error) {
+	rows, _, err := s.Rows(ctx, p, "phys")
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]float64, len(rows)*4)
+	for _, r := range rows {
+		c := num(r["cpuCores"])
+		if c == nil || *c <= 0 {
+			continue
+		}
+		keys := novaKeys(r)
+		if v := strings.TrimSpace(toStr(r["ipmiIp"])); v != "" {
+			keys = append(keys, v)
+		}
+		for _, k := range keys {
+			out[k] = *c
+		}
+	}
+	return out, nil
+}
+
 // novaKeys 一条 Nova 虚拟机物理节点行的标识：短主机名、完整主机名、FQDN、IP。
 func novaKeys(r Row) []string {
 	var out []string

@@ -124,7 +124,7 @@ FROM monitor_snapshots WHERE provider_id=?`, id).Scan(&col, &sn.OK, &sn.Error, &
 	sn.Nodes = unmarshal(nodes, sn.Nodes)
 	sn.Disks = unmarshal(disks, sn.Disks)
 	sn.VMs = unmarshal(vms, sn.VMs)
-	sn.Services = unmarshal(svcs, sn.Services)
+	sn.Services = filterServices(unmarshal(svcs, sn.Services)) // 仅保留 35 个服务指标，并按指标口径补算健康状态（兼容旧快照）
 	sn.Storage = unmarshal(sto, sn.Storage)
 	sn.Steps = unmarshal(steps, sn.Steps)
 	for i := range sn.Steps { // 兼容旧快照：缺少请求路径时按接口标识回填
@@ -186,7 +186,8 @@ func (s *Store) Trend(ctx context.Context, id, metric, target string, since time
 // stepPaths 各采集步骤对应的请求路径（旧快照回填用）。
 var stepPaths = map[string]string{
 	"storage_capacity": pathStorage, "storage_cluster": pathStorage, "disks": pathStorage,
-	"vcpu": pathDashboard, "memory": pathDashboard, "instances": pathDashboard, "control_health": pathDashboard, "storage_health": pathDashboard, "iops": pathDashboard,
+	"vcpu": pathDashboard + "?metrics_filter=dashboard_instances_vcpu_usage", "memory": pathDashboard + "?metrics_filter=dashboard_instances_memory_usage", "instances": pathDashboard + "?metrics_filter=dashboard_instances_state",
+	"control_health": pathDashboard + "?metrics_filter=dashboard_control_plane_service_health", "storage_health": pathDashboard + "?metrics_filter=dashboard_storage_service_health", "iops": pathDashboard + "?metrics_filter=dashboard_storage_cluster_iops_read|write",
 	"services": pathServices, "nodes": pathNodes, "hypervisors": "/v2.1/os-hypervisors/detail", "node_network": seriesPath, "node_disk_io": seriesPath,
 	"vms": "/v2.1/servers/detail?all_tenants=true", "vm_flavors": "/v2.1/flavors/detail", "vm_metrics": "/v1/resource/generic/{id}/metric/{cpu_util|memory.util}/measures",
 }
