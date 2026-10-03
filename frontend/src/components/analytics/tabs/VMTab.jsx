@@ -23,14 +23,14 @@ export default function VMTab({ tick, keyword, onClearKeyword }) {
   const plats = optsOf(o.platforms);
   const groups = [
     { type: '所属云平台', items: plats, onPick: (it) => setFlt({ providerId: it.value, host: '' }) },
-    { type: '宿主机', items: withPlat(o.hosts, plats), onPick: (it) => setFlt({ providerId: it.providerId, host: it.value }) },
+    { type: '计算节点', items: withPlat(o.hosts, plats), onPick: (it) => setFlt({ providerId: it.providerId, host: it.value }) },
   ];
   return (
     <>
       <SearchHits keyword={keyword} groups={groups} onClear={onClearKeyword} />
       <FilterBar>
         <Filter label="所属云平台" options={optsOf(o.platforms)} value={flt.providerId} onChange={(v) => setFlt({ providerId: v, host: '' })} width={190} />
-        <Filter label="宿主机" options={optsOf(o.hosts, flt.providerId)} value={flt.host} onChange={(v) => setFlt((f) => ({ ...f, host: v }))} width={170} />
+        <Filter label="计算节点" options={optsOf(o.hosts, flt.providerId)} value={flt.host} onChange={(v) => setFlt((f) => ({ ...f, host: v }))} width={170} />
         <span className="ml-auto text-[13px] text-fg-muted">资源明细：<Link to="/monitor?tab=vms" className="text-primary-text hover:underline">监控中心 · 虚拟机</Link></span>
       </FilterBar>
       {q.error ? <div className="card"><ErrorState error={q.error} onRetry={q.reload} /></div> : (

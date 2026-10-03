@@ -324,13 +324,13 @@ FROM analytics_vm_usage WHERE day>=?`
 	return out, rows.Err()
 }
 
-// HostStat 宿主机在统计窗口内的使用率汇总（来自监控中心 metric_samples）。
+// HostStat 计算节点在统计窗口内的使用率汇总（来自监控中心 metric_samples）。
 type HostStat struct {
 	Avg, Max *float64
 	Days     int
 }
 
-// metricStats 某指标自 since 起各目标（宿主机名）的平均 / 最大值与有数据天数，键为 providerID + "/" + 目标。
+// metricStats 某指标自 since 起各目标（计算节点名）的平均 / 最大值与有数据天数，键为 providerID + "/" + 目标。
 func (s *Store) metricStats(ctx context.Context, metric string, since time.Time) (map[string]HostStat, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT provider_id,target,AVG(value),MAX(value),COUNT(DISTINCT DATE(DATE_ADD(sampled_at,INTERVAL 8 HOUR))) FROM metric_samples WHERE metric=? AND sampled_at>=? GROUP BY provider_id,target`, metric, since.UTC())
 	if err != nil {
@@ -401,7 +401,7 @@ func (s *Store) vmBandsByDay(ctx context.Context, providerID string, vmIDs map[s
 	return out, rows.Err()
 }
 
-// ---- 宿主机 / 存储器使用率分布（来自监控中心的 metric_samples） ----
+// ---- 计算节点 / 存储器使用率分布（来自监控中心的 metric_samples） ----
 
 // BandPoint 某时刻各区间的对象数量。
 type BandPoint struct {
@@ -410,7 +410,7 @@ type BandPoint struct {
 }
 
 // metricBands 把 metric_samples 里 (平台, 目标) 的使用率按时间桶求平均后，统计每个桶中落入各区间的对象数量。
-// targets 非空时只统计这些目标（宿主机名）；providerIDs 为空表示全部平台。
+// targets 非空时只统计这些目标（计算节点名）；providerIDs 为空表示全部平台。
 func (s *Store) metricBands(ctx context.Context, metric string, providerIDs []string, targets map[string]bool, from, to time.Time, bucket int64) ([]BandPoint, error) {
 	q := `SELECT provider_id,target,FLOOR(UNIX_TIMESTAMP(sampled_at)/?) b,AVG(value) FROM metric_samples WHERE metric=? AND sampled_at>=? AND sampled_at<=?`
 	args := []any{bucket, metric, from.UTC(), to.UTC()}
@@ -583,7 +583,7 @@ func (s *Store) DeletePolicy(ctx context.Context, kind string) error {
 
 // ---- 已忽略 ----
 
-// Ignore 一条已忽略记录：ResID 为资源 ID（云主机 ID / 宿主机名 / 存储池名 / 云硬盘 ID）。
+// Ignore 一条已忽略记录：ResID 为资源 ID（云主机 ID / 计算节点名 / 存储池名 / 云硬盘 ID）。
 type Ignore struct {
 	Kind       string    `json:"kind"`
 	ProviderID string    `json:"providerId"`

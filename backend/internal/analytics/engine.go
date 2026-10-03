@@ -28,7 +28,7 @@ type plat struct {
 	clusters                      map[string]string // 计算节点名 → 集群
 }
 
-// Filter 通用筛选（所属云平台 / 集群 / 宿主机 / 存储器）。宿主机、存储器、集群的取值均为 "平台ID/名称"。
+// Filter 通用筛选（所属云平台 / 集群 / 计算节点 / 存储器）。计算节点、存储器、集群的取值均为 "平台ID/名称"。
 type Filter struct {
 	ProviderID, Cluster, Host, Pool string
 }
@@ -73,7 +73,7 @@ func (x *plat) clusterOf(host string) string {
 	return "默认集群"
 }
 
-// hostSel 满足筛选条件的宿主机行。
+// hostSel 满足筛选条件的计算节点行。
 func (x *plat) hostSel(f Filter) []capacity.Row {
 	var out []capacity.Row
 	for _, r := range x.hosts {
@@ -100,7 +100,7 @@ func (x *plat) poolSel(f Filter) []capacity.Row {
 	return out
 }
 
-// vmSel 满足筛选条件的云主机（宿主机 / 集群筛选按所在节点）。
+// vmSel 满足筛选条件的云主机（计算节点 / 集群筛选按所在节点）。
 func (x *plat) vmSel(f Filter) []capacity.Row {
 	if f.Host == "" && f.Cluster == "" {
 		return x.vms

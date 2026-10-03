@@ -13,7 +13,7 @@ export default function PlatformTable({ platforms, keyword = '' }) {
     { key: 'collectedAt', title: '最近采集', width: 160, sortable: true, render: (p) => <span className="text-[13px] tabular-nums" title={p.collectedAt ? fromNow(p.collectedAt) : ''}>{p.collectedAt ? formatDateTime(p.collectedAt) : '—'}</span> },
     { key: 'vms', title: '云主机', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.vms) },
     { key: 'disks', title: '磁盘', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.disks) },
-    { key: 'hosts', title: '宿主机', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.hosts) },
+    { key: 'hosts', title: '计算节点', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.hosts) },
     { key: 'pools', title: '集群存储', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.pools) },
     { key: 'error', title: '采集错误', width: 320, render: (p) => <span className="text-[13px] text-danger break-all">{p.error || ''}</span> },
   ], []);

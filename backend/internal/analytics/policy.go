@@ -10,7 +10,7 @@ import (
 // 资源类型：优化策略作用于哪一类资源。
 const (
 	ResVM   = "vm"   // 虚拟机
-	ResHost = "host" // 物理机（宿主机 / 计算节点）
+	ResHost = "host" // 物理机（计算节点）
 	ResPool = "pool" // 集群存储
 	ResDisk = "disk" // 云硬盘
 )

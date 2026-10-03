@@ -4,7 +4,7 @@ import ChartTooltip from '../ChartTooltip';
 import EmptyState from '../EmptyState';
 import { useChartPalette } from '../../hooks/useChartPalette';
 
-/** HostVmChart —— 宿主机上云主机分布：每台宿主机一根柱，运行中 / 已停止堆叠。data[{host,running,stopped}] */
+/** HostVmChart —— 计算节点上云主机分布：每台计算节点一根柱，运行中 / 已停止堆叠。data[{host,running,stopped}] */
 export default function HostVmChart({ data = [], height = 240 }) {
   const pal = useChartPalette();
   if (!data.length) return <div style={{ height }}><EmptyState compact title="暂无数据" /></div>;

@@ -14,7 +14,7 @@ type Opt2 struct {
 	Value      string `json:"value"`
 	Label      string `json:"label"`
 	ProviderID string `json:"providerId"`
-	Cluster    string `json:"cluster,omitempty"` // 宿主机 / 存储器选项所属集群，供前端级联过滤
+	Cluster    string `json:"cluster,omitempty"` // 计算节点 / 存储器选项所属集群，供前端级联过滤
 }
 
 // UsageWindowDays 云主机明细里「使用率」的统计窗口。
@@ -35,7 +35,7 @@ func (x *plat) clusterList() []string {
 
 // ---------- 基础资源分析 ----------
 
-// HostVM 宿主机上的云主机分布。
+// HostVM 计算节点上的云主机分布。
 type HostVM struct {
 	Host    string `json:"host"`
 	Running int    `json:"running"`
@@ -227,7 +227,7 @@ func ParseRange(fromS, toS string) (time.Time, time.Time) {
 	return from, to
 }
 
-// BaseBands 宿主机 / 存储器按使用率分布。metric: cpu | mem | storage。
+// BaseBands 计算节点 / 存储器按使用率分布。metric: cpu | mem | storage。
 func (e *Engine) BaseBands(ctx context.Context, plats []capacity.Platform, flt Filter, metric string, from, to time.Time) (*BandChart, error) {
 	ps, err := e.load(ctx, plats, flt.ProviderID)
 	if err != nil {
@@ -271,7 +271,7 @@ func (e *Engine) BaseBands(ctx context.Context, plats []capacity.Platform, flt F
 // Col 导出列。
 type Col struct{ Key, Title string }
 
-// HostRows 监控中心「计算节点」：某一云平台的宿主机分配率（来自 Nova 超分配）与使用率（监控中心实时），比率统一保留 1 位小数。
+// HostRows 监控中心「计算节点」：某一云平台的计算节点分配率（来自 Nova 超分配）与使用率（监控中心实时），比率统一保留 1 位小数。
 func (e *Engine) HostRows(ctx context.Context, plats []capacity.Platform, providerID string) ([]map[string]any, error) {
 	ps, err := e.load(ctx, plats, providerID)
 	if err != nil {

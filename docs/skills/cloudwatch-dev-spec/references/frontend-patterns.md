@@ -9,7 +9,7 @@ const go = useCallback(next => setSp(next, { replace: true }), [setSp]);  // 页
 外壳 `AnalyticsShell({ title, description, tabs, tab, onTab, idPrefix, searchPlaceholder, children })`，`children(d, tick, reloadOv, keyword, clearKeyword)`：`tick` 每次点刷新自增，子图表据此重新加载。
 
 ## 筛选栏
-`<FilterBar><Filter label="所属云平台" options value onChange width/> … <span className="ml-auto">跳转链接</span></FilterBar>`。上游筛选变化时清空下游（如换云平台 → 清空宿主机、集群存储）。跳转到其他模块用 `<Link to="/monitor?tab=hosts">在监控中心查看宿主机信息</Link>`，文案写动作，不写「模块 · 页签」。
+`<FilterBar><Filter label="所属云平台" options value onChange width/> … <span className="ml-auto">跳转链接</span></FilterBar>`。上游筛选变化时清空下游（如换云平台 → 清空计算节点、集群存储）。跳转到其他模块用 `<Link to="/monitor?tab=hosts">在监控中心查看计算节点信息</Link>`，文案写动作，不写「模块 · 页签」。
 
 ## 服务端列表
 ```jsx

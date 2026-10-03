@@ -18,11 +18,11 @@ kind 为空时按 side 汇总全部策略，每行带 `kind / policy / key=kind|
 2. **历史未积累满**：持续型条件的最大已积累天数 < 统计周期 → 提示「已积累 X/N 天」。
 3. **已评估无命中**：数据齐全但没有资源满足阈值。
 4. **采集链路**：服务器到 OpenStack 管理网不通（`docker logs cloudwatch-backend` 出现「Keystone 域名…不可达」；`analytics_state.last_backfill_at` 为 NULL）→ 先修网络/VPN 路由，再等回填。
-5. 数据表自查：`analytics_vm_usage`（按天累计，看 `day` 的数量）、`metric_samples`（宿主机 `node_cpu_percent/node_mem_percent`）。
+5. 数据表自查：`analytics_vm_usage`（按天累计，看 `day` 的数量）、`metric_samples`（计算节点 `node_cpu_percent/node_mem_percent`）。
 
 | 指标 | 来源 | 可得性 |
 |---|---|---|
 | vCPU/内存使用率、磁盘读写速率 | Gnocchi `cpu_util / memory.util / disk.read|write.bytes.rate` | 文档内，稳定 |
 | CPU 就绪占比、Swap、磁盘时延、虚机内文件系统使用率 | 候选指标名「尽力采集」(`monitor.ExtMetrics`) | 平台不提供则对应 4 条策略（vCPU紧张/内存不足/IO压力/磁盘空间高风险）恒无结果，不误报 |
-| 宿主机 CPU/内存 | 监控采集 `metric_samples` | 非持续型，立即生效 |
+| 计算节点 CPU/内存 | 监控采集 `metric_samples` | 非持续型，立即生效 |
 | 集群存储 / 孤立磁盘 | 资产快照 | 立即生效 |
