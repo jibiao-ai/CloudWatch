@@ -84,14 +84,12 @@ var tree = []MenuGroup{
 	{"alert", "告警中心", "BellRing", []MenuItem{{Code: "alert-home", Name: "告警列表", Path: "/alerts", Permission: "alert:view", Icon: "BellRing"}}},
 	{"topology", "资源拓扑", "Network", []MenuItem{{Code: "topology-home", Name: "全链路拓扑", Path: "/topology", Permission: "topology:view", Icon: "Network"}}},
 	{"analytics", "运营分析", "ChartPie", []MenuItem{{Code: "analytics-home", Name: "运营总览", Path: "/analytics", Permission: "analytics:view", Icon: "ChartPie"}}},
-	{"system", "系统管理", "Settings2", []MenuItem{
-		{Code: "provider", Name: "平台管理", Path: "/system/providers", Permission: "provider:view", Icon: "Server"},
-		{Code: "user", Name: "用户管理", Path: "/system/users", Permission: "user:view", Icon: "Users"},
-		{Code: "role", Name: "角色管理", Path: "/system/roles", Permission: "role:view", Icon: "ShieldCheck"},
-		{Code: "audit", Name: "审计日志", Path: "/system/audit", Permission: "audit:view", Icon: "ScrollText"},
-		{Code: "domain", Name: "域名配置", Path: "/system/domain", Permission: "domain:view", Icon: "Globe"},
-		{Code: "settings", Name: "系统配置", Path: "/system/settings", Permission: "settings:view", Icon: "SlidersHorizontal"},
-	}},
+	{"provider", "平台管理", "Server", []MenuItem{{Code: "provider-home", Name: "平台管理", Path: "/system/providers", Permission: "provider:view", Icon: "Server"}}},
+	{"user", "用户管理", "Users", []MenuItem{{Code: "user-home", Name: "用户管理", Path: "/system/users", Permission: "user:view", Icon: "Users"}}},
+	{"role", "角色管理", "ShieldCheck", []MenuItem{{Code: "role-home", Name: "角色管理", Path: "/system/roles", Permission: "role:view", Icon: "ShieldCheck"}}},
+	{"audit", "审计日志", "ScrollText", []MenuItem{{Code: "audit-home", Name: "审计日志", Path: "/system/audit", Permission: "audit:view", Icon: "ScrollText"}}},
+	{"domain", "域名配置", "Globe", []MenuItem{{Code: "domain-home", Name: "域名配置", Path: "/system/domain", Permission: "domain:view", Icon: "Globe"}}},
+	{"settings", "系统配置", "SlidersHorizontal", []MenuItem{{Code: "settings-home", Name: "系统配置", Path: "/system/settings", Permission: "settings:view", Icon: "SlidersHorizontal"}}},
 }
 
 func BuildMenus(perms []string) []MenuGroup {

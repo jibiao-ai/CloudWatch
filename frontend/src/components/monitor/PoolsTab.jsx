@@ -3,12 +3,9 @@ import MonTable from './MonTable';
 import DataState from './DataState';
 import { PlatformCell, PctCell } from './cells';
 import { Tag, gbCell } from '../capacity/capUtil';
-import { monitorApi } from '../../services/api';
-import { useAsync } from '../../hooks/useAsync';
 
 /** PoolsTab —— 集群存储：首列后端名称，其余字段与资产管理「集群存储」一致，另含分配率；比率统一 1 位小数 */
-export default function PoolsTab({ platform, providerId, initialKeyword, refreshKey }) {
-  const q = useAsync(() => monitorApi.getPools(providerId), [providerId, refreshKey]);
+export default function PoolsTab({ platform, initialKeyword, q }) {
   const columns = useMemo(() => [
     { key: 'backendName', title: '后端名称', width: 190, sortable: true, render: (r) => <span className="font-medium break-all" title={r.name}>{r.backendName || r.poolName || '—'}</span> },
     { key: 'platform', title: '所属云平台', width: 170, sortable: true, sortBy: () => platform?.name, render: () => <PlatformCell platform={platform} /> },

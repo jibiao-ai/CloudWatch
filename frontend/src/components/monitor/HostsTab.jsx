@@ -3,13 +3,10 @@ import MonTable from './MonTable';
 import DataState from './DataState';
 import { PlatformCell, PctCell, num } from './cells';
 import { Tag } from '../capacity/capUtil';
-import { monitorApi } from '../../services/api';
-import { useAsync } from '../../hooks/useAsync';
 import { formatNumber } from '../../utils/format';
 
 /** HostsTab —— 宿主机：分配率（Nova 超分配：已分配 / 容量）与使用率（监控实时），比率统一 1 位小数；样式与物理节点一致，无「集群」列 */
-export default function HostsTab({ platform, providerId, initialKeyword, refreshKey }) {
-  const q = useAsync(() => monitorApi.getHosts(providerId), [providerId, refreshKey]);
+export default function HostsTab({ platform, initialKeyword, q }) {
   const columns = useMemo(() => [
     { key: 'name', title: '宿主机', width: 150, sortable: true, render: (h) => <span className="font-medium">{h.name}</span> },
     { key: 'ip', title: '节点 IP', width: 130, sortable: true, render: (h) => <code className="text-[13px]">{h.ip || '—'}</code> },

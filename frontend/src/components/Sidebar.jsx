@@ -50,7 +50,7 @@ export default function Sidebar({ mode }) {
       <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-1" key={permissions.join(',')}>
         {visible.map((g) => {
           const closed = !iconOnly && groups[g.code];
-          const single = g.children.length === 1 && g.code !== 'system';
+          const single = g.children.length === 1;
           return (
             <div key={g.code}>
               {!single && !iconOnly && (

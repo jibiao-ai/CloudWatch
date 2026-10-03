@@ -38,6 +38,8 @@ export default function PerformancePage() {
   const [jump, setJump] = useState({ n: 0, kw: '' }); // 总览全局搜索跳转：带入目标页签的关键字
   useEffect(() => { if (!pid && plats.data?.length) setPid(plats.data[0].id); }, [plats.data, pid]);
   const snap = useAsync(() => (pid ? monitorApi.getSnapshot(pid) : Promise.resolve(null)), [pid, tick]);
+  const hosts = useAsync(() => (pid ? monitorApi.getHosts(pid) : Promise.resolve(null)), [pid, tick]); // 宿主机 / 集群存储：页签角标与列表共用同一份数据
+  const pools = useAsync(() => (pid ? monitorApi.getPools(pid) : Promise.resolve(null)), [pid, tick]);
   const d = snap.data;
   const platform = (plats.data || []).find((p) => p.id === pid);
   const goto = (t, kw) => { setJump((j) => ({ n: j.n + 1, kw })); setTab(t); };
@@ -51,7 +53,7 @@ export default function PerformancePage() {
       r.ok ? toast.success('采集完成', `耗时 ${r.durationMs} ms，告警中 ${r.alertFiring} 条`) : toast.error('采集失败', r.error);
     } catch (e) { toast.error('采集失败', e.message); } finally { setBusy(false); }
   };
-  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'hosts', label: '宿主机' }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'pools', label: '集群存储' }, { key: 'steps', label: '采集明细' }];
+  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'hosts', label: '宿主机', count: hosts.data?.list.length }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'pools', label: '集群存储', count: pools.data?.list.length }, { key: 'steps', label: '采集明细' }];
   const common = { snap: d, platform, providerId: pid, refreshKey: tick, initialKeyword: jump.kw };
 
   return (
@@ -80,10 +82,10 @@ export default function PerformancePage() {
                 : !d.summary ? <div className="card"><EmptyState title="暂无监控数据" description={canCollect ? '点击右上角「立即采集」，或等待后台按同步间隔自动采集' : '等待后台按同步间隔自动采集'} /></div>
                   : tab === 'overview' ? <OverviewTab snap={d} platform={platform} providerId={pid} range={range} refreshKey={tick} onJump={goto} />
                     : tab === 'nodes' ? <NodesTab key={jump.n} {...common} />
-                      : tab === 'hosts' ? <HostsTab key={jump.n} {...common} />
+                      : tab === 'hosts' ? <HostsTab key={jump.n} {...common} q={hosts} />
                         : tab === 'disks' ? <DisksTab key={jump.n} {...common} />
                           : tab === 'vms' ? <VMsTab key={jump.n} {...common} />
-                            : tab === 'pools' ? <PoolsTab key={jump.n} {...common} /> : <ServicesTab key={jump.n} {...common} />}
+                            : tab === 'pools' ? <PoolsTab key={jump.n} {...common} q={pools} /> : <ServicesTab key={jump.n} {...common} />}
             </div>
           </>
         )}
