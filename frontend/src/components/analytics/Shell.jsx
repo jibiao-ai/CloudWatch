@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import PageHeader from '../PageHeader';
 import Tabs from '../Tabs';
@@ -6,6 +6,7 @@ import StatusDot from '../StatusDot';
 import Skeleton from '../Skeleton';
 import ErrorState from '../ErrorState';
 import LoadingButton from '../LoadingButton';
+import SearchInput from '../SearchInput';
 import { analyticsApi } from '../../services/api';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime, fromNow } from '../../utils/format';
@@ -14,11 +15,15 @@ import { formatDateTime, fromNow } from '../../utils/format';
  * AnalyticsShell —— 运营分析各页面的统一外壳，结构与「资产管理」页一致：
  * 页头（标题 / 说明 / 刷新）→ 状态条（采集状态 · 已对接云平台 · 最近采集）→ 页签 → 页签面板。
  * 属性：title / description / tabs[{key,label,count|countKey}] 或 (总览数据) => tabs[] / tab / onTab / idPrefix / actions(页头附加按钮) /
- *       onRefresh(页面自身数据的刷新) / children(ov, tick, reloadOv) —— ov 为总览数据，tick 每次点击刷新自增（子图表据此重新加载），reloadOv 重新拉取总览（忽略建议后刷新页签计数）
+ *       onRefresh(页面自身数据的刷新) / children(ov, tick, reloadOv, keyword, clearKeyword) —— ov 为总览数据，tick 每次点击刷新自增（子图表据此重新加载），reloadOv 重新拉取总览（忽略建议后刷新页签计数），
+ *       keyword 为刷新按钮右侧「全局搜索」框的关键字（切换页签自动清空，各页签按自身数据解释）
+ *       searchPlaceholder 全局搜索框的占位文字（随页签变化）
  */
-export default function AnalyticsShell({ title, description, tabs, tab, onTab, idPrefix, actions, onRefresh, children }) {
+export default function AnalyticsShell({ title, description, tabs, tab, onTab, idPrefix, actions, onRefresh, searchPlaceholder = '搜索', children }) {
   const ov = useAsync(() => analyticsApi.getOverview(), []);
   const [tick, setTick] = useState(0);
+  const [kw, setKw] = useState('');
+  useEffect(() => { setKw(''); }, [tab]);
   const d = ov.data;
   const reload = useCallback(() => { ov.reload(); onRefresh?.(); setTick((x) => x + 1); }, [ov, onRefresh]);
 
@@ -34,6 +39,7 @@ export default function AnalyticsShell({ title, description, tabs, tab, onTab, i
         actions={<>
           {actions}
           <LoadingButton icon={RefreshCw} loading={ov.refreshing} onClick={reload}>刷新</LoadingButton>
+          <SearchInput value={kw} onChange={setKw} placeholder={searchPlaceholder} width={260} aria-label="全局搜索" />
         </>} />
       {ov.loading ? <Skeleton.Cards count={4} /> : ov.error ? <div className="card"><ErrorState error={ov.error} onRetry={ov.reload} /></div> : d && (
         <>
@@ -45,7 +51,7 @@ export default function AnalyticsShell({ title, description, tabs, tab, onTab, i
           </div>
           {items && <Tabs items={items} value={tab} onChange={onTab} className="mb-4" idPrefix={idPrefix} />}
           <div id={`${idPrefix}-panel`} role="tabpanel" aria-labelledby={items ? `${idPrefix}-${tab}` : undefined} className="space-y-4">
-            {children(d, tick, ov.reload)}
+            {children(d, tick, ov.reload, kw.trim(), () => setKw(''))}
           </div>
         </>
       )}

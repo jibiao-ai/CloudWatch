@@ -269,3 +269,29 @@ func TestStateGroup(t *testing.T) {
 		}
 	}
 }
+
+func TestNoHitHint(t *testing.T) {
+	p := builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: "<", Value: 15.0}, active())
+	if h := p.noHitHint(nil); !strings.Contains(h, "没有可评估") {
+		t.Errorf("nil diag: %q", h)
+	}
+	if h := p.noHitHint(&polDiag{Total: 5, Have: map[string]int{}, Days: map[string]int{}}); !strings.Contains(h, "未采集到") {
+		t.Errorf("missing metric: %q", h)
+	}
+	if h := p.noHitHint(&polDiag{Total: 5, Have: map[string]int{"cpuAvg": 5}, Days: map[string]int{"cpuAvg": 2}}); !strings.Contains(h, "2/30") {
+		t.Errorf("short history: %q", h)
+	}
+	if h := p.noHitHint(&polDiag{Total: 5, Have: map[string]int{"cpuAvg": 5}, Days: map[string]int{"cpuAvg": 30}}); !strings.Contains(h, "已评估 5") {
+		t.Errorf("evaluated: %q", h)
+	}
+}
+
+func TestMatchAny(t *testing.T) {
+	q := ListQuery{Keyword: "nanjing"}
+	if !matchAny(q, "vm1", "10.0.0.1", "Nanjing-Ops", "vCPU过剩") || matchAny(ListQuery{Keyword: "zzz"}, "vm1", "", "", "") {
+		t.Error("matchAny platform/none")
+	}
+	if matchAny(ListQuery{Keyword: "10.0", Field: "name"}, "vm1", "10.0.0.1", "", "") || !matchAny(ListQuery{Keyword: "10.0", Field: "ip"}, "vm1", "10.0.0.1", "", "") {
+		t.Error("matchAny field")
+	}
+}

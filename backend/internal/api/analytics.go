@@ -29,7 +29,7 @@ func anFilter(r *http.Request) analytics.Filter {
 
 func anQuery(r *http.Request) analytics.ListQuery {
 	g := func(k string) string { return strings.TrimSpace(r.URL.Query().Get(k)) }
-	q := analytics.ListQuery{Field: g("field"), Keyword: g("keyword"), SortKey: g("sortKey"), SortOrder: g("sortOrder"), Filter: anFilter(r), Kind: g("kind"), Ignored: g("ignored")}
+	q := analytics.ListQuery{Field: g("field"), Keyword: g("keyword"), SortKey: g("sortKey"), SortOrder: g("sortOrder"), Filter: anFilter(r), Kind: g("kind"), Ignored: g("ignored"), Side: g("side")}
 	q.Page, _ = strconv.Atoi(g("page"))
 	q.PageSize, _ = strconv.Atoi(g("pageSize"))
 	return q
@@ -152,13 +152,25 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 		return err
 	}
 	q := anQuery(r)
-	pol, err := s.Analytics.St.Policy(r.Context(), q.Kind)
-	if err != nil {
-		return httpx.Err(404, "策略不存在")
+	var cols []analytics.Col
+	title, kindKey := "优化建议", "all"
+	link := "/analytics?tab=optimize"
+	if q.Kind != "" {
+		pol, err := s.Analytics.St.Policy(r.Context(), q.Kind)
+		if err != nil {
+			return httpx.Err(404, "策略不存在")
+		}
+		cols, title, kindKey = analytics.OptCols(pol.ResourceType), pol.Name, pol.Kind
+		link += "&kind=" + pol.Kind
+	} else {
+		cols = analytics.OptColsAll()
+		switch q.Side {
+		case "vm":
+			title, kindKey = "虚拟机侧优化建议", "vm"
+		case "phys":
+			title, kindKey = "物理侧优化建议", "phys"
+		}
 	}
-	cols := analytics.OptCols(pol.ResourceType)
-	title := pol.Name
-	link := "/analytics?tab=optimize&kind=" + pol.Kind
 	rows, err := s.Analytics.OptRows(r.Context(), ps, q)
 	if err != nil {
 		return err
@@ -199,7 +211,7 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 	s.rec(r, p, "analytics", "export", "导出优化建议「"+title+"」（"+strconv.Itoa(len(rows))+" 条）", link, nil, nil, t0)
 	h := w.Header()
 	h.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	h.Set("Content-Disposition", `attachment; filename="analytics-`+pol.Kind+`.xlsx"`)
+	h.Set("Content-Disposition", `attachment; filename="analytics-`+kindKey+`.xlsx"`)
 	_, _ = w.Write(buf.Bytes())
 	return nil
 }
@@ -218,16 +230,13 @@ func (s *Server) analyticsOptSummary(w http.ResponseWriter, r *http.Request, _ *
 	return nil
 }
 
-// analyticsOptList GET /analytics/optimize/list?kind=&ignored=1
+// analyticsOptList GET /analytics/optimize/list?kind=&side=vm|phys&ignored=1  kind 为空时按 side 汇总全部策略（side 为空 = 全部）
 func (s *Server) analyticsOptList(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	ps, err := s.plats(r)
 	if err != nil {
 		return err
 	}
 	q := anQuery(r)
-	if q.Kind == "" {
-		return httpx.Err(400, "缺少策略 kind")
-	}
 	pg, err := s.Analytics.OptList(r.Context(), ps, q)
 	if err != nil {
 		return err

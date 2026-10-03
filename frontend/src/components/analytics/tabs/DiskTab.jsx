@@ -4,6 +4,7 @@ import { FilterBar, Filter } from '../Panel';
 import { TrendPanel } from '../Blocks';
 import DonutPanel from '../DonutPanel';
 import ErrorState from '../../ErrorState';
+import SearchHits from '../SearchHits';
 import { mountColor } from '../util';
 import { analyticsApi } from '../../../services/api';
 import { useAsync } from '../../../hooks/useAsync';
@@ -11,7 +12,7 @@ import { useAsync } from '../../../hooks/useAsync';
 const UNITS = [{ value: 'count', label: '数量(块)' }, { value: 'gb', label: '容量(G)' }];
 
 /** DiskTab —— 运营分析 · 磁盘分析：所属云平台 / 挂载状态 / 磁盘类型分布（按数量或容量）、数量趋势；磁盘明细在「资产管理 · 云硬盘」 */
-export default function DiskTab({ tick }) {
+export default function DiskTab({ tick, keyword, onClearKeyword }) {
   const [pid, setPid] = useState('');
   const [unit, setUnit] = useState('count');
   const params = useMemo(() => ({ providerId: pid, unit }), [pid, unit]);
@@ -21,6 +22,7 @@ export default function DiskTab({ tick }) {
   const plats = (d?.platforms_opt || []).map((a) => ({ value: a.value, label: a.label }));
   return (
     <>
+      <SearchHits keyword={keyword} groups={[{ type: '所属云平台', items: plats, onPick: (it) => setPid(it.value) }]} onClear={onClearKeyword} />
       <FilterBar>
         <Filter label="所属云平台" options={plats} value={pid} onChange={setPid} width={190} />
         <Filter label="统计单位" options={UNITS} value={unit} onChange={(v) => setUnit(v || 'count')} width={130} clearable={false} />

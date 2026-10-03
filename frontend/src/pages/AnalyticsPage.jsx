@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Settings } from 'lucide-react';
 import AnalyticsShell from '../components/analytics/Shell';
 import HomeTab from '../components/analytics/tabs/HomeTab';
 import BaseTab from '../components/analytics/tabs/BaseTab';
@@ -19,6 +18,16 @@ const TABS = [
   { key: 'policy', label: '优化策略' },
 ];
 
+/** 页头「全局搜索」在各页签的搜索范围提示 */
+const SEARCH = {
+  home: '搜索云平台名称 / 控制台 IP',
+  base: '搜索云平台 / 宿主机 / 集群存储',
+  vm: '搜索云平台 / 宿主机',
+  disk: '搜索云平台',
+  optimize: '搜索资源名称 / IP / 云平台 / 策略',
+  policy: '搜索策略名称 / 条件 / 范围',
+};
+
 /**
  * AnalyticsPage —— 运营分析（总览 / 资源分析 / 云主机分析 / 磁盘分析 / 优化建议 / 优化策略）：
  * 与「资产管理」一致，只占一个菜单项，各功能是同一页面内的页签；页签与优化类型同步到地址栏（?tab= &kind=），便于刷新与分享
@@ -28,21 +37,23 @@ export default function AnalyticsPage() {
   const canPolicy = useCan('analytics:policy_update');
   const tab = TABS.some((t) => t.key === sp.get('tab')) ? sp.get('tab') : 'home';
   const kind = sp.get('kind') || '';
+  const side = sp.get('side') || '';
   const go = useCallback((next) => setSp(next, { replace: true }), [setSp]);
   const openPolicy = sp.get('open');
 
   return (
     <AnalyticsShell title="运营分析" description="汇总全部所属云平台下的云主机、磁盘、宿主机与集群存储：资源分配率 / 使用率、分布与趋势、虚拟机侧与物理侧优化建议及优化策略；明细请到监控中心（虚拟机 / 宿主机 / 集群存储）与资产管理查看，数据来自采集快照，使用率与趋势随时间持续积累"
-      tabs={TABS} tab={tab} onTab={(k) => go(k === 'home' ? {} : k === 'optimize' && kind ? { tab: k, kind } : { tab: k })} idPrefix="an"
-      actions={tab === 'optimize' && canPolicy && <button type="button" className="btn-default" onClick={() => go({ tab: 'policy', open: kind })}><Settings size={15} /> 优化策略</button>}>
-      {(d, tick, reloadOv) => {
+      tabs={TABS} tab={tab} onTab={(k) => go(k === 'home' ? {} : { tab: k })} idPrefix="an"
+      searchPlaceholder={SEARCH[tab]}>
+      {(d, tick, reloadOv, kw, clearKw) => {
         switch (tab) {
-          case 'base': return <BaseTab tick={tick} />;
-          case 'vm': return <VMTab tick={tick} />;
-          case 'disk': return <DiskTab tick={tick} />;
-          case 'optimize': return <OptimizeTab d={d} tick={tick} reloadOv={reloadOv} kind={kind} onKind={(k) => go({ tab: 'optimize', kind: k })} />;
-          case 'policy': return <PolicyTab tick={tick} openKind={openPolicy} onOpened={() => go({ tab: 'policy' })} onSaved={reloadOv} />;
-          default: return <HomeTab d={d} tick={tick} onOpt={(k) => go({ tab: 'optimize', kind: k })} />;
+          case 'base': return <BaseTab tick={tick} keyword={kw} onClearKeyword={clearKw} />;
+          case 'vm': return <VMTab tick={tick} keyword={kw} onClearKeyword={clearKw} />;
+          case 'disk': return <DiskTab tick={tick} keyword={kw} onClearKeyword={clearKw} />;
+          case 'optimize': return <OptimizeTab d={d} tick={tick} reloadOv={reloadOv} kind={kind} side={side} keyword={kw}
+            onSelect={(s, k) => go(k ? { tab: 'optimize', kind: k } : { tab: 'optimize', side: s })} onPolicy={canPolicy ? (k) => go({ tab: 'policy', open: k }) : undefined} />;
+          case 'policy': return <PolicyTab tick={tick} keyword={kw} openKind={openPolicy} onOpened={() => go({ tab: 'policy' })} onSaved={reloadOv} />;
+          default: return <HomeTab d={d} tick={tick} keyword={kw} onOpt={(k) => go({ tab: 'optimize', kind: k })} />;
         }
       }}
     </AnalyticsShell>

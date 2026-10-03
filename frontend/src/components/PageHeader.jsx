@@ -4,11 +4,11 @@ import React from 'react';
 export default function PageHeader({ title, description, actions }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 basis-[360px]">
         <h1 className="text-xl font-semibold text-fg tracking-tight">{title}</h1>
         {description && <p className="text-[13px] text-fg-muted mt-1">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 ml-auto">{actions}</div>}
     </div>
   );
 }

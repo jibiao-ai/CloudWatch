@@ -2,6 +2,7 @@
 /**
  * FE-7 禁用项扫描：npm run lint:rules
  * 铁律（含 v2 新增）：禁止毛玻璃（glass/backdrop-blur/backdrop-filter）；输入类控件聚焦禁止彩色高亮（focus:ring / 彩色 focus 边框 / outline）
+ * 铁律：日期 / 时间选择统一使用自绘 DatePicker（components/DatePicker.jsx），禁止原生 input[type=date|datetime-local|time|month|week]
  * 检查：原生 <select> / window.confirm|alert|prompt / 硬编码颜色 / dark: 前缀 / emoji 图标 /
  *       role === 'admin' 硬编码 / 页面里直接 fetch|axios / 页面文件行数
  */
@@ -16,6 +17,7 @@ const files = walk(ROOT).filter((f) => /\.(jsx?|css)$/.test(f));
 const COLOR_ALLOW = ['styles/index.css', 'utils/theme.js', 'services/mock/', 'tailwind.config'];
 const rules = [
   { name: '原生 <select>', re: /<select[\s>]/, only: /\.jsx$/ },
+  { name: '铁律：禁止原生日期/时间控件(input type=date|datetime-local|time|month|week，请用 DatePicker)', re: /type=["'{`]*(date|datetime-local|time|month|week)\b/, only: /\.jsx$/, allow: ['components/DatePicker.jsx'] },
   { name: 'window.confirm/alert/prompt', re: /\b(window\.)?(confirm|alert|prompt)\s*\(/, only: /\.jsx?$/, skip: (l) => /\.(confirm|alert)\w*\(/.test(l) || /(const|let)\s+(confirm|alert)/.test(l) },
   { name: '硬编码色值 #fff/#000 等', re: /#(?:[0-9a-fA-F]{3}){1,2}\b/, only: /\.jsx?$/, allow: COLOR_ALLOW, skip: (l) => /PRESET|value:\s*'#|'#C6242A'|placeholder|如 #|默认 #|<svg|fill=/.test(l) },
   { name: 'Tailwind 硬编码调色板类(bg-white/gray-*/slate-*…)', re: /\b(bg|text|border|ring|from|to|via)-(white|black|gray|slate|zinc|neutral|stone|red|green|blue|yellow|indigo|purple|pink|orange|amber|emerald|teal|cyan|sky|rose)(-\d{2,3})?\b/, only: /\.jsx?$/ },

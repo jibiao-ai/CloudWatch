@@ -300,6 +300,7 @@ type ListQuery struct {
 	Page, PageSize       int
 	Filter               Filter
 	Kind, Ignored, State string
+	Side                 string // 优化建议：kind 为空时按 vm | phys 汇总，空为全部
 }
 
 // Sort 稳定排序（空值恒排最后，字符串自然序）。

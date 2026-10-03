@@ -474,3 +474,36 @@ func parseConds(raw string) []Cond {
 	}
 	return cs
 }
+
+// noHitHint 策略没有命中时给出原因：无资源 / 指标未采集到 / 历史数据未积累满统计周期 / 已评估但无满足条件的资源。
+func (p *Policy) noHitHint(dg *polDiag) string {
+	if dg == nil || dg.Total == 0 {
+		return "当前范围内没有可评估的资源"
+	}
+	var missing, short []string
+	seen := map[string]bool{}
+	for i := range p.Conds {
+		c := &p.Conds[i]
+		fd := fieldFor(p.ResourceType, c.Field)
+		if fd == nil || c.Field == "status" || seen[c.Field] {
+			continue
+		}
+		seen[c.Field] = true
+		if c.isUsage() {
+			if dg.Have[c.Field] == 0 {
+				missing = append(missing, fd.Label)
+				continue
+			}
+			if c.sustained() && dg.Days[c.Field] < p.WindowDays {
+				short = append(short, fmt.Sprintf("%s已积累 %d/%d 天", fd.Label, dg.Days[c.Field], p.WindowDays))
+			}
+		}
+	}
+	switch {
+	case len(missing) > 0:
+		return "平台暂未采集到「" + strings.Join(missing, "、") + "」指标，无法判定（需云平台提供该指标）"
+	case len(short) > 0:
+		return "历史数据尚未积累满统计周期（" + strings.Join(short, "；") + "），积累满后才会判定"
+	}
+	return fmt.Sprintf("已评估 %d 个资源，暂无满足条件的", dg.Total)
+}

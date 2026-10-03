@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CalendarRange } from 'lucide-react';
 import Modal from './Modal';
 import CustomSelect from './CustomSelect';
+import DatePicker from './DatePicker';
 
 /**
  * RangeSelector —— 时间范围：1小时/1天/1周/1月/1季度/1年/自定义 + 「对比上一周期」开关（全站统计页统一使用）
@@ -113,12 +114,12 @@ export default function RangeSelector({ value, onChange, showCompare = true, cus
       >
         <div className="space-y-4">
           <div>
-            <label className="label" htmlFor="rs-start">开始时间</label>
-            <input id="rs-start" type="datetime-local" className="field" value={s} onChange={(ev) => setS(ev.target.value)} />
+            <span className="label">开始时间</span>
+            <DatePicker size="md" withTime aria-label="开始时间" placeholder="选择开始时间" value={s} onChange={setS} />
           </div>
           <div>
-            <label className="label" htmlFor="rs-end">结束时间</label>
-            <input id="rs-end" type="datetime-local" className="field" value={e} onChange={(ev) => setE(ev.target.value)} />
+            <span className="label">结束时间</span>
+            <DatePicker size="md" withTime aria-label="结束时间" placeholder="选择结束时间" value={e} onChange={setE} />
           </div>
           {err && <p className="err-text" role="alert">{err}</p>}
         </div>

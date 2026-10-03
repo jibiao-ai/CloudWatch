@@ -5,6 +5,7 @@ import { TrendPanel } from '../Blocks';
 import DonutPanel from '../DonutPanel';
 import BandsPanel from '../BandsPanel';
 import ErrorState from '../../ErrorState';
+import SearchHits, { withPlat } from '../SearchHits';
 import { optsOf, stateColor } from '../util';
 import { analyticsApi } from '../../../services/api';
 import { useAsync } from '../../../hooks/useAsync';
@@ -13,14 +14,20 @@ const METRICS = [{ value: 'cpu', label: 'CPU使用率' }, { value: 'mem', label:
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
 
 /** VMTab —— 运营分析 · 云主机分析：所属云平台 / 状态分布、数量趋势、使用率分布；云主机资源明细（含 CPU / 内存最大使用率）在「监控中心 · 虚拟机」 */
-export default function VMTab({ tick }) {
+export default function VMTab({ tick, keyword, onClearKeyword }) {
   const [flt, setFlt] = useState({ providerId: '', host: '' });
   const params = useMemo(() => clean(flt), [flt]);
   const q = useAsync(() => analyticsApi.getVM(params), [params, tick]);
   const d = q.data;
   const o = d?.options || {};
+  const plats = optsOf(o.platforms);
+  const groups = [
+    { type: '所属云平台', items: plats, onPick: (it) => setFlt({ providerId: it.value, host: '' }) },
+    { type: '宿主机', items: withPlat(o.hosts, plats), onPick: (it) => setFlt({ providerId: it.providerId, host: it.value }) },
+  ];
   return (
     <>
+      <SearchHits keyword={keyword} groups={groups} onClear={onClearKeyword} />
       <FilterBar>
         <Filter label="所属云平台" options={optsOf(o.platforms)} value={flt.providerId} onChange={(v) => setFlt({ providerId: v, host: '' })} width={190} />
         <Filter label="宿主机" options={optsOf(o.hosts, flt.providerId)} value={flt.host} onChange={(v) => setFlt((f) => ({ ...f, host: v }))} width={170} />

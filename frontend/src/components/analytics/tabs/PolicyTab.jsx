@@ -12,17 +12,19 @@ import { formatDateTime } from '../../../utils/format';
 import { RES_LABEL } from '../util';
 
 /** PolicyTab —— 运营分析 · 优化策略：内置 12 条（虚拟机侧 8 / 物理侧 4）可调阈值，另可新建自定义策略（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
-export default function PolicyTab({ tick, openKind, onOpened, onSaved }) {
+export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword = '' }) {
   const canEdit = useCan('analytics:policy_update');
   const toast = useToast();
   const q = useAsync(() => analyticsApi.getPolicies(), [tick]);
   const [modal, setModal] = useState({ open: false, policy: null });
   const [del, setDel] = useState(null);
   const [busy, setBusy] = useState(false);
-  const list = q.data?.list || [];
+  const all = q.data?.list || [];
+  const kw = keyword.trim().toLowerCase();
+  const list = kw ? all.filter((p) => `${p.name} ${RES_LABEL[p.resourceType] || ''} ${p.reason} ${p.scopeText}`.toLowerCase().includes(kw)) : all;
   useEffect(() => {
-    if (openKind && canEdit && list.length) { setModal({ open: true, policy: list.find((p) => p.kind === openKind) || null }); onOpened?.(); }
-  }, [openKind, list.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (openKind && canEdit && all.length) { setModal({ open: true, policy: all.find((p) => p.kind === openKind) || null }); onOpened?.(); }
+  }, [openKind, all.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const close = () => setModal({ open: false, policy: null });
   const doDelete = async () => {
     setBusy(true);
@@ -44,7 +46,7 @@ export default function PolicyTab({ tick, openKind, onOpened, onSaved }) {
   ];
   return (
     <>
-      <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload} empty={{ title: '暂无策略' }}
+      <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload} empty={kw ? { title: '没有匹配的策略', description: '请调整全局搜索关键字' } : { title: '暂无策略' }}
         toolbar={<h3 className="text-sm font-semibold text-fg">优化策略</h3>}
         extra={canEdit && <button type="button" className="btn-primary" onClick={() => setModal({ open: true, policy: null })}><Plus size={15} /> 创建优化策略</button>} />
       <PolicyModal open={modal.open} policy={modal.policy} meta={q.data || {}} onClose={close} onSaved={() => { close(); q.reload(); onSaved?.(); }} onIgnored={onSaved} />

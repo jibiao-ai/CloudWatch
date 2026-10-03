@@ -20,6 +20,14 @@ type Suggest struct {
 	ResourceType string `json:"resourceType"`
 	Enabled      bool   `json:"enabled"`
 	Count        int    `json:"count"`
+	Hint         string `json:"hint,omitempty"` // 暂无命中时的原因（数据未积累满 / 指标未采集到 / 已评估无命中）
+}
+
+// polDiag 一条策略的评估概况：用于在没有命中时说明原因。
+type polDiag struct {
+	Total int            // 参与评估的资源数
+	Have  map[string]int // 各指标有数据的资源数
+	Days  map[string]int // 各指标已积累的最大天数
 }
 
 // cand 一个命中（或已被忽略）的资源。
@@ -102,15 +110,16 @@ func vmFacts(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time)
 }
 
 // evaluate 按所有策略评估全部资源；已忽略的记录无论是否仍命中都保留（供「已忽略资源」视图）。
-func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string][]cand, error) {
+func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string][]cand, map[string]*polDiag, error) {
 	pols, err := e.St.policies(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+	diag := map[string]*polDiag{}
 	states := map[string]map[string]vmState{}
 	for _, x := range ps {
 		if states[x.ID], err = e.St.vmStates(ctx, x.ID); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	usage := map[int]map[string]*Usage{}
@@ -121,13 +130,26 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 		p := &pols[i]
 		igs, err := e.St.ignores(ctx, p.Kind)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+		dg := &polDiag{Have: map[string]int{}, Days: map[string]int{}}
+		diag[p.Kind] = dg
 		add := func(c cand) error {
 			key := c.x.ID + "/" + c.id
 			c.ignored, c.isIgn = igs[key]
 			if !p.Enabled && !c.isIgn {
 				return nil
+			}
+			if p.Enabled {
+				dg.Total++
+				for _, cd := range p.Conds {
+					if _, ok := c.facts.Vals[cd.Field]; ok {
+						dg.Have[cd.Field]++
+						if d := c.facts.Days[cd.Field]; d > dg.Days[cd.Field] {
+							dg.Days[cd.Field] = d
+						}
+					}
+				}
 			}
 			if p.Enabled {
 				c.matched, c.reason = p.Eval(c.facts)
@@ -143,7 +165,7 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 			u, ok := usage[p.WindowDays]
 			if !ok {
 				if u, err = e.St.usageSince(ctx, "", since); err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 				usage[p.WindowDays] = u
 			}
@@ -161,10 +183,10 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 		case ResHost:
 			if _, ok := hcpu[p.WindowDays]; !ok {
 				if hcpu[p.WindowDays], err = e.St.metricStats(ctx, "node_cpu_percent", since); err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 				if hmem[p.WindowDays], err = e.St.metricStats(ctx, "node_mem_percent", since); err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 			}
 			for _, x := range ps {
@@ -216,7 +238,7 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 			}
 		}
 	}
-	return pols, out, nil
+	return pols, out, diag, nil
 }
 
 func f_(r capacity.Row, k string) *float64 { return f(r, k) }
@@ -233,7 +255,7 @@ func poolName(r capacity.Row) string {
 }
 
 func (e *Engine) suggestions(ctx context.Context, ps []*plat) ([]Suggest, error) {
-	pols, cands, err := e.evaluate(ctx, ps)
+	pols, cands, diag, err := e.evaluate(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +267,11 @@ func (e *Engine) suggestions(ctx context.Context, ps []*plat) ([]Suggest, error)
 				n++
 			}
 		}
-		out = append(out, Suggest{Kind: p.Kind, Name: p.Name, ResourceType: p.ResourceType, Enabled: p.Enabled, Count: n})
+		sg := Suggest{Kind: p.Kind, Name: p.Name, ResourceType: p.ResourceType, Enabled: p.Enabled, Count: n}
+		if n == 0 && p.Enabled {
+			sg.Hint = p.noHitHint(diag[p.Kind])
+		}
+		out = append(out, sg)
 	}
 	return out, nil
 }
@@ -270,6 +296,11 @@ func OptCols(res string) []Col {
 		return []Col{{"name", "云硬盘"}, {"platform", "所属云平台"}, {"reason", "建议原因"}, {"sizeGb", "大小(G)"}, {"statusText", "状态"}, {"volumeType", "类型"}}
 	}
 	return []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"ips", "IP地址"}, {"flavor", "实例规格"}, {"reason", "建议原因"}, {"cpuAvg", "vCPU平均使用率"}, {"memAvg", "内存平均使用率"}, {"writeAvg", "写I/O平均速率(KiB/s)"}, {"readyAvg", "CPU就绪占比"}, {"latAvg", "磁盘时延(ms)"}, {"fsMax", "文件系统使用率"}, {"shutdownDays", "持续关机(天)"}}
+}
+
+// OptColsAll 「全部 / 按侧汇总」导出列：公共列 + 各资源类型的关键指标。
+func OptColsAll() []Col {
+	return []Col{{"policy", "优化策略"}, {"name", "资源名称"}, {"platform", "所属云平台"}, {"ips", "IP地址"}, {"reason", "建议原因"}, {"cpuAvg", "CPU平均使用率"}, {"memAvg", "内存平均使用率"}, {"usedPercent", "存储使用率"}, {"allocPercent", "分配率"}, {"shutdownDays", "持续关机(天)"}}
 }
 
 func (c cand) optRow() map[string]any {
@@ -310,42 +341,69 @@ func (c cand) optRow() map[string]any {
 	return row
 }
 
-// OptRows 某条策略的明细（ignored=true 为「已忽略资源」）。
+// OptRows 优化建议明细：Kind 非空为某条策略，否则按 Side（vm 虚拟机侧 / phys 物理侧 / 空 = 全部）汇总所有策略；每行带 kind / policy（策略名称）。
+// ignored=true 为「已忽略资源」。同一资源命中多条策略时每条策略各占一行。
 func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
 	ps, err := e.load(ctx, plats, "")
 	if err != nil {
 		return nil, err
 	}
-	_, cands, err := e.evaluate(ctx, ps)
+	pols, cands, _, err := e.evaluate(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
 	rows := []map[string]any{}
-	for _, c := range cands[q.Kind] {
-		if c.isIgn != (q.Ignored == "1") || (!c.isIgn && !c.matched) {
+	for _, p := range pols {
+		if q.Kind != "" && p.Kind != q.Kind {
 			continue
 		}
-		if q.Filter.ProviderID != "" && c.x.ID != q.Filter.ProviderID {
+		if q.Kind == "" && ((q.Side == "vm") != (p.ResourceType == ResVM) && q.Side != "") {
 			continue
 		}
-		row := c.optRow()
-		ip, _ := row["ips"].(string)
-		if ip == "" {
-			ip, _ = row["ip"].(string)
+		for _, c := range cands[p.Kind] {
+			if c.isIgn != (q.Ignored == "1") || (!c.isIgn && !c.matched) {
+				continue
+			}
+			if q.Filter.ProviderID != "" && c.x.ID != q.Filter.ProviderID {
+				continue
+			}
+			row := c.optRow()
+			ip, _ := row["ips"].(string)
+			if ip == "" {
+				ip, _ = row["ip"].(string)
+			}
+			if !matchAny(q, c.name, ip, c.x.Name, p.Name) {
+				continue
+			}
+			row["kind"], row["policy"] = p.Kind, p.Name
+			row["key"] = p.Kind + "|" + c.x.ID + "/" + c.id
+			row["reason"] = c.reason
+			if c.reason == "" {
+				row["reason"] = "当前已不满足策略条件"
+			}
+			if c.isIgn {
+				row["ignoredBy"], row["ignoredAt"] = c.ignored.CreatedBy, c.ignored.CreatedAt
+			}
+			rows = append(rows, row)
 		}
-		if !match(q, map[string]string{"name": c.name, "ip": ip}) {
-			continue
-		}
-		row["reason"] = c.reason
-		if c.reason == "" {
-			row["reason"] = "当前已不满足策略条件"
-		}
-		if c.isIgn {
-			row["ignoredBy"], row["ignoredAt"] = c.ignored.CreatedBy, c.ignored.CreatedAt
-		}
-		rows = append(rows, row)
 	}
 	return rows, nil
+}
+
+// matchAny 全局搜索：关键字同时匹配名称 / IP / 所属云平台 / 策略名称（Field 为 name | ip 时仅匹配对应字段）。
+func matchAny(q ListQuery, name, ip, platform, policy string) bool {
+	k := strings.ToLower(strings.TrimSpace(q.Keyword))
+	if k == "" {
+		return true
+	}
+	has := func(v string) bool { return strings.Contains(strings.ToLower(v), k) }
+	switch q.Field {
+	case "name":
+		return has(name)
+	case "ip":
+		return has(ip)
+	}
+	return has(name) || has(ip) || has(platform) || has(policy)
 }
 
 // OptList 某条策略明细（分页）。

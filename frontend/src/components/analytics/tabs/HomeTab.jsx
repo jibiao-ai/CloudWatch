@@ -8,7 +8,7 @@ import { RES_GROUPS, RES_UNIT } from '../util';
 import { formatNumber } from '../../../utils/format';
 
 /** HomeTab —— 运营分析 · 总览：资源数量、分配率与使用率、云主机趋势、优化建议入口、所属云平台汇总 */
-export default function HomeTab({ d, tick, onOpt }) {
+export default function HomeTab({ d, tick, onOpt, keyword }) {
   const t = d.totals;
   const okN = d.platforms.filter((p) => p.collectedAt && p.ok).length;
   return (
@@ -49,7 +49,7 @@ export default function HomeTab({ d, tick, onOpt }) {
           })}
         </div>
       </Panel>
-      <PlatformTable platforms={d.platforms} />
+      <PlatformTable platforms={d.platforms} keyword={keyword} />
     </>
   );
 }
