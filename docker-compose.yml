@@ -53,3 +53,12 @@ services:
 
 volumes:
   db-data:
+
+# 固定容器网络网段，避免与内网/隧道路由冲突（默认 172.x 会被 tun0 的 172.0.0.0/8 路由吞掉）。
+# 整体规划 192.129.11.0/24：docker0 用前半段 192.129.11.0/25（daemon.json 的 bip），本网络用后半段。
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${CW_DOCKER_SUBNET:-192.129.11.128/25}
+          gateway: ${CW_DOCKER_GATEWAY:-192.129.11.129}
