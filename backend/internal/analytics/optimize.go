@@ -2,28 +2,35 @@ package analytics
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 )
 
-// Suggest 一类优化建议的汇总。
+// Suggest 一条策略的命中汇总。
 type Suggest struct {
-	Kind    string `json:"kind"`
-	Name    string `json:"name"`
-	Enabled bool   `json:"enabled"`
-	Count   int    `json:"count"`
+	Kind         string `json:"kind"`
+	Name         string `json:"name"`
+	ResourceType string `json:"resourceType"`
+	Enabled      bool   `json:"enabled"`
+	Count        int    `json:"count"`
 }
 
-// cand 一台命中（或已被忽略）的云主机。
+// cand 一个命中（或已被忽略）的资源。
 type cand struct {
 	x       *plat
+	res     string
+	id      string
+	name    string
 	row     capacity.Row
-	use     *Usage
-	facts   VMFacts
+	cluster string
+	facts   Facts
 	reason  string
 	ignored Ignore
 	isIgn   bool
@@ -56,12 +63,28 @@ func ipList(r capacity.Row) []string {
 	return out
 }
 
-func factsOf(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time) VMFacts {
+// vmFacts 云主机的评估事实。
+func vmFacts(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time) Facts {
 	status := strings.ToLower(s(r, "status"))
-	v := VMFacts{Status: status}
+	f := newFacts(status)
 	if u != nil {
-		v.CPUAvg, v.CPUMax, v.CPUMin, v.MemAvg, v.MemMax, v.MemMin = u.CPUAvg, u.CPUMax, u.CPUMin, u.MemAvg, u.MemMax, u.MemMin
-		v.WriteAvg, v.DaysWithData, v.WriteDays = u.WriteAvg, u.Days, u.WriteDays
+		f.set("cpuAvg", u.CPUAvg, u.Days)
+		f.set("cpuMax", u.CPUMax, u.Days)
+		f.set("cpuMin", u.CPUMin, u.Days)
+		f.set("memAvg", u.MemAvg, u.Days)
+		f.set("memMax", u.MemMax, u.Days)
+		f.set("memMin", u.MemMin, u.Days)
+		f.set("writeAvg", u.WriteAvg, u.WriteDays)
+		f.set("readyAvg", u.ReadyAvg, u.ReadyDays)
+		f.set("latAvg", u.LatAvg, u.LatDays)
+		f.set("fsMax", u.FsMax, u.FsDays)
+		if u.SwapMax != nil {
+			sw := 0.0
+			if *u.SwapMax > 0 {
+				sw = 1
+			}
+			f.set("swap", &sw, u.SwapDays)
+		}
 	}
 	if hasState && st.Status == status {
 		d := round1(now.Sub(st.Since).Hours() / 24)
@@ -70,15 +93,15 @@ func factsOf(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time)
 		}
 		switch status {
 		case "shutoff":
-			v.ShutdownDays = d
+			f.set("shutdownDays", &d, 0)
 		case "active":
-			v.RunningDays = d
+			f.set("runningDays", &d, 0)
 		}
 	}
-	return v
+	return f
 }
 
-// evaluate 按所有已启用策略评估全部云主机；已忽略的记录无论是否仍命中都保留（供「已忽略资源」视图）。
+// evaluate 按所有策略评估全部资源；已忽略的记录无论是否仍命中都保留（供「已忽略资源」视图）。
 func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string][]cand, error) {
 	pols, err := e.St.policies(ctx)
 	if err != nil {
@@ -91,6 +114,7 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 		}
 	}
 	usage := map[int]map[string]*Usage{}
+	hcpu, hmem := map[int]map[string]HostStat{}, map[int]map[string]HostStat{}
 	now := time.Now().UTC()
 	out := map[string][]cand{}
 	for i := range pols {
@@ -99,30 +123,95 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 		if err != nil {
 			return nil, nil, err
 		}
-		u, ok := usage[p.WindowDays]
-		if !ok {
-			since := time.Now().In(CST).AddDate(0, 0, -(p.WindowDays - 1))
-			if u, err = e.St.usageSince(ctx, "", since); err != nil {
-				return nil, nil, err
+		add := func(c cand) error {
+			key := c.x.ID + "/" + c.id
+			c.ignored, c.isIgn = igs[key]
+			if !p.Enabled && !c.isIgn {
+				return nil
 			}
-			usage[p.WindowDays] = u
+			if p.Enabled {
+				c.matched, c.reason = p.Eval(c.facts)
+			}
+			if c.matched || c.isIgn {
+				out[p.Kind] = append(out[p.Kind], c)
+			}
+			return nil
 		}
-		for _, x := range ps {
-			for _, r := range x.vms {
-				id := s(r, "id")
-				key := x.ID + "/" + id
-				ig, isIgn := igs[key]
-				if !p.Enabled && !isIgn {
+		since := time.Now().In(CST).AddDate(0, 0, -(p.WindowDays - 1))
+		switch p.ResourceType {
+		case ResVM:
+			u, ok := usage[p.WindowDays]
+			if !ok {
+				if u, err = e.St.usageSince(ctx, "", since); err != nil {
+					return nil, nil, err
+				}
+				usage[p.WindowDays] = u
+			}
+			for _, x := range ps {
+				for _, r := range x.vms {
+					id := s(r, "id")
+					cl := x.clusterOf(s(r, "node"))
+					if !p.Scope.Match(x.ID, cl) {
+						continue
+					}
+					st, has := states[x.ID][id]
+					_ = add(cand{x: x, res: ResVM, id: id, name: s(r, "name"), row: r, cluster: cl, facts: vmFacts(r, st, has, u[x.ID+"/"+id], now)})
+				}
+			}
+		case ResHost:
+			if _, ok := hcpu[p.WindowDays]; !ok {
+				if hcpu[p.WindowDays], err = e.St.metricStats(ctx, "node_cpu_percent", since); err != nil {
+					return nil, nil, err
+				}
+				if hmem[p.WindowDays], err = e.St.metricStats(ctx, "node_mem_percent", since); err != nil {
+					return nil, nil, err
+				}
+			}
+			for _, x := range ps {
+				for _, h := range x.hosts {
+					name := s(h, "name")
+					cl := x.clusterOf(name)
+					if !p.Scope.Match(x.ID, cl) {
+						continue
+					}
+					f := newFacts("")
+					if c, ok := hcpu[p.WindowDays][x.ID+"/"+short(name)]; ok {
+						f.set("cpuAvg", c.Avg, c.Days)
+						f.set("cpuMax", c.Max, c.Days)
+					}
+					if m, ok := hmem[p.WindowDays][x.ID+"/"+short(name)]; ok {
+						f.set("memAvg", m.Avg, m.Days)
+						f.set("memMax", m.Max, m.Days)
+					}
+					_ = add(cand{x: x, res: ResHost, id: name, name: name, row: h, cluster: cl, facts: f})
+				}
+			}
+		case ResPool:
+			for _, x := range ps {
+				if !p.Scope.Match(x.ID, "") {
 					continue
 				}
-				st, has := states[x.ID][id]
-				facts := factsOf(r, st, has, u[key], now)
-				ok, reason := false, ""
-				if p.Enabled {
-					ok, reason = p.Eval(facts)
+				for _, r := range x.pools {
+					f := newFacts("")
+					f.set("usedPercent", f_(r, "usedPercent"), 0)
+					alloc := fv(r, "allocatedGb")
+					if alloc == 0 {
+						alloc = fv(r, "provisionedGb")
+					}
+					f.set("allocPercent", pct(alloc, fv(r, "totalGb")), 0)
+					_ = add(cand{x: x, res: ResPool, id: s(r, "name"), name: poolName(r), row: r, facts: f})
 				}
-				if ok || isIgn {
-					out[p.Kind] = append(out[p.Kind], cand{x: x, row: r, use: u[key], facts: facts, reason: reason, ignored: ig, isIgn: isIgn, matched: ok})
+			}
+		case ResDisk:
+			for _, x := range ps {
+				if !p.Scope.Match(x.ID, "") {
+					continue
+				}
+				for _, r := range x.vols {
+					f := newFacts("")
+					n := fv(r, "attachCount")
+					f.set("attachCount", &n, 0)
+					_ = add(cand{x: x, res: ResDisk, id: s(r, "id"), name: s(r, "name"), row: r, facts: f})
 				}
 			}
 		}
@@ -130,30 +219,38 @@ func (e *Engine) evaluate(ctx context.Context, ps []*plat) ([]Policy, map[string
 	return pols, out, nil
 }
 
+func f_(r capacity.Row, k string) *float64 { return f(r, k) }
+
+// poolName 集群存储展示名：后端名称优先。
+func poolName(r capacity.Row) string {
+	if n := s(r, "backendName"); n != "" {
+		return n
+	}
+	if n := s(r, "poolName"); n != "" {
+		return n
+	}
+	return s(r, "name")
+}
+
 func (e *Engine) suggestions(ctx context.Context, ps []*plat) ([]Suggest, error) {
 	pols, cands, err := e.evaluate(ctx, ps)
 	if err != nil {
 		return nil, err
 	}
-	byKind := map[string]Policy{}
+	out := make([]Suggest, 0, len(pols))
 	for _, p := range pols {
-		byKind[p.Kind] = p
-	}
-	out := make([]Suggest, 0, len(Kinds))
-	for _, k := range Kinds {
-		p := byKind[k]
 		n := 0
-		for _, c := range cands[k] {
+		for _, c := range cands[p.Kind] {
 			if c.matched && !c.isIgn {
 				n++
 			}
 		}
-		out = append(out, Suggest{Kind: k, Name: p.Name, Enabled: p.Enabled, Count: n})
+		out = append(out, Suggest{Kind: p.Kind, Name: p.Name, ResourceType: p.ResourceType, Enabled: p.Enabled, Count: n})
 	}
 	return out, nil
 }
 
-// Suggestions 各类建议汇总（含所有所属云平台）。
+// Suggestions 各策略命中汇总（含所有所属云平台）。
 func (e *Engine) Suggestions(ctx context.Context, plats []capacity.Platform) ([]Suggest, error) {
 	ps, err := e.load(ctx, plats, "")
 	if err != nil {
@@ -162,7 +259,58 @@ func (e *Engine) Suggestions(ctx context.Context, plats []capacity.Platform) ([]
 	return e.suggestions(ctx, ps)
 }
 
-// OptRows 某类建议的明细（ignored=true 为「已忽略资源」）。
+// OptCols 各资源类型「优化建议」导出列。
+func OptCols(res string) []Col {
+	switch res {
+	case ResHost:
+		return []Col{{"name", "物理机"}, {"platform", "所属云平台"}, {"cluster", "集群"}, {"ip", "IP地址"}, {"reason", "建议原因"}, {"cpuAvg", "CPU平均使用率"}, {"cpuMax", "CPU最大使用率"}, {"memAvg", "内存平均使用率"}, {"memMax", "内存最大使用率"}}
+	case ResPool:
+		return []Col{{"name", "后端名称"}, {"platform", "所属云平台"}, {"reason", "建议原因"}, {"totalGb", "总容量(G)"}, {"usedPercent", "存储使用率"}, {"allocPercent", "分配率"}}
+	case ResDisk:
+		return []Col{{"name", "云硬盘"}, {"platform", "所属云平台"}, {"reason", "建议原因"}, {"sizeGb", "大小(G)"}, {"statusText", "状态"}, {"volumeType", "类型"}}
+	}
+	return []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"ips", "IP地址"}, {"flavor", "实例规格"}, {"reason", "建议原因"}, {"cpuAvg", "vCPU平均使用率"}, {"memAvg", "内存平均使用率"}, {"writeAvg", "写I/O平均速率(KiB/s)"}, {"readyAvg", "CPU就绪占比"}, {"latAvg", "磁盘时延(ms)"}, {"fsMax", "文件系统使用率"}, {"shutdownDays", "持续关机(天)"}}
+}
+
+func (c cand) optRow() map[string]any {
+	r := c.row
+	row := map[string]any{"id": c.id, "providerId": c.x.ID, "key": c.x.ID + "/" + c.id, "resType": c.res, "name": c.name, "platform": c.x.Name, "consoleIp": c.x.ConsoleIP}
+	v := func(k string) any {
+		if x, ok := c.facts.Vals[k]; ok {
+			return x
+		}
+		return nil
+	}
+	switch c.res {
+	case ResVM:
+		ips := ipList(r)
+		row["ips"], row["ipList"], row["flavor"] = strings.Join(ips, ", "), ips, flavorText(r)
+		row["status"], row["statusText"] = strings.ToLower(s(r, "status")), s(r, "statusText")
+		for _, k := range []string{"cpuAvg", "cpuMax", "memAvg", "memMax", "writeAvg", "readyAvg", "latAvg", "fsMax"} {
+			row[k] = v(k)
+		}
+		if sw, ok := c.facts.Vals["swap"]; ok {
+			row["swap"] = sw > 0
+		}
+		if d, ok := c.facts.Vals["shutdownDays"]; ok {
+			row["shutdownDays"] = d
+		}
+	case ResHost:
+		row["cluster"], row["ip"], row["stateText"] = c.cluster, s(r, "hostIp"), s(r, "stateText")
+		for _, k := range []string{"cpuAvg", "cpuMax", "memAvg", "memMax"} {
+			row[k] = v(k)
+		}
+	case ResPool:
+		row["totalGb"], row["usedGb"], row["statusText"], row["status"] = nv(f(r, "totalGb")), nv(f(r, "usedGb")), s(r, "statusText"), s(r, "status")
+		row["usedPercent"], row["allocPercent"] = v("usedPercent"), v("allocPercent")
+		row["vendorText"] = s(r, "vendorText")
+	case ResDisk:
+		row["sizeGb"], row["status"], row["statusText"], row["volumeType"], row["az"] = nv(f(r, "sizeGb")), s(r, "status"), s(r, "statusText"), s(r, "volumeType"), s(r, "az")
+	}
+	return row
+}
+
+// OptRows 某条策略的明细（ignored=true 为「已忽略资源」）。
 func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
 	ps, err := e.load(ctx, plats, "")
 	if err != nil {
@@ -180,24 +328,17 @@ func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQ
 		if q.Filter.ProviderID != "" && c.x.ID != q.Filter.ProviderID {
 			continue
 		}
-		r := c.row
-		ips := ipList(r)
-		if !match(q, map[string]string{"name": s(r, "name"), "ip": strings.Join(ips, " ")}) {
+		row := c.optRow()
+		ip, _ := row["ips"].(string)
+		if ip == "" {
+			ip, _ = row["ip"].(string)
+		}
+		if !match(q, map[string]string{"name": c.name, "ip": ip}) {
 			continue
 		}
-		reason := c.reason
-		if reason == "" {
-			reason = "当前已不满足策略条件"
-		}
-		row := map[string]any{
-			"id": s(r, "id"), "providerId": c.x.ID, "key": c.x.ID + "/" + s(r, "id"), "name": s(r, "name"), "platform": c.x.Name, "consoleIp": c.x.ConsoleIP,
-			"ips": strings.Join(ips, ", "), "ipList": ips, "flavor": flavorText(r), "reason": reason,
-			"cpuAvg": nv(c.facts.CPUAvg), "cpuMax": nv(c.facts.CPUMax), "memAvg": nv(c.facts.MemAvg), "memMax": nv(c.facts.MemMax),
-			"status": strings.ToLower(s(r, "status")), "statusText": s(r, "statusText"),
-		}
-		row["writeAvg"] = nv(c.facts.WriteAvg)
-		if c.facts.Status == "shutoff" {
-			row["shutdownDays"] = c.facts.ShutdownDays
+		row["reason"] = c.reason
+		if c.reason == "" {
+			row["reason"] = "当前已不满足策略条件"
 		}
 		if c.isIgn {
 			row["ignoredBy"], row["ignoredAt"] = c.ignored.CreatedBy, c.ignored.CreatedAt
@@ -207,7 +348,7 @@ func (e *Engine) OptRows(ctx context.Context, plats []capacity.Platform, q ListQ
 	return rows, nil
 }
 
-// OptList 某类建议明细（分页）。
+// OptList 某条策略明细（分页）。
 func (e *Engine) OptList(ctx context.Context, plats []capacity.Platform, q ListQuery) (*Page, error) {
 	rows, err := e.OptRows(ctx, plats, q)
 	if err != nil {
@@ -216,47 +357,155 @@ func (e *Engine) OptList(ctx context.Context, plats []capacity.Platform, q ListQ
 	return Paginate(rows, q), nil
 }
 
-// SetIgnore 忽略 / 取消忽略：items 仅需 providerId + vmId，云主机名称由已采集数据补全。
+// ErrBadKind 策略不存在。
+var ErrBadKind = errors.New("策略不存在")
+
+// SetIgnore 忽略 / 取消忽略：items 仅需 providerId + resId，资源名称由已采集数据补全。
 func (e *Engine) SetIgnore(ctx context.Context, plats []capacity.Platform, kind string, items []Ignore, on bool, by string) (int, error) {
-	if !IsKind(kind) {
-		return 0, fmt.Errorf("建议类型不合法")
+	p, err := e.St.Policy(ctx, kind)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrBadKind
+		}
+		return 0, err
 	}
 	names := map[string]string{}
 	if on {
-		for _, p := range plats {
-			rows, _, err := e.Cap.Rows(ctx, p, "vms")
+		tbl := map[string]string{ResVM: "vms", ResHost: "nodes", ResPool: "pools", ResDisk: "volumes"}[p.ResourceType]
+		for _, pl := range plats {
+			rows, _, err := e.Cap.Rows(ctx, pl, tbl)
 			if err != nil {
 				return 0, err
 			}
 			for _, r := range rows {
-				names[p.ID+"/"+s(r, "id")] = s(r, "name")
+				switch p.ResourceType {
+				case ResHost, ResPool:
+					names[pl.ID+"/"+s(r, "name")] = poolOrName(p.ResourceType, r)
+				default:
+					names[pl.ID+"/"+s(r, "id")] = s(r, "name")
+				}
 			}
 		}
 	}
 	valid := items[:0:0]
 	for _, it := range items {
 		if on {
-			n, ok := names[it.ProviderID+"/"+it.VMID]
+			n, ok := names[it.ProviderID+"/"+it.ResID]
 			if !ok {
 				continue
 			}
-			it.VMName = n
+			it.Name = n
 		}
 		valid = append(valid, it)
 	}
 	return e.St.SetIgnore(ctx, kind, valid, on, by)
 }
 
-// PolicyList 全部策略（含编辑器用的字段定义）。
-type PolicyList struct {
-	List   []Policy   `json:"list"`
-	Fields []FieldDef `json:"fields"`
+func poolOrName(res string, r capacity.Row) string {
+	if res == ResPool {
+		return poolName(r)
+	}
+	return s(r, "name")
 }
 
-func (e *Engine) PolicyList(ctx context.Context) (*PolicyList, error) {
+// PolicyList 全部策略（含编辑器用的指标定义、资源类型与可选范围）。
+type PolicyList struct {
+	List      []Policy   `json:"list"`
+	Fields    []FieldDef `json:"fields"`
+	ResTypes  []Opt      `json:"resTypes"`
+	Clusters  []Opt2     `json:"clusters"`
+	Platforms []Opt2     `json:"platforms"`
+}
+
+func (e *Engine) PolicyList(ctx context.Context, plats []capacity.Platform) (*PolicyList, error) {
 	l, err := e.St.policies(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &PolicyList{List: l, Fields: Fields}, nil
+	out := &PolicyList{List: l, Fields: Fields, ResTypes: ResTypes, Clusters: []Opt2{}, Platforms: []Opt2{}}
+	ps, err := e.load(ctx, plats, "")
+	if err != nil {
+		return nil, err
+	}
+	for _, x := range ps {
+		out.Platforms = append(out.Platforms, Opt2{Value: x.ID, Label: x.Name, ProviderID: x.ID})
+		for _, c := range x.clusterList() {
+			out.Clusters = append(out.Clusters, Opt2{Value: hostKey(x.ID, c), Label: x.Name + " / " + c, ProviderID: x.ID})
+		}
+	}
+	return out, nil
+}
+
+// ResMatch 按名称 / ID 解析到的资源（策略「忽略项」添加时使用）。
+type ResMatch struct {
+	ProviderID string `json:"providerId"`
+	Platform   string `json:"platform"`
+	ResID      string `json:"resId"`
+	Name       string `json:"name"`
+}
+
+var resTable = map[string]string{ResVM: "vms", ResHost: "nodes", ResPool: "pools", ResDisk: "volumes"}
+
+// ResolveRes 在所有平台中按「名称或 ID 完全匹配（不区分大小写）」查找某类资源。
+func (e *Engine) ResolveRes(ctx context.Context, plats []capacity.Platform, res, keyword string) ([]ResMatch, error) {
+	kw := strings.ToLower(strings.TrimSpace(keyword))
+	out := []ResMatch{}
+	tbl := resTable[res]
+	if kw == "" || tbl == "" {
+		return out, nil
+	}
+	for _, pl := range plats {
+		rows, _, err := e.Cap.Rows(ctx, pl, tbl)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			id, name := s(r, "id"), s(r, "name")
+			disp := name
+			switch res {
+			case ResHost:
+				id = name
+			case ResPool:
+				id, disp = name, poolName(r)
+			}
+			if strings.ToLower(id) == kw || strings.ToLower(name) == kw || strings.ToLower(disp) == kw {
+				out = append(out, ResMatch{ProviderID: pl.ID, Platform: pl.Name, ResID: id, Name: disp})
+			}
+		}
+	}
+	return out, nil
+}
+
+// IgnoreItem 某策略下已被忽略的资源。
+type IgnoreItem struct {
+	ProviderID string    `json:"providerId"`
+	Platform   string    `json:"platform"`
+	ResID      string    `json:"resId"`
+	Name       string    `json:"name"`
+	CreatedBy  string    `json:"createdBy"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// IgnoreList 某策略的忽略项（含已不存在的资源，便于清理）。
+func (e *Engine) IgnoreList(ctx context.Context, plats []capacity.Platform, kind string) ([]IgnoreItem, error) {
+	if _, err := e.St.Policy(ctx, kind); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrBadKind
+		}
+		return nil, err
+	}
+	igs, err := e.St.ignores(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	names := map[string]string{}
+	for _, p := range plats {
+		names[p.ID] = p.Name
+	}
+	out := make([]IgnoreItem, 0, len(igs))
+	for _, g := range igs {
+		out = append(out, IgnoreItem{ProviderID: g.ProviderID, Platform: names[g.ProviderID], ResID: g.ResID, Name: g.Name, CreatedBy: g.CreatedBy, CreatedAt: g.CreatedAt})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	return out, nil
 }

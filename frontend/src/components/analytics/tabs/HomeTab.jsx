@@ -4,6 +4,7 @@ import StatCard from '../../StatCard';
 import Panel from '../Panel';
 import PlatformTable from '../PlatformTable';
 import { AllocPanel, UsePanel, TrendPanel } from '../Blocks';
+import { RES_GROUPS, RES_UNIT } from '../util';
 import { formatNumber } from '../../../utils/format';
 
 /** HomeTab —— 运营分析 · 总览：资源数量、分配率与使用率、云主机趋势、优化建议入口、所属云平台汇总 */
@@ -17,24 +18,35 @@ export default function HomeTab({ d, tick, onOpt }) {
         <StatCard icon={MonitorCog} tone="success" label="云主机" value={formatNumber(t.vms)} />
         <StatCard icon={HardDrive} tone="warning" label="磁盘" value={formatNumber(t.disks)} />
         <StatCard icon={Server} tone="info" label="宿主机" value={formatNumber(t.hosts)} />
-        <StatCard icon={Database} tone="info" label="存储器" value={formatNumber(t.pools)} />
+        <StatCard icon={Database} tone="info" label="集群存储" value={formatNumber(t.pools)} />
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <AllocPanel rates={d.rates} />
         <UsePanel rates={d.rates} />
       </div>
       <TrendPanel title="云主机趋势" kind="vm" suffix=" 台" refreshKey={tick} />
-      <Panel title="云主机优化建议">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {(d.suggestions || []).map((s) => (
-            <button key={s.kind} type="button" onClick={() => onOpt(s.kind)} className="text-left rounded-lg border border-line px-4 py-3 hover:bg-hover transition flex items-center justify-between gap-2">
-              <span>
-                <span className="block text-[13px] font-medium text-fg">{s.name}{!s.enabled && <span className="ml-1.5 text-xs text-fg-subtle font-normal">（策略已停用）</span>}</span>
-                <span className="block mt-1"><span className="text-2xl font-semibold text-fg tabular-nums">{s.count}</span><span className="text-xs text-fg-muted ml-1">台</span></span>
-              </span>
-              <ChevronRight size={16} className="text-fg-subtle shrink-0" />
-            </button>
-          ))}
+      <Panel title="优化建议">
+        <div className="space-y-4">
+          {RES_GROUPS.map((g) => {
+            const items = (d.suggestions || []).filter((s) => g.types.includes(s.resourceType));
+            if (!items.length) return null;
+            return (
+              <section key={g.key} aria-label={g.label}>
+                <h4 className="text-xs font-semibold text-fg-muted mb-2">{g.label}</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                  {items.map((s) => (
+                    <button key={s.kind} type="button" onClick={() => onOpt(s.kind)} className="text-left rounded-lg border border-line px-4 py-3 hover:bg-hover transition flex items-center justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-medium text-fg truncate">{s.name}{!s.enabled && <span className="ml-1.5 text-xs text-fg-subtle font-normal">（已停用）</span>}</span>
+                        <span className="block mt-1"><span className="text-2xl font-semibold text-fg tabular-nums">{s.count}</span><span className="text-xs text-fg-muted ml-1">{RES_UNIT[s.resourceType] || '个'}</span></span>
+                      </span>
+                      <ChevronRight size={16} className="text-fg-subtle shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </Panel>
       <PlatformTable platforms={d.platforms} />

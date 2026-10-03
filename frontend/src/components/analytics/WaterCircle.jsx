@@ -13,9 +13,9 @@ export default function WaterCircle({ value, label }) {
   const color = !has ? pal.axis : v < 70 ? pal.series[1] : v < 85 ? pal.warn : pal.bad;
   const level = W * (1 - v / 100); // 水面距圆顶的距离
   const path = `M 0 ${level} q ${W / 4} -5 ${W / 2} 0 t ${W / 2} 0 t ${W / 2} 0 t ${W / 2} 0 V ${W + 6} H 0 Z`;
-  const txt = has ? `${value}%` : '-';
+  const txt = has ? `${value.toFixed(1)}%` : '-';
   return (
-    <figure className="flex flex-col items-center" aria-label={`${label} ${has ? `${value}%` : '暂无数据'}`}>
+    <figure className="flex flex-col items-center" aria-label={`${label} ${has ? `${value.toFixed(1)}%` : '暂无数据'}`}>
       <svg viewBox="-6 -6 100 100" className="w-[116px] h-[116px]" role="img">
         <defs>
           <clipPath id={`${uid}-c`}><circle cx={R} cy={R} r={R} /></clipPath>

@@ -2,6 +2,8 @@ package api
 
 import (
 	"bytes"
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -129,50 +131,6 @@ func (s *Server) analyticsDisk(w http.ResponseWriter, r *http.Request, _ *auth.P
 	return nil
 }
 
-type rowsFn func(r *http.Request, ps []capacity.Platform, q analytics.ListQuery) ([]map[string]any, error)
-
-func (s *Server) rowsFor(kind string) (rowsFn, []analytics.Col, string) {
-	e := s.Analytics
-	switch kind {
-	case "hosts":
-		return func(r *http.Request, ps []capacity.Platform, q analytics.ListQuery) ([]map[string]any, error) {
-			return e.HostRows(r.Context(), ps, q)
-		}, analytics.HostCols, "宿主机明细"
-	case "pools":
-		return func(r *http.Request, ps []capacity.Platform, q analytics.ListQuery) ([]map[string]any, error) {
-			return e.PoolRows(r.Context(), ps, q)
-		}, analytics.PoolCols, "存储器明细"
-	case "vms":
-		return func(r *http.Request, ps []capacity.Platform, q analytics.ListQuery) ([]map[string]any, error) {
-			return e.VMRows(r.Context(), ps, q)
-		}, analytics.VMCols, "云主机明细"
-	case "disks":
-		return func(r *http.Request, ps []capacity.Platform, q analytics.ListQuery) ([]map[string]any, error) {
-			return e.DiskRows(r.Context(), ps, q)
-		}, analytics.DiskCols, "磁盘明细"
-	}
-	return nil, nil, ""
-}
-
-// analyticsList GET /analytics/list/{kind}  kind: hosts | pools | vms | disks
-func (s *Server) analyticsList(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
-	fn, _, _ := s.rowsFor(r.PathValue("kind"))
-	if fn == nil {
-		return httpx.Err(404, "未知的明细类型")
-	}
-	ps, err := s.plats(r)
-	if err != nil {
-		return err
-	}
-	q := anQuery(r)
-	rows, err := fn(r, ps, q)
-	if err != nil {
-		return err
-	}
-	httpx.OK(w, analytics.Paginate(rows, q))
-	return nil
-}
-
 func cellText(v any) any {
 	switch x := v.(type) {
 	case nil:
@@ -183,35 +141,27 @@ func cellText(v any) any {
 	return fmt.Sprint(v)
 }
 
-// analyticsExport GET /analytics/export/{kind}  kind: hosts | pools | vms | disks | opt
+// analyticsExport GET /analytics/export/opt?kind=&ignored=  导出某条优化策略的资源明细
 func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	t0 := time.Now()
-	kind := r.PathValue("kind")
+	if r.PathValue("kind") != "opt" {
+		return httpx.Err(404, "未知的导出类型")
+	}
 	ps, err := s.plats(r)
 	if err != nil {
 		return err
 	}
 	q := anQuery(r)
-	var rows []map[string]any
-	var cols []analytics.Col
-	var title, link string
-	if kind == "opt" {
-		cols = []analytics.Col{{Key: "name", Title: "名称"}, {Key: "platform", Title: "所属云平台"}, {Key: "ips", Title: "IP地址"}, {Key: "flavor", Title: "实例规格"},
-			{Key: "reason", Title: "建议原因"}, {Key: "cpuAvg", Title: "CPU平均使用率"}, {Key: "memAvg", Title: "内存平均使用率"}, {Key: "writeAvg", Title: "写I/O平均速率(KiB/s)"}, {Key: "shutdownDays", Title: "持续关机(天)"}}
-		title, link = "云主机优化建议", "/analytics?tab=optimize"
-		if rows, err = s.Analytics.OptRows(r.Context(), ps, q); err != nil {
-			return err
-		}
-	} else {
-		fn, c, t := s.rowsFor(kind)
-		if fn == nil {
-			return httpx.Err(404, "未知的明细类型")
-		}
-		cols, title = c, t
-		link = map[string]string{"hosts": "/analytics?tab=base", "pools": "/analytics?tab=base", "vms": "/analytics?tab=vm", "disks": "/analytics?tab=disk"}[kind]
-		if rows, err = fn(r, ps, q); err != nil {
-			return err
-		}
+	pol, err := s.Analytics.St.Policy(r.Context(), q.Kind)
+	if err != nil {
+		return httpx.Err(404, "策略不存在")
+	}
+	cols := analytics.OptCols(pol.ResourceType)
+	title := pol.Name
+	link := "/analytics?tab=optimize&kind=" + pol.Kind
+	rows, err := s.Analytics.OptRows(r.Context(), ps, q)
+	if err != nil {
+		return err
 	}
 	if len(rows) > 50000 {
 		rows = rows[:50000]
@@ -220,7 +170,13 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 		analytics.Sort(rows, q.SortKey, q.SortOrder)
 	}
 	f := excelize.NewFile()
-	sh := title
+	sh := strings.NewReplacer("/", "-", "\\", "-", "?", "", "*", "", "[", "", "]", "", ":", "").Replace(title)
+	if r := []rune(sh); len(r) > 28 {
+		sh = string(r[:28])
+	}
+	if sh == "" {
+		sh = "优化建议"
+	}
 	f.SetSheetName("Sheet1", sh)
 	head := make([]any, len(cols))
 	for i, c := range cols {
@@ -235,15 +191,15 @@ func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth
 		cell, _ := excelize.CoordinatesToCellName(1, i+2)
 		_ = f.SetSheetRow(sh, cell, &line)
 	}
-	_ = f.SetColWidth(sh, "A", "K", 20)
+	_ = f.SetColWidth(sh, "A", "L", 20)
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {
 		return err
 	}
-	s.rec(r, p, "analytics", "export", "导出"+title+"（"+strconv.Itoa(len(rows))+" 条）", link, nil, nil, t0)
+	s.rec(r, p, "analytics", "export", "导出优化建议「"+title+"」（"+strconv.Itoa(len(rows))+" 条）", link, nil, nil, t0)
 	h := w.Header()
 	h.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	h.Set("Content-Disposition", `attachment; filename="analytics-`+kind+`.xlsx"`)
+	h.Set("Content-Disposition", `attachment; filename="analytics-`+pol.Kind+`.xlsx"`)
 	_, _ = w.Write(buf.Bytes())
 	return nil
 }
@@ -270,7 +226,7 @@ func (s *Server) analyticsOptList(w http.ResponseWriter, r *http.Request, _ *aut
 	}
 	q := anQuery(r)
 	if q.Kind == "" {
-		q.Kind = analytics.Kinds[0]
+		return httpx.Err(400, "缺少策略 kind")
 	}
 	pg, err := s.Analytics.OptList(r.Context(), ps, q)
 	if err != nil {
@@ -280,7 +236,7 @@ func (s *Server) analyticsOptList(w http.ResponseWriter, r *http.Request, _ *aut
 	return nil
 }
 
-// analyticsIgnore POST /analytics/optimize/ignore {kind, items:[{providerId,vmId}], ignore:bool}
+// analyticsIgnore POST /analytics/optimize/ignore {kind, items:[{providerId,resId}], ignore:bool}
 func (s *Server) analyticsIgnore(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	t0 := time.Now()
 	b, err := httpx.ReadBody(r, 256<<10)
@@ -292,18 +248,18 @@ func (s *Server) analyticsIgnore(w http.ResponseWriter, r *http.Request, p *auth
 		Ignore bool   `json:"ignore"`
 		Items  []struct {
 			ProviderID string `json:"providerId"`
-			VMID       string `json:"vmId"`
+			ResID      string `json:"resId"`
 		} `json:"items"`
 	}
 	if err := httpx.DecodeJSON(b, &in); err != nil {
 		return err
 	}
 	if len(in.Items) == 0 || len(in.Items) > 2000 {
-		return httpx.Err(400, "请选择需要处理的云主机（单次最多 2000 台）")
+		return httpx.Err(400, "请选择需要处理的资源（单次最多 2000 个）")
 	}
 	items := make([]analytics.Ignore, 0, len(in.Items))
 	for _, it := range in.Items {
-		items = append(items, analytics.Ignore{ProviderID: it.ProviderID, VMID: it.VMID})
+		items = append(items, analytics.Ignore{ProviderID: it.ProviderID, ResID: it.ResID})
 	}
 	ps, err := s.plats(r)
 	if err != nil {
@@ -314,20 +270,33 @@ func (s *Server) analyticsIgnore(w http.ResponseWriter, r *http.Request, p *auth
 	if !in.Ignore {
 		act, txt = "unignore", "取消忽略"
 	}
-	s.rec(r, p, "analytics", act, txt+"优化建议 "+strconv.Itoa(len(in.Items))+" 台", "/analytics?tab=optimize", in, err, t0)
+	s.rec(r, p, "analytics", act, txt+"优化建议资源 "+strconv.Itoa(len(in.Items))+" 个", "/analytics?tab=optimize", in, err, t0)
 	if err != nil {
-		if strings.Contains(err.Error(), "不合法") {
-			return httpx.Err(400, err.Error())
-		}
-		return err
+		return policyErr(err)
 	}
 	httpx.OK(w, map[string]any{"count": n})
 	return nil
 }
 
+func policyErr(err error) error {
+	switch {
+	case errors.Is(err, analytics.ErrBadKind), errors.Is(err, sql.ErrNoRows):
+		return httpx.Err(404, "策略不存在")
+	case errors.Is(err, analytics.ErrDupName):
+		return httpx.Err(409, err.Error())
+	case errors.Is(err, analytics.ErrTooMany), errors.Is(err, analytics.ErrBuiltin):
+		return httpx.Err(400, err.Error())
+	}
+	return err
+}
+
 // analyticsPolicies GET /analytics/policies
 func (s *Server) analyticsPolicies(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
-	out, err := s.Analytics.PolicyList(r.Context())
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	out, err := s.Analytics.PolicyList(r.Context(), ps)
 	if err != nil {
 		return err
 	}
@@ -335,32 +304,131 @@ func (s *Server) analyticsPolicies(w http.ResponseWriter, r *http.Request, _ *au
 	return nil
 }
 
-// analyticsPolicyUpdate PUT /analytics/policies/{kind}
-func (s *Server) analyticsPolicyUpdate(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
-	t0 := time.Now()
+func (s *Server) readPolicy(r *http.Request) (analytics.Policy, error) {
+	var in analytics.Policy
 	b, err := httpx.ReadBody(r, 64<<10)
 	if err != nil {
-		return err
+		return in, err
 	}
-	var in analytics.Policy
 	if err := httpx.DecodeJSON(b, &in); err != nil {
-		return err
+		return in, err
 	}
-	in.Kind = r.PathValue("kind")
-	if !analytics.IsKind(in.Kind) {
-		return httpx.Err(404, "策略不存在")
+	in.Name = strings.TrimSpace(in.Name)
+	return in, nil
+}
+
+// analyticsPolicyCreate POST /analytics/policies  新建自定义策略
+func (s *Server) analyticsPolicyCreate(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
+	t0 := time.Now()
+	in, err := s.readPolicy(r)
+	if err != nil {
+		return err
 	}
 	if errs := in.Validate(); len(errs) > 0 {
 		return httpx.ErrData(422, 42200, "策略参数不合法", errs)
 	}
-	err = s.Analytics.St.SavePolicy(r.Context(), in, p.User.Username)
-	s.rec(r, p, "analytics", "policy_update", "修改优化策略 "+in.Name, "/analytics/policy", in, err, t0)
+	id, err := s.Analytics.St.CreatePolicy(r.Context(), in, p.User.Username)
+	s.rec(r, p, "analytics", "policy_create", "创建优化策略 "+in.Name, "/analytics?tab=policy", in, err, t0)
+	if err != nil {
+		return policyErr(err)
+	}
+	ps, err := s.plats(r)
 	if err != nil {
 		return err
 	}
-	out, err := s.Analytics.PolicyList(r.Context())
+	out, err := s.Analytics.PolicyList(r.Context(), ps)
 	if err != nil {
 		return err
+	}
+	httpx.OK(w, map[string]any{"kind": id, "policies": out})
+	return nil
+}
+
+// analyticsPolicyUpdate PUT /analytics/policies/{kind}
+func (s *Server) analyticsPolicyUpdate(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
+	t0 := time.Now()
+	in, err := s.readPolicy(r)
+	if err != nil {
+		return err
+	}
+	in.Kind = r.PathValue("kind")
+	old, err := s.Analytics.St.Policy(r.Context(), in.Kind)
+	if err != nil {
+		return policyErr(err)
+	}
+	in.ResourceType = old.ResourceType // 资源类型创建后不可修改
+	if errs := in.Validate(); len(errs) > 0 {
+		return httpx.ErrData(422, 42200, "策略参数不合法", errs)
+	}
+	if s.Analytics.St.NameTaken(r.Context(), in.Name, in.Kind) {
+		return httpx.Err(409, analytics.ErrDupName.Error())
+	}
+	err = s.Analytics.St.SavePolicy(r.Context(), in, p.User.Username)
+	s.rec(r, p, "analytics", "policy_update", "修改优化策略 "+in.Name, "/analytics?tab=policy", in, err, t0)
+	if err != nil {
+		return policyErr(err)
+	}
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	out, err := s.Analytics.PolicyList(r.Context(), ps)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, out)
+	return nil
+}
+
+// analyticsPolicyDelete DELETE /analytics/policies/{kind}  仅自定义策略可删除
+func (s *Server) analyticsPolicyDelete(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
+	t0 := time.Now()
+	kind := r.PathValue("kind")
+	old, perr := s.Analytics.St.Policy(r.Context(), kind)
+	if perr != nil {
+		return policyErr(perr)
+	}
+	err := s.Analytics.St.DeletePolicy(r.Context(), kind)
+	s.rec(r, p, "analytics", "policy_delete", "删除优化策略 "+old.Name, "/analytics?tab=policy", map[string]string{"kind": kind}, err, t0)
+	if err != nil {
+		return policyErr(err)
+	}
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	out, err := s.Analytics.PolicyList(r.Context(), ps)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, out)
+	return nil
+}
+
+// analyticsResolve GET /analytics/resolve?resourceType=&keyword=  按名称 / ID 解析资源（忽略项添加）
+func (s *Server) analyticsResolve(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	g := r.URL.Query().Get
+	out, err := s.Analytics.ResolveRes(r.Context(), ps, g("resourceType"), g("keyword"))
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, out)
+	return nil
+}
+
+// analyticsPolicyIgnores GET /analytics/policies/{kind}/ignores
+func (s *Server) analyticsPolicyIgnores(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	out, err := s.Analytics.IgnoreList(r.Context(), ps, r.PathValue("kind"))
+	if err != nil {
+		return policyErr(err)
 	}
 	httpx.OK(w, out)
 	return nil

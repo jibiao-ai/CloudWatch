@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Play } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Tabs from '../components/Tabs';
@@ -21,7 +22,8 @@ export default function CapacityPage() {
   const toast = useToast();
   const canCollect = useCan('capacity:collect');
   const ov = useAsync(() => capacityApi.getOverview(), []);
-  const [tab, setTab] = useState('overview');
+  const [sp] = useSearchParams();
+  const [tab, setTab] = useState(['overview', 'steps', ...KINDS.map((k) => k.key)].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营分析等页面跳转到指定页签
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const d = ov.data;

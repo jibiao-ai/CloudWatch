@@ -50,13 +50,80 @@ type BaseOptions struct {
 	Pools     []Opt2 `json:"pools"`
 }
 
+// BackendRate 一套存储后端（同一平台下按后端名称归并）的容量、分配率与使用率。
+type BackendRate struct {
+	Key          string   `json:"key"`
+	Name         string   `json:"name"`
+	Platform     string   `json:"platform"`
+	Pools        int      `json:"pools"`
+	TotalGb      float64  `json:"totalGb"`
+	AllocPercent *float64 `json:"allocPercent"`
+	UsedPercent  *float64 `json:"usedPercent"`
+}
+
 // Base 基础资源分析页。
 type Base struct {
-	Rates   RatesOut    `json:"rates"`
-	Options BaseOptions `json:"options"`
-	Hosts   []Dist      `json:"hostDist"`
-	Pools   []Dist      `json:"poolDist"`
-	HostVMs []HostVM    `json:"hostVms"`
+	Rates    RatesOut      `json:"rates"`
+	Backends []BackendRate `json:"backends"`
+	Options  BaseOptions   `json:"options"`
+	Hosts    []Dist        `json:"hostDist"`
+	Pools    []Dist        `json:"poolDist"`
+	HostVMs  []HostVM      `json:"hostVms"`
+}
+
+// backendRates 按「平台 + 后端名称」归并存储池，逐套存储后端计算分配率 / 使用率。
+func backendRates(ps []*plat, flt Filter) []BackendRate {
+	type acc struct {
+		BackendRate
+		alloc, used float64
+	}
+	idx := map[string]*acc{}
+	var order []string
+	for _, x := range ps {
+		for _, p := range x.poolSel(flt) {
+			name := poolName(p)
+			k := hostKey(x.ID, name)
+			a := idx[k]
+			if a == nil {
+				a = &acc{BackendRate: BackendRate{Key: k, Name: name, Platform: x.Name}}
+				idx[k] = a
+				order = append(order, k)
+			}
+			a.Pools++
+			a.TotalGb += fv(p, "totalGb")
+			a.used += fv(p, "usedGb")
+			al := fv(p, "allocatedGb")
+			if al == 0 {
+				al = fv(p, "provisionedGb")
+			}
+			a.alloc += al
+		}
+	}
+	out := make([]BackendRate, 0, len(order))
+	for _, k := range order {
+		a := idx[k]
+		a.AllocPercent, a.UsedPercent = pct(a.alloc, a.TotalGb), pct(a.used, a.TotalGb)
+		out = append(out, a.BackendRate)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return natLess(out[i].Name, out[j].Name) })
+	return out
+}
+
+// poolLabels 存储池筛选项的显示名：以后端名称显示，同一平台下后端名称重复时追加存储池名以便区分。
+func poolLabels(x *plat) map[string]string {
+	cnt := map[string]int{}
+	for _, p := range x.pools {
+		cnt[poolName(p)]++
+	}
+	out := map[string]string{}
+	for _, p := range x.pools {
+		n := poolName(p)
+		if cnt[n] > 1 {
+			n += " · " + s(p, "poolName")
+		}
+		out[s(p, "name")] = n
+	}
+	return out
 }
 
 func (e *Engine) Base(ctx context.Context, plats []capacity.Platform, flt Filter) (*Base, error) {
@@ -73,8 +140,9 @@ func (e *Engine) Base(ctx context.Context, plats []capacity.Platform, flt Filter
 		for _, h := range x.hosts {
 			b.Options.Hosts = append(b.Options.Hosts, Opt2{Value: hostKey(x.ID, s(h, "name")), Label: s(h, "name"), ProviderID: x.ID, Cluster: hostKey(x.ID, x.clusterOf(s(h, "name")))})
 		}
+		lb := poolLabels(x)
 		for _, p := range x.pools {
-			b.Options.Pools = append(b.Options.Pools, Opt2{Value: hostKey(x.ID, s(p, "name")), Label: s(p, "name"), ProviderID: x.ID})
+			b.Options.Pools = append(b.Options.Pools, Opt2{Value: hostKey(x.ID, s(p, "name")), Label: lb[s(p, "name")], ProviderID: x.ID})
 		}
 	}
 	ps := all
@@ -87,6 +155,7 @@ func (e *Engine) Base(ctx context.Context, plats []capacity.Platform, flt Filter
 		}
 	}
 	b.Rates = e.rates(ps, flt).out()
+	b.Backends = backendRates(ps, flt)
 	hd, pd := map[string]int{}, map[string]int{}
 	for _, x := range ps {
 		hs := x.hostSel(flt)
@@ -199,77 +268,97 @@ func (e *Engine) BaseBands(ctx context.Context, plats []capacity.Platform, flt F
 	return out, nil
 }
 
-// ---------- 宿主机 / 存储器明细 ----------
-
-// HostCols 宿主机明细导出列。
-var HostCols = []Col{{"name", "宿主机"}, {"platform", "所属云平台"}, {"cluster", "集群"}, {"ip", "IP地址"}, {"stateText", "状态"}, {"runningVms", "运行中云主机"},
-	{"vcpus", "vCPU(已分配/总量)"}, {"cpuAlloc", "CPU分配率"}, {"memAlloc", "内存分配率"}, {"cpuUse", "CPU使用率"}, {"memUse", "内存使用率"}}
-
-// PoolCols 存储器明细导出列。
-var PoolCols = []Col{{"name", "存储器"}, {"platform", "所属云平台"}, {"backend", "后端名称"}, {"statusText", "状态"}, {"totalGb", "总容量(G)"}, {"usedGb", "已用(G)"}, {"usedPercent", "使用率"}, {"allocPercent", "分配率"}}
-
 // Col 导出列。
 type Col struct{ Key, Title string }
 
-func (e *Engine) HostRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
-	ps, err := e.load(ctx, plats, q.Filter.ProviderID)
+// HostRows 监控中心「宿主机」：某一云平台的宿主机分配率（来自 Nova 超分配）与使用率（监控中心实时），比率统一保留 1 位小数。
+func (e *Engine) HostRows(ctx context.Context, plats []capacity.Platform, providerID string) ([]map[string]any, error) {
+	ps, err := e.load(ctx, plats, providerID)
 	if err != nil {
 		return nil, err
 	}
 	rows := []map[string]any{}
 	for _, x := range ps {
-		mon := map[string]*float64{}
-		monMem := map[string]*float64{}
+		cpu, mem := map[string]*float64{}, map[string]*float64{}
 		for _, n := range x.snap.Nodes {
-			mon[short(n.Name)], monMem[short(n.Name)] = n.CPUPercent, n.MemPercent
+			cpu[short(n.Name)], mem[short(n.Name)] = n.CPUPercent, n.MemPercent
 		}
-		for _, h := range x.hostSel(q.Filter) {
-			name := s(h, "name")
-			if !match(q, map[string]string{"name": name, "ip": s(h, "hostIp")}) {
-				continue
+		r1 := func(p *float64) any {
+			if p == nil {
+				return nil
 			}
+			return round1(*p)
+		}
+		for _, h := range x.hosts {
+			name := s(h, "name")
 			cu, mu := f(h, "vcpuPercent"), f(h, "memPercent")
-			if v := mon[name]; v != nil {
+			if v := cpu[name]; v != nil {
 				cu = v
 			}
-			if v := monMem[name]; v != nil {
+			if v := mem[name]; v != nil {
 				mu = v
 			}
 			rows = append(rows, map[string]any{
-				"key": hostKey(x.ID, name), "name": name, "platform": x.Name, "consoleIp": x.ConsoleIP, "cluster": x.clusterOf(name), "ip": s(h, "hostIp"),
-				"state": s(h, "state"), "stateText": s(h, "stateText"), "runningVms": fv(h, "runningVms"),
-				"vcpus":    trimNum(fv(h, "vcpusUsed")) + " / " + trimNum(fv(h, "vcpusCap")),
-				"cpuAlloc": nv(f(h, "vcpuPercent")), "memAlloc": nv(f(h, "memPercent")), "cpuUse": nv(cu), "memUse": nv(mu),
+				"name": name, "ip": s(h, "hostIp"), "state": s(h, "state"), "stateText": s(h, "stateText"), "stateTone": s(h, "stateTone"), "runningVms": fv(h, "runningVms"),
+				"vcpusUsed": fv(h, "vcpusUsed"), "vcpusCap": fv(h, "vcpusCap"),
+				"cpuAlloc": r1(f(h, "vcpuPercent")), "memAlloc": r1(f(h, "memPercent")), "cpuUse": r1(cu), "memUse": r1(mu),
 			})
 		}
 	}
 	return rows, nil
 }
 
-func (e *Engine) PoolRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
-	ps, err := e.load(ctx, plats, q.Filter.ProviderID)
+// PoolRows 监控中心「集群存储」：某一云平台的存储后端（字段与资产管理「集群存储」一致 + 分配率），比率统一保留 1 位小数。
+func (e *Engine) PoolRows(ctx context.Context, plats []capacity.Platform, providerID string) ([]map[string]any, error) {
+	ps, err := e.load(ctx, plats, providerID)
 	if err != nil {
 		return nil, err
 	}
 	rows := []map[string]any{}
 	for _, x := range ps {
-		for _, p := range x.poolSel(q.Filter) {
-			name := s(p, "name")
-			if !match(q, map[string]string{"name": name}) {
-				continue
-			}
+		for _, p := range x.pools {
 			alloc := fv(p, "allocatedGb")
 			if alloc == 0 {
 				alloc = fv(p, "provisionedGb")
 			}
+			used := f(p, "usedPercent")
+			if used != nil {
+				used = ptr(round1(*used))
+			}
 			rows = append(rows, map[string]any{
-				"key": hostKey(x.ID, name), "name": name, "platform": x.Name, "consoleIp": x.ConsoleIP, "backend": s(p, "backendName"),
-				"status": s(p, "status"), "statusText": s(p, "statusText"),
-				"totalGb": nv(f(p, "totalGb")), "usedGb": nv(f(p, "usedGb")), "usedPercent": nv(f(p, "usedPercent")), "allocPercent": nv(pct(alloc, fv(p, "totalGb"))),
+				"name": s(p, "name"), "backendName": poolName(p), "poolName": s(p, "poolName"),
+				"totalGb": nv(f(p, "totalGb")), "freeGb": nv(f(p, "freeGb")), "usedGb": nv(f(p, "usedGb")), "allocatedGb": nv(f(p, "allocatedGb")), "provisionedGb": nv(f(p, "provisionedGb")),
+				"usedPercent": nv(used), "allocPercent": nv(pct(alloc, fv(p, "totalGb"))),
+				"vendorName": s(p, "vendorName"), "vendorText": s(p, "vendorText"), "protocolText": s(p, "protocolText"), "status": s(p, "status"), "statusText": s(p, "statusText"), "statusTone": s(p, "statusTone"),
 			})
 		}
 	}
 	return rows, nil
+}
+
+// VMUsageStat 一台云主机统计窗口内的使用率汇总（监控中心「虚拟机」的 CPU / 内存最大使用率列）。
+type VMUsageStat struct {
+	CPUAvg *float64 `json:"cpuAvg"`
+	CPUMax *float64 `json:"cpuMax"`
+	MemAvg *float64 `json:"memAvg"`
+	MemMax *float64 `json:"memMax"`
+	Days   int      `json:"days"`
+}
+
+// VMUsageDays 监控中心云主机最大 / 平均使用率的统计窗口。
+const VMUsageDays = 30
+
+// VMUsage 某一云平台各云主机近 VMUsageDays 天的使用率汇总，键为云主机 ID。
+func (e *Engine) VMUsage(ctx context.Context, providerID string) (map[string]VMUsageStat, error) {
+	use, err := e.St.usageSince(ctx, providerID, time.Now().In(CST).AddDate(0, 0, -(VMUsageDays-1)))
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]VMUsageStat{}
+	for k, u := range use {
+		out[strings.TrimPrefix(k, providerID+"/")] = VMUsageStat{CPUAvg: u.CPUAvg, CPUMax: u.CPUMax, MemAvg: u.MemAvg, MemMax: u.MemMax, Days: u.Days}
+	}
+	return out, nil
 }
 
 // ---------- 云主机分析 ----------
@@ -342,42 +431,6 @@ func (e *Engine) VMBands(ctx context.Context, plats []capacity.Platform, flt Fil
 	return out, nil
 }
 
-// VMCols 云主机明细导出列。
-var VMCols = []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"flavor", "实例规格"}, {"ips", "IP地址"}, {"statusText", "状态"}, {"host", "宿主机"},
-	{"cpuAvg", "CPU平均使用率"}, {"cpuMax", "CPU最大使用率"}, {"memAvg", "内存平均使用率"}, {"memMax", "内存最大使用率"}}
-
-func (e *Engine) VMRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
-	ps, err := e.load(ctx, plats, q.Filter.ProviderID)
-	if err != nil {
-		return nil, err
-	}
-	use, err := e.St.usageSince(ctx, q.Filter.ProviderID, time.Now().In(CST).AddDate(0, 0, -(UsageWindowDays-1)))
-	if err != nil {
-		return nil, err
-	}
-	rows := []map[string]any{}
-	for _, x := range ps {
-		for _, r := range x.vmSel(q.Filter) {
-			ips := ipList(r)
-			if !match(q, map[string]string{"name": s(r, "name"), "ip": strings.Join(ips, " ")}) {
-				continue
-			}
-			u := use[x.ID+"/"+s(r, "id")]
-			row := map[string]any{
-				"key": x.ID + "/" + s(r, "id"), "name": s(r, "name"), "platform": x.Name, "consoleIp": x.ConsoleIP, "flavor": flavorText(r),
-				"ips": strings.Join(ips, ", "), "ipList": ips, "status": strings.ToLower(s(r, "status")), "statusText": s(r, "statusText"),
-				"host":   s(r, "node"),
-				"cpuAvg": nil, "cpuMax": nil, "memAvg": nil, "memMax": nil,
-			}
-			if u != nil {
-				row["cpuAvg"], row["cpuMax"], row["memAvg"], row["memMax"] = nv(u.CPUAvg), nv(u.CPUMax), nv(u.MemAvg), nv(u.MemMax)
-			}
-			rows = append(rows, row)
-		}
-	}
-	return rows, nil
-}
-
 // ---------- 磁盘分析 ----------
 
 // DiskAnalysis 磁盘分析页（unit=gb 时数值为容量 GB，否则为块数）。
@@ -434,28 +487,4 @@ func (e *Engine) DiskAnalysis(ctx context.Context, plats []capacity.Platform, pi
 	}
 	out.Platforms, out.Mount, out.Types = distOf(acc), distOf(mnt), distOf(typ)
 	return out, nil
-}
-
-// DiskCols 磁盘明细导出列。
-var DiskCols = []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"az", "集群/可用区"}, {"server", "所属云主机"}, {"statusText", "状态"}, {"sizeGb", "大小(G)"}}
-
-func (e *Engine) DiskRows(ctx context.Context, plats []capacity.Platform, q ListQuery) ([]map[string]any, error) {
-	ps, err := e.load(ctx, plats, q.Filter.ProviderID)
-	if err != nil {
-		return nil, err
-	}
-	rows := []map[string]any{}
-	for _, x := range ps {
-		for _, v := range x.vols {
-			if !match(q, map[string]string{"name": s(v, "name"), "ip": ""}) {
-				continue
-			}
-			rows = append(rows, map[string]any{
-				"key": x.ID + "/" + s(v, "id"), "name": s(v, "name"), "platform": x.Name, "consoleIp": x.ConsoleIP, "az": s(v, "az"),
-				"server": s(v, "serverNames"), "status": s(v, "status"), "statusText": s(v, "statusText"),
-				"sizeGb": nv(f(v, "sizeGb")), "volumeType": s(v, "volumeType"),
-			})
-		}
-	}
-	return rows, nil
 }

@@ -15,7 +15,7 @@ export default function PlatformTable({ platforms }) {
     { key: 'vms', title: '云主机', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.vms) },
     { key: 'disks', title: '磁盘', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.disks) },
     { key: 'hosts', title: '宿主机', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.hosts) },
-    { key: 'pools', title: '存储器', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.pools) },
+    { key: 'pools', title: '集群存储', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.pools) },
     { key: 'error', title: '采集错误', width: 320, render: (p) => <span className="text-[13px] text-danger break-all">{p.error || ''}</span> },
   ], []);
   const t = useClientTable({ rows: platforms, columns, searchText: (p) => `${p.name} ${p.consoleIp} ${p.envType} ${p.error || ''}`, initialSort: { key: 'name', order: 'asc' } });

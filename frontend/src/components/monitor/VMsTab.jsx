@@ -4,14 +4,19 @@ import MonTable from './MonTable';
 import VMDetailModal from './VMDetailModal';
 import CustomSelect from '../CustomSelect';
 import { PlatformCell, PctCell } from './cells';
+import { monitorApi } from '../../services/api';
+import { useAsync } from '../../hooks/useAsync';
 import { formatBytes, formatDateTime } from '../../utils/format';
 
 const STATE = { ACTIVE: ['运行中', 'tag-success'], SHUTOFF: ['已关机', 'tag-default'], ERROR: ['异常', 'tag-danger'], PAUSED: ['已暂停', 'tag-warning'], SUSPENDED: ['已挂起', 'tag-warning'], SHELVED: ['已搁置', 'tag-info'], SHELVED_OFFLOADED: ['已搁置', 'tag-info'], BUILD: ['创建中', 'tag-info'], REBOOT: ['重启中', 'tag-info'], HARD_REBOOT: ['重启中', 'tag-info'], MIGRATING: ['迁移中', 'tag-info'], RESIZE: ['调整中', 'tag-info'], VERIFY_RESIZE: ['调整中', 'tag-info'], DELETED: ['已删除', 'tag-default'] };
 const stateOf = (s) => STATE[s] || [s || '未知', 'tag-default'];
 
 /** VMsTab —— 虚拟机：样式与物理节点一致；列表来自 Nova，vCPU / 内存取自 Nova 规格，使用率来自 Gnocchi；末列「监控详情」 */
-export default function VMsTab({ snap, platform, providerId, initialKeyword }) {
+export default function VMsTab({ snap, platform, providerId, initialKeyword, refreshKey }) {
   const [sel, setSel] = useState(null);
+  const usage = useAsync(() => monitorApi.getVMUsage(providerId), [providerId, refreshKey]);
+  const um = usage.data?.usage || {};
+  const days = usage.data?.days || 30;
   const [st, setSt] = useState('');
   const states = useMemo(() => [{ value: '', label: '全部状态' }, ...[...new Set(snap.vms.map((v) => v.status))].sort().map((s) => ({ value: s, label: stateOf(s)[0] }))], [snap.vms]);
   const columns = useMemo(() => [
@@ -23,9 +28,11 @@ export default function VMsTab({ snap, platform, providerId, initialKeyword }) {
     { key: 'vcpus', title: 'vCPU / 内存', width: 130, sortable: true, render: (v) => (v.vcpus || v.ramMb ? <span className="tabular-nums text-[13px]" title={v.flavor ? `规格：${v.flavor}` : undefined}>{v.vcpus ? `${v.vcpus} 核` : '—'} / {v.ramMb ? formatBytes(v.ramMb * 1048576) : '—'}</span> : <span className="text-fg-subtle">—</span>) },
     { key: 'cpuPercent', title: 'CPU 使用率', width: 170, sortable: true, render: (v) => <PctCell value={v.cpuPercent} /> },
     { key: 'memPercent', title: '内存使用率', width: 170, sortable: true, render: (v) => <PctCell value={v.memPercent} /> },
+    { key: 'cpuMax', title: `CPU 最大使用率（${days}天）`, width: 190, sortable: true, sortBy: (v) => um[v.id]?.cpuMax ?? -1, render: (v) => <PctCell value={um[v.id]?.cpuMax} label="CPU 最大使用率" /> },
+    { key: 'memMax', title: `内存最大使用率（${days}天）`, width: 190, sortable: true, sortBy: (v) => um[v.id]?.memMax ?? -1, render: (v) => <PctCell value={um[v.id]?.memMax} label="内存最大使用率" /> },
     { key: 'createdAt', title: '创建时间', width: 160, sortable: true, render: (v) => <span className="tabular-nums text-[13px]">{v.createdAt ? formatDateTime(v.createdAt) : '—'}</span> },
     { key: 'detail', title: '监控详情', width: 110, sticky: 'right', align: 'center', render: (v) => <button type="button" className="btn-ghost btn-sm" onClick={() => setSel(v)}><Activity size={14} />详情</button> },
-  ], [platform]);
+  ], [platform, um, days]);
   const filterFn = useMemo(() => (v) => !st || v.status === st, [st]);
   return (
     <>

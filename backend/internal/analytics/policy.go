@@ -7,33 +7,51 @@ import (
 	"time"
 )
 
-// 优化策略类型（与页面四张建议卡片一一对应）。
+// 资源类型：优化策略作用于哪一类资源。
 const (
-	KindZombie   = "zombie"   // 僵尸型虚拟机：开机但写 I/O 近乎为零
-	KindExcess   = "excess"   // 资源过剩虚拟机：CPU / 内存持续偏低 → 建议降低计算资源分配
-	KindShortage = "shortage" // 资源不足虚拟机：CPU / 内存持续偏高 → 建议提高计算资源分配
-	KindLongOff  = "longoff"  // 长期关机虚机：持续关机或待回收 → 建议删除释放资源
+	ResVM   = "vm"   // 虚拟机
+	ResHost = "host" // 物理机（宿主机 / 计算节点）
+	ResPool = "pool" // 集群存储
+	ResDisk = "disk" // 云硬盘
 )
 
-// Kinds 页面展示顺序：僵尸型 / 资源过剩 / 资源不足 / 长期关机。
-var Kinds = []string{KindZombie, KindExcess, KindShortage, KindLongOff}
+// ResTypes 资源类型及中文名。
+var ResTypes = []Opt{{ResVM, "虚拟机"}, {ResHost, "物理机"}, {ResPool, "集群存储"}, {ResDisk, "云硬盘"}}
 
-// IsKind 是否为合法的策略类型。
-func IsKind(k string) bool {
-	for _, x := range Kinds {
-		if x == k {
+func isRes(t string) bool {
+	for _, r := range ResTypes {
+		if r.Value == t {
 			return true
 		}
 	}
 	return false
 }
 
-// kindAdvice 各类策略「建议原因」末尾的处置建议。
-var kindAdvice = map[string]string{
-	KindZombie:   "建议确认用途后关停或删除",
-	KindExcess:   "建议降低其计算资源分配",
-	KindShortage: "建议提高其计算资源分配",
-	KindLongOff:  "建议删除以释放计算、存储资源",
+// Scope 策略范围：all 所有受支持的集群；part 仅限所选集群（虚拟机 / 物理机按「平台ID/集群」，集群存储 / 云硬盘按「平台ID」）。
+type Scope struct {
+	Mode  string   `json:"mode"`
+	Items []string `json:"items"`
+}
+
+// Match 资源是否在范围内：key 为「平台ID/集群」或「平台ID」。
+func (sc Scope) Match(pid, cluster string) bool {
+	if sc.Mode != "part" {
+		return true
+	}
+	for _, it := range sc.Items {
+		if it == pid || (cluster != "" && it == pid+"/"+cluster) {
+			return true
+		}
+	}
+	return false
+}
+
+// ScopeText 范围的展示文案。
+func (sc Scope) Text() string {
+	if sc.Mode == "part" {
+		return fmt.Sprintf("部分集群（%d）", len(sc.Items))
+	}
+	return "所有受支持的集群"
 }
 
 // Cond 一个条件：field op value；Join 为与「上一条件」的连接（AND 优先于 OR）。
@@ -45,24 +63,29 @@ type Cond struct {
 	num   *float64 // 解析后的数值
 }
 
-// Policy 一条优化策略。
+// Policy 一条优化策略。Kind 为策略 ID（内置策略为固定英文标识，自定义策略为 c_ 开头的随机 ID）。
 type Policy struct {
-	Kind       string     `json:"kind"`
-	Name       string     `json:"name"`
-	Enabled    bool       `json:"enabled"`
-	WindowDays int        `json:"windowDays"`
-	Conds      []Cond     `json:"conds"`
-	Reason     string     `json:"reason"` // 由条件生成的「建议原因」文案
-	Scope      string     `json:"scope"`  // 优化范围
-	UpdatedAt  *time.Time `json:"updatedAt"`
-	UpdatedBy  string     `json:"updatedBy"`
+	Kind         string     `json:"kind"`
+	Name         string     `json:"name"`
+	ResourceType string     `json:"resourceType"`
+	Enabled      bool       `json:"enabled"`
+	WindowDays   int        `json:"windowDays"`
+	Conds        []Cond     `json:"conds"`
+	Scope        Scope      `json:"scope"`
+	Advice       string     `json:"advice"`
+	Builtin      bool       `json:"builtin"`
+	Reason       string     `json:"reason"`    // 由条件生成的「建议原因」文案
+	ScopeText    string     `json:"scopeText"` // 范围展示文案
+	UpdatedAt    *time.Time `json:"updatedAt"`
+	UpdatedBy    string     `json:"updatedBy"`
 }
 
-// FieldDef 条件字段定义（前端编辑器按此渲染，后端按此校验）。
+// FieldDef 条件字段（指标）定义（前端编辑器按此渲染，后端按此校验）。Res 为适用的资源类型。
 type FieldDef struct {
 	Key     string   `json:"key"`
+	Res     string   `json:"res"`
 	Label   string   `json:"label"`
-	Type    string   `json:"type"` // percent | days | enum
+	Type    string   `json:"type"` // percent | days | rate | ms | count | enum
 	Unit    string   `json:"unit"`
 	Ops     []string `json:"ops"`
 	Options []Opt    `json:"options,omitempty"`
@@ -75,32 +98,51 @@ type Opt struct {
 }
 
 var numOps = []string{">=", ">", "<=", "<"}
+var eqNumOps = []string{"=", ">=", ">", "<=", "<"}
 
-// Fields 可用的条件字段。
-var Fields = []FieldDef{
-	{Key: "cpuMax", Label: "CPU使用率最大值", Type: "percent", Unit: "%", Ops: numOps},
-	{Key: "cpuAvg", Label: "CPU使用率平均值", Type: "percent", Unit: "%", Ops: numOps},
-	{Key: "cpuMin", Label: "CPU使用率最小值", Type: "percent", Unit: "%", Ops: numOps},
-	{Key: "memMax", Label: "内存使用率最大值", Type: "percent", Unit: "%", Ops: numOps},
-	{Key: "memAvg", Label: "内存使用率平均值", Type: "percent", Unit: "%", Ops: numOps},
-	{Key: "memMin", Label: "内存使用率最小值", Type: "percent", Unit: "%", Ops: numOps},
-	{Key: "writeAvg", Label: "写I/O平均速率", Type: "rate", Unit: "KiB/s", Ops: numOps},
-	{Key: "shutdownDays", Label: "持续关机时长", Type: "days", Unit: "天", Ops: numOps},
-	{Key: "runningDays", Label: "持续运行时长", Type: "days", Unit: "天", Ops: numOps},
-	{Key: "status", Label: "实例状态", Type: "enum", Ops: []string{"="}, Options: []Opt{{"active", "运行中"}, {"soft_deleted", "待回收"}, {"shutoff", "已关机"}, {"error", "异常"}}},
+func pf(key, res, label string) FieldDef {
+	return FieldDef{Key: key, Res: res, Label: label, Type: "percent", Unit: "%", Ops: numOps}
 }
 
-func fieldOf(key string) *FieldDef {
+// Fields 可用的指标（条件字段）。
+var Fields = []FieldDef{
+	// 虚拟机
+	pf("cpuAvg", ResVM, "vCPU平均使用率"), pf("cpuMax", ResVM, "vCPU最大使用率"), pf("cpuMin", ResVM, "vCPU最小使用率"),
+	pf("memAvg", ResVM, "内存平均使用率"), pf("memMax", ResVM, "内存最大使用率"), pf("memMin", ResVM, "内存最小使用率"),
+	pf("readyAvg", ResVM, "CPU就绪时间占比"),
+	{Key: "swap", Res: ResVM, Label: "内存交换(Swap)", Type: "enum", Ops: []string{"="}, Options: []Opt{{"yes", "存在"}, {"no", "不存在"}}},
+	{Key: "latAvg", Res: ResVM, Label: "磁盘平均读/写时延", Type: "ms", Unit: "ms", Ops: numOps},
+	pf("fsMax", ResVM, "文件系统使用率"),
+	{Key: "writeAvg", Res: ResVM, Label: "磁盘平均写I/O速率", Type: "rate", Unit: "KiB/s", Ops: numOps},
+	{Key: "shutdownDays", Res: ResVM, Label: "持续关机时长", Type: "days", Unit: "天", Ops: numOps},
+	{Key: "runningDays", Res: ResVM, Label: "持续运行时长", Type: "days", Unit: "天", Ops: numOps},
+	{Key: "status", Res: ResVM, Label: "电源状态", Type: "enum", Ops: []string{"="}, Options: []Opt{{"active", "运行中"}, {"shutoff", "关机"}, {"soft_deleted", "待回收"}, {"error", "异常"}}},
+	// 物理机
+	pf("cpuAvg", ResHost, "物理机CPU平均使用率"), pf("cpuMax", ResHost, "物理机CPU最大使用率"),
+	pf("memAvg", ResHost, "物理机内存平均使用率"), pf("memMax", ResHost, "物理机内存最大使用率"),
+	// 集群存储
+	pf("usedPercent", ResPool, "存储裸容量已使用占比"), pf("allocPercent", ResPool, "存储容量分配率"),
+	// 云硬盘
+	{Key: "attachCount", Res: ResDisk, Label: "关联虚拟机数量", Type: "count", Unit: "台", Ops: eqNumOps},
+}
+
+func fieldFor(res, key string) *FieldDef {
 	for i := range Fields {
-		if Fields[i].Key == key {
+		if Fields[i].Key == key && Fields[i].Res == res {
 			return &Fields[i]
 		}
 	}
 	return nil
 }
 
+// condRes 条件所属资源类型（Validate / 评估时由策略设置）。
 func (c *Cond) isUsage() bool {
-	return strings.HasPrefix(c.Field, "cpu") || strings.HasPrefix(c.Field, "mem") || strings.HasPrefix(c.Field, "write")
+	for _, p := range []string{"cpu", "mem", "write", "ready", "lat", "fs", "swap"} {
+		if strings.HasPrefix(c.Field, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // lowOp 「越低越命中」的比较（需要完整观察窗口，避免刚开始采样就误判为低负载）。
@@ -111,25 +153,41 @@ func (c *Cond) sustained() bool {
 	return c.isUsage() && (c.lowOp() || strings.HasSuffix(c.Field, "Min"))
 }
 
-// Validate 校验并规范化策略条件，返回字段级错误。
+// Validate 校验并规范化策略，返回字段级错误。
 func (p *Policy) Validate() map[string]string {
 	e := map[string]string{}
 	p.Name = strings.TrimSpace(p.Name)
 	if p.Name == "" || len([]rune(p.Name)) > 32 {
 		e["name"] = "策略名称为 1-32 个字符"
 	}
+	if p.ResourceType == "" {
+		p.ResourceType = ResVM
+	}
+	if !isRes(p.ResourceType) {
+		e["resourceType"] = "资源类型不合法"
+		return e
+	}
+	if p.Scope.Mode != "part" {
+		p.Scope = Scope{Mode: "all", Items: []string{}}
+	} else if len(p.Scope.Items) == 0 {
+		e["scope"] = "请至少选择一个集群"
+	}
+	p.Advice = strings.TrimSpace(p.Advice)
+	if len([]rune(p.Advice)) > 100 {
+		e["advice"] = "处置建议不超过 100 个字符"
+	}
 	if p.WindowDays < 1 || p.WindowDays > 90 {
 		e["windowDays"] = "统计周期为 1-90 天"
 	}
 	if len(p.Conds) == 0 || len(p.Conds) > 8 {
-		e["conds"] = "条件数量为 1-8 条"
+		e["conds"] = "筛选条件数量为 1-8 条，请选择指标"
 		return e
 	}
 	for i := range p.Conds {
 		c := &p.Conds[i]
-		fd := fieldOf(c.Field)
+		fd := fieldFor(p.ResourceType, c.Field)
 		if fd == nil {
-			e["conds"] = fmt.Sprintf("第 %d 个条件的字段不合法", i+1)
+			e["conds"] = fmt.Sprintf("第 %d 个条件的指标不适用于该资源类型", i+1)
 			return e
 		}
 		okOp := false
@@ -164,6 +222,10 @@ func (p *Policy) Validate() map[string]string {
 				max = 3650
 			case "rate":
 				max = 1048576
+			case "ms":
+				max = 100000
+			case "count":
+				max = 100000
 			}
 			if !ok || n < 0 || n > max {
 				e["conds"] = fmt.Sprintf("第 %d 个条件的数值需在 0-%v 之间", i+1, max)
@@ -174,8 +236,7 @@ func (p *Policy) Validate() map[string]string {
 		if i == 0 {
 			c.Join = ""
 		} else if c.Join != "AND" && c.Join != "OR" {
-			e["conds"] = fmt.Sprintf("第 %d 个条件需选择 AND / OR", i+1)
-			return e
+			c.Join = "AND"
 		}
 	}
 	return e
@@ -194,26 +255,26 @@ func toNum(v any) (float64, bool) {
 	return 0, false
 }
 
-func condText(c Cond, window int) string {
-	fd := fieldOf(c.Field)
+func opText(op string) string {
+	return map[string]string{">=": "大于等于", ">": "大于", "<=": "小于等于", "<": "小于", "=": "等于"}[op]
+}
+
+func condText(res string, c Cond) string {
+	fd := fieldFor(res, c.Field)
 	if fd == nil {
 		return ""
 	}
-	opText := map[string]string{">=": "大于等于", ">": "大于", "<=": "小于等于", "<": "小于", "=": "等于"}[c.Op]
 	val := fmt.Sprint(c.Value)
-	switch fd.Type {
-	case "enum":
+	if fd.Type == "enum" {
 		for _, o := range fd.Options {
 			if o.Value == val {
 				val = o.Label
 			}
 		}
-	default:
-		if n, ok := toNum(c.Value); ok {
-			val = trimNum(n) + fd.Unit
-		}
+	} else if n, ok := toNum(c.Value); ok {
+		val = trimNum(n) + fd.Unit
 	}
-	return fmt.Sprintf("%s %s %s", fd.Label, opText, val)
+	return fmt.Sprintf("%s %s %s", fd.Label, opText(c.Op), val)
 }
 
 // trimNum2 最多两位小数（写速率常小于 1，一位小数会显示成 0）。
@@ -228,7 +289,7 @@ func trimNum(n float64) string {
 	return strings.TrimSuffix(s, ".0")
 }
 
-// ReasonText 条件 → 「建议原因」文案（与页面样例一致：针对过去 N 天的数据分析, … ,建议升配）。
+// ReasonText 条件 → 「建议原因」文案（针对过去 N 天的数据分析, … ,建议 …）。
 func (p *Policy) ReasonText() string {
 	var b strings.Builder
 	usage := false
@@ -242,11 +303,15 @@ func (p *Policy) ReasonText() string {
 	}
 	for i, c := range p.Conds {
 		if i > 0 {
-			b.WriteString(" " + c.Join + " ")
+			if c.Join == "OR" {
+				b.WriteString(" 或 ")
+			} else {
+				b.WriteString(" 且 ")
+			}
 		}
-		b.WriteString(condText(c, p.WindowDays))
+		b.WriteString(condText(p.ResourceType, c))
 	}
-	adv := kindAdvice[p.Kind]
+	adv := p.Advice
 	if adv == "" {
 		adv = p.Name
 	}
@@ -254,107 +319,84 @@ func (p *Policy) ReasonText() string {
 	return b.String()
 }
 
-// VMFacts 评估一台云主机所需的事实数据。
-type VMFacts struct {
-	CPUAvg, CPUMax, CPUMin    *float64
-	MemAvg, MemMax, MemMin    *float64
-	WriteAvg                  *float64 // 写 I/O 平均速率（KiB/s）
-	DaysWithData, WriteDays   int      // 有使用率数据的天数 / 有写 I/O 数据的天数
-	ShutdownDays, RunningDays float64
-	Status                    string
+// Facts 评估一个资源所需的事实数据：Vals 为各指标的取值（缺失表示未采集到），Days 为各指标已积累的有数据天数。
+type Facts struct {
+	Status string
+	Vals   map[string]float64
+	Days   map[string]int
 }
 
-// Hit 一次命中：被命中的条件文案（用于「建议原因」展示实际值）。
+func newFacts(status string) Facts {
+	return Facts{Status: status, Vals: map[string]float64{}, Days: map[string]int{}}
+}
+
+func (f Facts) set(key string, v *float64, days int) {
+	if v != nil {
+		f.Vals[key] = *v
+		f.Days[key] = days
+	}
+}
+
+// hit 一次命中：被命中的条件文案（用于「建议原因」展示实际值）。
 type hit struct {
 	ok   bool
 	text string
 }
 
-func (p *Policy) condEval(c Cond, v VMFacts) hit {
-	cmp := func(val *float64) hit {
-		if val == nil || c.num == nil {
-			return hit{}
-		}
-		if c.isUsage() && v.Status != "active" { // 使用率类条件只对当前运行中的云主机生效
-			return hit{}
-		}
-		days := v.DaysWithData
-		if c.Field == "writeAvg" {
-			days = v.WriteDays
-		}
-		if c.sustained() && days < p.WindowDays { // 「持续」型判断需积累满整个统计周期，避免刚开始采样就误判
-			return hit{}
-		}
-		ok := false
-		switch c.Op {
-		case ">=":
-			ok = *val >= *c.num
-		case ">":
-			ok = *val > *c.num
-		case "<=":
-			ok = *val <= *c.num
-		case "<":
-			ok = *val < *c.num
-		}
-		return hit{ok, ""}
+func actualText(fd *FieldDef, v float64) string {
+	switch fd.Type {
+	case "percent":
+		return fmt.Sprintf("%s %.1f%%", fd.Label, v)
+	case "rate":
+		return fmt.Sprintf("%s %sKiB/s", fd.Label, trimNum2(v))
+	case "ms":
+		return fmt.Sprintf("%s %.1fms", fd.Label, v)
+	case "days":
+		return fmt.Sprintf("%s %s天", fd.Label, trimNum(v))
+	case "count":
+		return fmt.Sprintf("%s %d台", fd.Label, int(v))
 	}
-	var h hit
-	var actual string
-	fd := fieldOf(c.Field)
-	switch c.Field {
-	case "cpuMax":
-		h = cmp(v.CPUMax)
-		if v.CPUMax != nil {
-			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.CPUMax)
-		}
-	case "cpuAvg":
-		h = cmp(v.CPUAvg)
-		if v.CPUAvg != nil {
-			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.CPUAvg)
-		}
-	case "cpuMin":
-		h = cmp(v.CPUMin)
-		if v.CPUMin != nil {
-			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.CPUMin)
-		}
-	case "memMin":
-		h = cmp(v.MemMin)
-		if v.MemMin != nil {
-			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.MemMin)
-		}
-	case "writeAvg":
-		h = cmp(v.WriteAvg)
-		if v.WriteAvg != nil {
-			actual = fmt.Sprintf("%s %sKiB/s", fd.Label, trimNum2(*v.WriteAvg))
-		}
-	case "memMax":
-		h = cmp(v.MemMax)
-		if v.MemMax != nil {
-			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.MemMax)
-		}
-	case "memAvg":
-		h = cmp(v.MemAvg)
-		if v.MemAvg != nil {
-			actual = fmt.Sprintf("%s %.1f%%", fd.Label, *v.MemAvg)
-		}
-	case "shutdownDays": // 仅「已关机」的云主机才有持续关机时长
-		d := v.ShutdownDays
-		if v.Status == "shutoff" {
-			h = cmp(&d)
-			actual = fmt.Sprintf("%s %s天", fd.Label, trimNum(d))
-		}
-	case "runningDays": // 仅「运行中」的云主机才有持续运行时长
-		d := v.RunningDays
-		if v.Status == "active" {
-			h = cmp(&d)
-			actual = fmt.Sprintf("%s %s天", fd.Label, trimNum(d))
-		}
-	case "status":
-		h = hit{ok: v.Status == fmt.Sprint(c.Value)}
-		actual = "实例状态 " + stateLabel(v.Status)
+	return fd.Label
+}
+
+func (p *Policy) condEval(c Cond, f Facts) hit {
+	fd := fieldFor(p.ResourceType, c.Field)
+	if fd == nil {
+		return hit{}
 	}
-	h.text = actual
-	return h
+	if c.Field == "status" {
+		return hit{ok: f.Status == fmt.Sprint(c.Value), text: "电源状态 " + stateLabel(f.Status)}
+	}
+	if p.ResourceType == ResVM && c.isUsage() && f.Status != "active" { // 使用率类条件只对当前运行中的云主机生效
+		return hit{}
+	}
+	v, has := f.Vals[c.Field]
+	if !has {
+		return hit{}
+	}
+	if fd.Type == "enum" { // swap：1 存在 / 0 不存在
+		return hit{ok: (v > 0) == (fmt.Sprint(c.Value) == "yes"), text: fd.Label + " " + map[bool]string{true: "存在", false: "不存在"}[v > 0]}
+	}
+	if c.num == nil {
+		return hit{}
+	}
+	if c.sustained() && f.Days[c.Field] < p.WindowDays { // 「持续」型判断需积累满整个统计周期，避免刚开始采样就误判
+		return hit{}
+	}
+	ok := false
+	switch c.Op {
+	case "=":
+		ok = v == *c.num
+	case ">=":
+		ok = v >= *c.num
+	case ">":
+		ok = v > *c.num
+	case "<=":
+		ok = v <= *c.num
+	case "<":
+		ok = v < *c.num
+	}
+	return hit{ok, actualText(fd, v)}
 }
 
 func stateLabel(code string) string {
@@ -362,7 +404,7 @@ func stateLabel(code string) string {
 	case "soft_deleted":
 		return "待回收"
 	case "shutoff":
-		return "已关机"
+		return "关机"
 	case "active":
 		return "运行中"
 	case "error":
@@ -372,7 +414,7 @@ func stateLabel(code string) string {
 }
 
 // Eval 按「AND 优先于 OR」计算条件；命中时返回命中分组里各条件的实际值文案。
-func (p *Policy) Eval(v VMFacts) (bool, string) {
+func (p *Policy) Eval(f Facts) (bool, string) {
 	if len(p.Conds) == 0 {
 		return false, ""
 	}
@@ -383,7 +425,7 @@ func (p *Policy) Eval(v VMFacts) (bool, string) {
 			groups = append(groups, cur)
 			cur = []hit{}
 		}
-		cur = append(cur, p.condEval(c, v))
+		cur = append(cur, p.condEval(c, f))
 	}
 	groups = append(groups, cur)
 	var reasons []string

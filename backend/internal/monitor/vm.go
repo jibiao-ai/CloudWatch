@@ -205,9 +205,44 @@ const (
 	gDiskW = "disk.write.bytes.rate"
 )
 
-// gnocchiMeasures GET {gnocchi}/v1/resource/generic/{id}/metric/{metric}/measures → [[时间, 粒度, 值], …]
+// 扩展指标：各平台 Gnocchi 上的指标名不尽相同，按候选名依次尝试，资源上存在的第一个即采用，都不存在则该项为空（不报错）。
+var (
+	extReady = []string{"cpu.ready.util", "cpu_ready_util", "cpu.ready_util", "cpu.ready.percent"}                      // CPU 就绪时间占比 %
+	extSwap  = []string{"memory.swap.in", "memory.swap.out", "memory.swap.usage", "memory.swap.util"}                   // 内存交换（任一 >0 即存在 Swap）
+	extLat   = []string{"disk.latency", "disk.read.latency", "disk.write.latency", "disk.io.latency"}                   // 磁盘时延（毫秒）
+	extFs    = []string{"filesystem.util", "fs.util", "disk.fs.util", "disk.usage.percent", "filesystem.usage.percent"} // 文件系统使用率 %
+)
+
+// ExtMetrics 扩展指标候选名（供运营分析历史回填使用）。
+var ExtMetrics = map[string][]string{"ready": extReady, "swap": extSwap, "lat": extLat, "fs": extFs}
+
+// ResourceMetrics GET {gnocchi}/v1/resource/generic/{id} → 该资源上存在的指标名集合。
+func ResourceMetrics(ctx context.Context, cn *provider.Conn, id string) (map[string]bool, error) {
+	var doc struct {
+		Metrics map[string]string `json:"metrics"`
+	}
+	if err := cn.GetJSON(ctx, cn.Gnocchi()+"/v1/resource/generic/"+url.PathEscape(id), &doc); err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(doc.Metrics))
+	for k := range doc.Metrics {
+		out[k] = true
+	}
+	return out, nil
+}
+
+// Measures 取某指标的聚合序列：agg = mean | max | min。
+func Measures(ctx context.Context, cn *provider.Conn, id, metric string, since time.Time, gran int, agg string) ([]Point, error) {
+	return gnocchiMeasuresAgg(ctx, cn, id, metric, since, gran, agg)
+}
+
 func gnocchiMeasures(ctx context.Context, cn *provider.Conn, id, metric string, since time.Time, gran int) ([]Point, error) {
-	q := url.Values{"start": {since.UTC().Format("2006-01-02T15:04:05Z")}, "granularity": {fmt.Sprint(gran)}, "aggregation": {"mean"}}
+	return gnocchiMeasuresAgg(ctx, cn, id, metric, since, gran, "mean")
+}
+
+// gnocchiMeasuresAgg GET {gnocchi}/v1/resource/generic/{id}/metric/{metric}/measures → [[时间, 粒度, 值], …]
+func gnocchiMeasuresAgg(ctx context.Context, cn *provider.Conn, id, metric string, since time.Time, gran int, agg string) ([]Point, error) {
+	q := url.Values{"start": {since.UTC().Format("2006-01-02T15:04:05Z")}, "granularity": {fmt.Sprint(gran)}, "aggregation": {agg}}
 	u := cn.Gnocchi() + "/v1/resource/generic/" + url.PathEscape(id) + "/metric/" + metric + "/measures?" + q.Encode()
 	var raw [][]json.RawMessage
 	if err := cn.GetJSON(ctx, u, &raw); err != nil {
@@ -264,9 +299,11 @@ func fillVMMetrics(ctx context.Context, cn *provider.Conn, vms []VM) (okN int, f
 			c, err1 := gnocchiMeasures(ctx, cn, v.ID, gCPU, since, 300)
 			m, err2 := gnocchiMeasures(ctx, cn, v.ID, gMem, since, 300)
 			w, _ := gnocchiMeasures(ctx, cn, v.ID, gDiskW, since, 300) // 写速率缺失不影响 CPU / 内存采集结论
+			ext := fillExt(ctx, cn, v.ID, since, last)
 			mu.Lock()
 			defer mu.Unlock()
 			v.CPUPercent, v.MemPercent, v.WriteBps = last(c), last(m), last(w)
+			v.ReadyPercent, v.SwapMB, v.LatencyMs, v.FsPercent = ext[0], ext[1], ext[2], ext[3]
 			if err1 == nil || err2 == nil {
 				okN++
 			} else if firstErr == nil {
@@ -276,6 +313,33 @@ func fillVMMetrics(ctx context.Context, cn *provider.Conn, vms []VM) (okN int, f
 	}
 	wg.Wait()
 	return okN, firstErr
+}
+
+// fillExt 读取一台云主机的扩展指标：先查资源上有哪些指标，只请求存在的候选指标；失败一律忽略。返回 [就绪占比, Swap, 时延, 文件系统使用率]。
+func fillExt(ctx context.Context, cn *provider.Conn, id string, since time.Time, last func([]Point) *float64) [4]*float64 {
+	var out [4]*float64
+	have, err := ResourceMetrics(ctx, cn, id)
+	if err != nil || len(have) == 0 {
+		return out
+	}
+	for i, cands := range [][]string{extReady, extSwap, extLat, extFs} {
+		for _, name := range cands {
+			if !have[name] {
+				continue
+			}
+			p, err := gnocchiMeasures(ctx, cn, id, name, since, 300)
+			if err != nil {
+				continue
+			}
+			if x := last(p); x != nil {
+				if i == 1 && out[i] != nil && *out[i] > *x { // Swap：取各候选中的最大值
+					continue
+				}
+				out[i] = x
+			}
+		}
+	}
+	return out
 }
 
 var vmRanges = map[string]struct {

@@ -25,7 +25,7 @@ export default function Gauge({ value, label }) {
   const ang = START + (SWEEP * v) / 100;
   const [nx, ny] = pt(ang, R - 8);
   return (
-    <figure className="flex flex-col items-center" aria-label={`${label} ${has ? `${value}%` : '暂无数据'}`}>
+    <figure className="flex flex-col items-center" aria-label={`${label} ${has ? `${value.toFixed(1)}%` : '暂无数据'}`}>
       <svg viewBox="0 0 120 100" className="w-[150px] h-[125px]" role="img">
         <path d={arc(0, 100)} fill="none" stroke={pal.grid} strokeWidth="9" strokeLinecap="round" />
         <path d={arc(0, 60)} fill="none" stroke={pal.series[1]} strokeWidth="9" strokeLinecap="round" />
@@ -37,7 +37,7 @@ export default function Gauge({ value, label }) {
             <circle cx={CX} cy={CY} r="4.5" fill={pal.text} />
           </>
         )}
-        <text x={CX} y={CY + 30} textAnchor="middle" fontSize="15" fontWeight="600" fill={pal.text}>{has ? `${value}%` : '-'}</text>
+        <text x={CX} y={CY + 30} textAnchor="middle" fontSize="15" fontWeight="600" fill={pal.text}>{has ? `${value.toFixed(1)}%` : '-'}</text>
       </svg>
       <figcaption className="text-[13px] text-fg-muted -mt-1">{label}</figcaption>
     </figure>

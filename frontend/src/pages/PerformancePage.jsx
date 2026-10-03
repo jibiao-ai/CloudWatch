@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Play } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
@@ -12,6 +13,8 @@ import OverviewTab from '../components/monitor/OverviewTab';
 import NodesTab from '../components/monitor/NodesTab';
 import DisksTab from '../components/monitor/DisksTab';
 import VMsTab from '../components/monitor/VMsTab';
+import HostsTab from '../components/monitor/HostsTab';
+import PoolsTab from '../components/monitor/PoolsTab';
 import ServicesTab from '../components/monitor/ServicesTab';
 import StepsTab from '../components/monitor/StepsTab';
 import { monitorApi } from '../services/api';
@@ -21,13 +24,14 @@ import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
 import { RANGES } from '../utils/monitorUtil';
 
-/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 磁盘状态 / 虚拟机 / 采集明细）：数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
+/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 宿主机 / 磁盘状态 / 虚拟机 / 集群存储 / 采集明细）：数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
 export default function PerformancePage() {
   const toast = useToast();
   const canCollect = useCan('monitor:collect');
   const plats = useAsync(() => monitorApi.getOverview(), []);
   const [pid, setPid] = useState('');
-  const [tab, setTab] = useState('overview');
+  const [sp] = useSearchParams();
+  const [tab, setTab] = useState(['overview', 'services', 'nodes', 'hosts', 'disks', 'vms', 'pools', 'steps'].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营分析跳转到指定页签
   const [range, setRange] = useState('6h');
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
@@ -47,12 +51,12 @@ export default function PerformancePage() {
       r.ok ? toast.success('采集完成', `耗时 ${r.durationMs} ms，告警中 ${r.alertFiring} 条`) : toast.error('采集失败', r.error);
     } catch (e) { toast.error('采集失败', e.message); } finally { setBusy(false); }
   };
-  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'steps', label: '采集明细' }];
+  const tabs = [{ key: 'overview', label: '总览' }, { key: 'services', label: '服务状态', count: d?.services.length }, { key: 'nodes', label: '物理节点', count: d?.nodes.length }, { key: 'hosts', label: '宿主机' }, { key: 'disks', label: '磁盘状态', count: d?.disks.length }, { key: 'vms', label: '虚拟机', count: d?.vms.length }, { key: 'pools', label: '集群存储' }, { key: 'steps', label: '采集明细' }];
   const common = { snap: d, platform, providerId: pid, refreshKey: tick, initialKeyword: jump.kw };
 
   return (
     <div className="bg-bg">
-      <PageHeader title="监控中心" description="对接平台 EMLA / Nova / Gnocchi 接口：总览、服务状态、物理节点、磁盘状态、虚拟机、采集明细；后台周期采集，趋势来自已落库的历史样本"
+      <PageHeader title="监控中心" description="对接平台 EMLA / Nova / Gnocchi 接口：总览、服务状态、物理节点、宿主机、磁盘状态、虚拟机、集群存储、采集明细；后台周期采集，趋势来自已落库的历史样本"
         actions={<>
           <div className="w-[240px]"><CustomSelect aria-label="选择平台" placeholder="选择平台" value={pid} onChange={setPid} options={(plats.data || []).map((p) => ({ value: p.id, label: p.name }))} /></div>
           <div className="w-[140px]"><CustomSelect aria-label="趋势范围" value={range} onChange={setRange} options={RANGES} /></div>
@@ -76,8 +80,10 @@ export default function PerformancePage() {
                 : !d.summary ? <div className="card"><EmptyState title="暂无监控数据" description={canCollect ? '点击右上角「立即采集」，或等待后台按同步间隔自动采集' : '等待后台按同步间隔自动采集'} /></div>
                   : tab === 'overview' ? <OverviewTab snap={d} platform={platform} providerId={pid} range={range} refreshKey={tick} onJump={goto} />
                     : tab === 'nodes' ? <NodesTab key={jump.n} {...common} />
-                      : tab === 'disks' ? <DisksTab key={jump.n} {...common} />
-                        : tab === 'vms' ? <VMsTab key={jump.n} {...common} /> : <ServicesTab key={jump.n} {...common} />}
+                      : tab === 'hosts' ? <HostsTab key={jump.n} {...common} />
+                        : tab === 'disks' ? <DisksTab key={jump.n} {...common} />
+                          : tab === 'vms' ? <VMsTab key={jump.n} {...common} />
+                            : tab === 'pools' ? <PoolsTab key={jump.n} {...common} /> : <ServicesTab key={jump.n} {...common} />}
             </div>
           </>
         )}

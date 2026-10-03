@@ -7,7 +7,7 @@ import { defaultDates, ymd } from './util';
 import { useAsync } from '../../hooks/useAsync';
 
 /**
- * BandsPanel —— 按使用率分布：指标切换（CPU / 内存 / 存储器）+ 日期范围 + 5 个区间折线。
+ * BandsPanel —— 按使用率分布：指标切换（CPU / 内存 / 集群存储）+ 日期范围 + 5 个区间折线。
  * 属性：title / metrics[{value,label}] / load(metric,{from,to}) => Promise<BandChart> / deps(筛选条件变化时重新加载)
  */
 export default function BandsPanel({ title, metrics, load, deps = [] }) {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jibiao-ai/cloudwatch/internal/analytics"
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
@@ -113,5 +114,55 @@ func (s *Server) monitorVMMetrics(w http.ResponseWriter, r *http.Request, _ *aut
 		return err
 	}
 	httpx.OK(w, map[string]any{"vmId": r.PathValue("vmId"), "series": m})
+	return nil
+}
+
+// monitorHosts GET /monitor/{id}/hosts  监控中心「宿主机」：分配率（Nova 超分配）+ 使用率（监控实时）
+func (s *Server) monitorHosts(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	id := r.PathValue("id")
+	if _, err := s.Providers.Store.Get(r.Context(), id); err != nil {
+		return err
+	}
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	rows, err := s.Analytics.HostRows(r.Context(), ps, id)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, map[string]any{"list": rows})
+	return nil
+}
+
+// monitorPools GET /monitor/{id}/pools  监控中心「集群存储」：存储后端容量 / 分配率 / 使用率
+func (s *Server) monitorPools(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	id := r.PathValue("id")
+	if _, err := s.Providers.Store.Get(r.Context(), id); err != nil {
+		return err
+	}
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	rows, err := s.Analytics.PoolRows(r.Context(), ps, id)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, map[string]any{"list": rows})
+	return nil
+}
+
+// monitorVMUsage GET /monitor/{id}/vm-usage  各云主机近 30 天 CPU / 内存平均与最大使用率（键为云主机 ID）
+func (s *Server) monitorVMUsage(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	id := r.PathValue("id")
+	if _, err := s.Providers.Store.Get(r.Context(), id); err != nil {
+		return err
+	}
+	m, err := s.Analytics.VMUsage(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, map[string]any{"days": analytics.VMUsageDays, "usage": m})
 	return nil
 }

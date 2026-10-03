@@ -78,6 +78,11 @@ type VM struct {
 	CPUPercent *float64 `json:"cpuPercent"`
 	MemPercent *float64 `json:"memPercent"`
 	WriteBps   *float64 `json:"diskWriteBps"` // 最近一次 disk.write.bytes.rate（字节/秒，各磁盘合计）
+	// 以下为平台可选提供的扩展指标（Gnocchi 资源上存在对应指标才会采到，否则为空）
+	ReadyPercent *float64 `json:"cpuReadyPercent"` // CPU 就绪时间占比 %
+	SwapMB       *float64 `json:"swapMb"`          // 内存交换量（>0 表示存在 Swap）
+	LatencyMs    *float64 `json:"diskLatencyMs"`   // 磁盘读/写时延 ms
+	FsPercent    *float64 `json:"fsPercent"`       // 虚拟机内部文件系统使用率 %
 }
 
 // Disk 物理磁盘（来自 storage_cluster_disk_info）。

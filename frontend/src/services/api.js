@@ -232,6 +232,12 @@ export const monitorApi = {
   collect: (id) => post(`/monitor/${id}/collect`, {}, { timeout: 120000 }),
   getTrend: (id, params) => get(`/monitor/${id}/trend`, params, { skipErrorToast: true }),
   /** 云主机监控详情：后端实时向 Gnocchi 取 CPU / 内存 / 磁盘读写速率曲线 */
+  /** 监控中心「宿主机」：分配率（Nova 超分配）+ 使用率（实时） */
+  getHosts: (id) => get(`/monitor/${id}/hosts`),
+  /** 监控中心「集群存储」：存储后端容量 / 分配率 / 使用率 */
+  getPools: (id) => get(`/monitor/${id}/pools`),
+  /** 各云主机近 30 天 CPU / 内存平均与最大使用率（来自运营分析按天汇总） */
+  getVMUsage: (id) => get(`/monitor/${id}/vm-usage`, undefined, { skipErrorToast: true }),
   getVMMetrics: (id, vmId, range) => get(`/monitor/${id}/vms/${vmId}/metrics`, { range }, { skipErrorToast: true, timeout: 60000 }),
 };
 /* ============================ 资产管理（第6章：Nova / Cinder / Neutron） ============================ */
@@ -259,13 +265,17 @@ export const analyticsApi = {
   getVM: (params) => get('/analytics/vm', params),
   getVMBands: (params) => get('/analytics/vm/bands', params),
   getDisk: (params) => get('/analytics/disk', params),
-  getList: (kind, params) => get(`/analytics/list/${kind}`, params),
-  exportList: (kind) => (params, opt) => blob(`/analytics/export/${kind}`, params, opt),
+  exportOpt: (params, opt) => blob('/analytics/export/opt', params, opt),
   getOptSummary: () => get('/analytics/optimize/summary'),
   getOptList: (params) => get('/analytics/optimize/list', params),
   setIgnore: (data) => post('/analytics/optimize/ignore', data),
   getPolicies: () => get('/analytics/policies'),
+  createPolicy: (data) => post('/analytics/policies', data),
   updatePolicy: (kind, data) => put(`/analytics/policies/${kind}`, data),
+  deletePolicy: (kind) => del(`/analytics/policies/${kind}`),
+  getPolicyIgnores: (kind) => get(`/analytics/policies/${kind}/ignores`),
+  /** 按名称 / ID 解析资源（忽略项添加） */
+  resolveRes: (params) => get('/analytics/resolve', params, { skipErrorToast: true }),
 };
 
 export const alertApi = {

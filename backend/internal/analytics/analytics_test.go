@@ -10,80 +10,136 @@ import (
 
 func fp(v float64) *float64 { return &v }
 
-func upgrade() Policy {
-	p := Policy{Kind: KindShortage, Name: "建议升配", Enabled: true, WindowDays: 10, Conds: []Cond{
-		{Field: "cpuMax", Op: ">=", Value: 90.0}, {Field: "memMax", Op: ">=", Value: 90.0, Join: "OR"}}}
+// builtin 构造与迁移 0013 中一致的内置策略。
+func builtin(res string, days int, conds ...Cond) Policy {
+	p := Policy{Name: "t", ResourceType: res, Enabled: true, WindowDays: days, Conds: conds}
 	if e := p.Validate(); len(e) > 0 {
 		panic(e)
 	}
 	return p
 }
 
-func TestEvalOr(t *testing.T) {
-	p := upgrade()
-	ok, why := p.Eval(VMFacts{Status: "active", CPUMax: fp(95), MemMax: fp(10), DaysWithData: 1})
-	if !ok || !strings.Contains(why, "CPU使用率最大值 95.0%") {
-		t.Fatalf("want hit, got %v %q", ok, why)
+func active() Cond { return Cond{Field: "status", Op: "=", Value: "active", Join: "AND"} }
+
+func usageFacts(status string, days int, kv map[string]float64) Facts {
+	f := newFacts(status)
+	for k, v := range kv {
+		v := v
+		f.set(k, &v, days)
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", CPUMax: fp(50), MemMax: fp(60)}); ok {
-		t.Fatal("should not hit")
+	return f
+}
+
+func TestVMBuiltinPolicies(t *testing.T) {
+	cases := []struct {
+		name string
+		p    Policy
+		hit  Facts
+		miss Facts
+	}{
+		{"vCPU过剩", builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: "<", Value: 15.0}, active()),
+			usageFacts("active", 30, map[string]float64{"cpuAvg": 10}), usageFacts("active", 30, map[string]float64{"cpuAvg": 15})},
+		{"内存过剩", builtin(ResVM, 30, Cond{Field: "memAvg", Op: "<", Value: 20.0}, active()),
+			usageFacts("active", 30, map[string]float64{"memAvg": 19.9}), usageFacts("shutoff", 30, map[string]float64{"memAvg": 5})},
+		{"vCPU紧张", builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: ">", Value: 80.0}, Cond{Field: "readyAvg", Op: ">", Value: 10.0, Join: "AND"}, active()),
+			usageFacts("active", 1, map[string]float64{"cpuAvg": 90, "readyAvg": 12}), usageFacts("active", 30, map[string]float64{"cpuAvg": 90, "readyAvg": 10})},
+		{"内存不足", builtin(ResVM, 30, Cond{Field: "memAvg", Op: ">", Value: 85.0}, Cond{Field: "swap", Op: "=", Value: "yes", Join: "AND"}, active()),
+			usageFacts("active", 30, map[string]float64{"memAvg": 90, "swap": 1}), usageFacts("active", 30, map[string]float64{"memAvg": 90, "swap": 0})},
+		{"IO压力", builtin(ResVM, 30, Cond{Field: "latAvg", Op: ">", Value: 20.0}, active()),
+			usageFacts("active", 30, map[string]float64{"latAvg": 25}), usageFacts("active", 30, map[string]float64{"latAvg": 20})},
+		{"磁盘空间高风险", builtin(ResVM, 30, Cond{Field: "fsMax", Op: ">", Value: 90.0}, active()),
+			usageFacts("active", 30, map[string]float64{"fsMax": 95}), usageFacts("active", 30, map[string]float64{"fsMax": 90})},
+		{"僵尸", builtin(ResVM, 30, Cond{Field: "writeAvg", Op: "<", Value: 1.0}, active()),
+			usageFacts("active", 30, map[string]float64{"writeAvg": 0.2}), usageFacts("active", 30, map[string]float64{"writeAvg": 1})},
+		{"长期关机", builtin(ResVM, 30, Cond{Field: "status", Op: "=", Value: "shutoff"}, Cond{Field: "shutdownDays", Op: ">", Value: 30.0, Join: "AND"}),
+			usageFacts("shutoff", 0, map[string]float64{"shutdownDays": 31}), usageFacts("shutoff", 0, map[string]float64{"shutdownDays": 30})},
+	}
+	for _, c := range cases {
+		if ok, why := c.p.Eval(c.hit); !ok || why == "" {
+			t.Errorf("%s: want hit, got %v %q", c.name, ok, why)
+		}
+		if ok, _ := c.p.Eval(c.miss); ok {
+			t.Errorf("%s: want miss", c.name)
+		}
 	}
 }
 
-func TestEvalLowNeedsFullWindow(t *testing.T) {
-	p := Policy{Kind: KindExcess, Name: "建议降配", Enabled: true, WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: "<=", Value: 1.0}}}
-	_ = p.Validate()
-	if ok, _ := p.Eval(VMFacts{Status: "active", CPUMax: fp(0.5), DaysWithData: 3}); ok {
+// 「越低越命中」的条件必须积累满整个统计周期，避免刚开始采样就误判为低负载。
+func TestLowNeedsFullWindow(t *testing.T) {
+	p := builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: "<", Value: 15.0}, active())
+	if ok, _ := p.Eval(usageFacts("active", 5, map[string]float64{"cpuAvg": 1})); ok {
 		t.Fatal("window not full must not hit")
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", CPUMax: fp(0.5), DaysWithData: 10}); !ok {
+	if ok, _ := p.Eval(usageFacts("active", 30, map[string]float64{"cpuAvg": 1})); !ok {
 		t.Fatal("full window should hit")
+	}
+	// 缺少指标（平台未提供）→ 不命中
+	if ok, _ := p.Eval(newFacts("active")); ok {
+		t.Fatal("missing metric must not hit")
 	}
 }
 
-func TestEvalAndBeforeOr(t *testing.T) {
-	// 关机>=30 AND 实例状态=待回收 OR 运行>=30 AND CPU最大<=1（AND 先于 OR 结合）
-	p := Policy{Name: "组合", WindowDays: 10, Conds: []Cond{
-		{Field: "shutdownDays", Op: ">=", Value: 30.0}, {Field: "status", Op: "=", Value: "shutoff", Join: "AND"},
-		{Field: "runningDays", Op: ">=", Value: 30.0, Join: "OR"}, {Field: "cpuMax", Op: "<=", Value: 1.0, Join: "AND"}}}
-	if e := p.Validate(); len(e) > 0 {
-		t.Fatal(e)
+func TestUsageOnlyForActive(t *testing.T) {
+	p := builtin(ResVM, 30, Cond{Field: "memAvg", Op: ">", Value: 85.0})
+	if ok, _ := p.Eval(usageFacts("shutoff", 30, map[string]float64{"memAvg": 99})); ok {
+		t.Fatal("usage conds only apply to running VMs")
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", RunningDays: 40, CPUMax: fp(0.5), DaysWithData: 10}); !ok {
+}
+
+func TestAndBeforeOr(t *testing.T) {
+	p := builtin(ResVM, 10,
+		Cond{Field: "shutdownDays", Op: ">=", Value: 30.0}, Cond{Field: "status", Op: "=", Value: "shutoff", Join: "AND"},
+		Cond{Field: "runningDays", Op: ">=", Value: 30.0, Join: "OR"}, Cond{Field: "cpuMax", Op: "<=", Value: 1.0, Join: "AND"})
+	if ok, _ := p.Eval(usageFacts("active", 10, map[string]float64{"runningDays": 40, "cpuMax": 0.5})); !ok {
 		t.Fatal("running 40d with low cpu should hit")
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "shutoff", ShutdownDays: 40}); !ok {
+	if ok, _ := p.Eval(usageFacts("shutoff", 0, map[string]float64{"shutdownDays": 40})); !ok {
 		t.Fatal("shutoff 40d should hit")
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", RunningDays: 5, CPUMax: fp(0.5), DaysWithData: 10}); ok {
+	if ok, _ := p.Eval(usageFacts("active", 10, map[string]float64{"runningDays": 5, "cpuMax": 0.5})); ok {
 		t.Fatal("running 5d must not hit")
 	}
 }
 
-func TestShutdownOnlyWhenShutoff(t *testing.T) {
-	p := Policy{Name: "回收", WindowDays: 10, Conds: []Cond{{Field: "shutdownDays", Op: ">=", Value: 30.0}, {Field: "status", Op: "=", Value: "soft_deleted", Join: "OR"}}}
-	_ = p.Validate()
-	if ok, _ := p.Eval(VMFacts{Status: "active", ShutdownDays: 99}); ok {
-		t.Fatal("active vm has no shutdown time")
+func TestHostPoolDiskPolicies(t *testing.T) {
+	host := builtin(ResHost, 30, Cond{Field: "cpuAvg", Op: ">", Value: 85.0})
+	if ok, _ := host.Eval(usageFacts("", 30, map[string]float64{"cpuAvg": 86})); !ok {
+		t.Fatal("host cpu hit")
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "shutoff", ShutdownDays: 31}); !ok {
-		t.Fatal("shutoff 31d should hit")
+	if ok, _ := host.Eval(usageFacts("", 30, map[string]float64{"cpuAvg": 85})); ok {
+		t.Fatal("host cpu boundary")
 	}
-	if ok, _ := p.Eval(VMFacts{Status: "soft_deleted"}); !ok {
-		t.Fatal("soft_deleted should hit")
+	pool := builtin(ResPool, 30, Cond{Field: "usedPercent", Op: ">", Value: 85.0})
+	if ok, why := pool.Eval(usageFacts("", 0, map[string]float64{"usedPercent": 90.26})); !ok || !strings.Contains(why, "90.3%") {
+		t.Fatalf("pool hit %v %q", ok, why)
+	}
+	disk := builtin(ResDisk, 30, Cond{Field: "attachCount", Op: "=", Value: 0.0})
+	if ok, _ := disk.Eval(usageFacts("", 0, map[string]float64{"attachCount": 0})); !ok {
+		t.Fatal("orphan disk hit")
+	}
+	if ok, _ := disk.Eval(usageFacts("", 0, map[string]float64{"attachCount": 1})); ok {
+		t.Fatal("attached disk must not hit")
 	}
 }
 
 func TestValidate(t *testing.T) {
+	ok := Policy{Name: "新策略", ResourceType: ResVM, WindowDays: 30, Conds: []Cond{{Field: "cpuAvg", Op: "<", Value: 15.0}}}
+	if e := ok.Validate(); len(e) > 0 {
+		t.Fatal(e)
+	}
+	if ok.Scope.Mode != "all" {
+		t.Fatal("scope defaults to all")
+	}
 	bad := []Policy{
-		{Name: "", WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: ">=", Value: 1.0}}},
-		{Name: "x", WindowDays: 0, Conds: []Cond{{Field: "cpuMax", Op: ">=", Value: 1.0}}},
-		{Name: "x", WindowDays: 10},
-		{Name: "x", WindowDays: 10, Conds: []Cond{{Field: "nope", Op: ">=", Value: 1.0}}},
-		{Name: "x", WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: "=", Value: 1.0}}},
-		{Name: "x", WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: ">=", Value: 101.0}}},
-		{Name: "x", WindowDays: 10, Conds: []Cond{{Field: "cpuMax", Op: ">=", Value: 1.0}, {Field: "memMax", Op: ">=", Value: 1.0}}},
-		{Name: "x", WindowDays: 10, Conds: []Cond{{Field: "status", Op: "=", Value: "bogus"}}},
+		{Name: "", ResourceType: ResVM, WindowDays: 30, Conds: ok.Conds},
+		{Name: "x", ResourceType: "nope", WindowDays: 30, Conds: ok.Conds},
+		{Name: "x", ResourceType: ResVM, WindowDays: 0, Conds: ok.Conds},
+		{Name: "x", ResourceType: ResVM, WindowDays: 30},
+		{Name: "x", ResourceType: ResHost, WindowDays: 30, Conds: []Cond{{Field: "writeAvg", Op: "<", Value: 1.0}}}, // 指标不适用于该资源类型
+		{Name: "x", ResourceType: ResVM, WindowDays: 30, Conds: []Cond{{Field: "cpuAvg", Op: "=", Value: 1.0}}},     // 运算符不合法
+		{Name: "x", ResourceType: ResVM, WindowDays: 30, Conds: []Cond{{Field: "cpuAvg", Op: "<", Value: 101.0}}},
+		{Name: "x", ResourceType: ResVM, WindowDays: 30, Conds: []Cond{{Field: "status", Op: "=", Value: "bogus"}}},
+		{Name: "x", ResourceType: ResVM, WindowDays: 30, Conds: ok.Conds, Scope: Scope{Mode: "part"}},
 	}
 	for i, p := range bad {
 		if len(p.Validate()) == 0 {
@@ -92,11 +148,67 @@ func TestValidate(t *testing.T) {
 	}
 }
 
+func TestScopeMatch(t *testing.T) {
+	all := Scope{Mode: "all"}
+	if !all.Match("p1", "c1") {
+		t.Fatal("all")
+	}
+	part := Scope{Mode: "part", Items: []string{"p1/c1", "p2"}}
+	for _, c := range []struct {
+		pid, cl string
+		w       bool
+	}{{"p1", "c1", true}, {"p1", "c2", false}, {"p2", "x", true}, {"p2", "", true}, {"p3", "c1", false}} {
+		if part.Match(c.pid, c.cl) != c.w {
+			t.Errorf("%s/%s want %v", c.pid, c.cl, c.w)
+		}
+	}
+}
+
 func TestReasonText(t *testing.T) {
-	p := upgrade()
-	want := "针对过去10天的数据分析,CPU使用率最大值 大于等于 90% OR 内存使用率最大值 大于等于 90%,建议提高其计算资源分配"
+	p := builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: ">", Value: 80.0}, Cond{Field: "readyAvg", Op: ">", Value: 10.0, Join: "AND"}, active())
+	p.Advice = "建议提高其 vCPU 配置"
+	want := "针对过去30天的数据分析,vCPU平均使用率 大于 80% 且 CPU就绪时间占比 大于 10% 且 电源状态 等于 运行中,建议提高其 vCPU 配置"
 	if got := p.ReasonText(); got != want {
-		t.Fatalf("got %q", got)
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+}
+
+func TestVMFactsOf(t *testing.T) {
+	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	r := capacity.Row{"status": "shutoff"}
+	f := vmFacts(r, vmState{Status: "shutoff", Since: now.Add(-48 * time.Hour)}, true, nil, now)
+	if f.Vals["shutdownDays"] != 2 {
+		t.Fatalf("%+v", f)
+	}
+	f = vmFacts(r, vmState{Status: "active", Since: now.Add(-48 * time.Hour)}, true, nil, now)
+	if _, ok := f.Vals["shutdownDays"]; ok {
+		t.Fatal("stale state must be ignored")
+	}
+	sw := 3.0
+	f = vmFacts(capacity.Row{"status": "ACTIVE"}, vmState{}, false, &Usage{SwapMax: &sw, SwapDays: 4}, now)
+	if f.Vals["swap"] != 1 || f.Days["swap"] != 4 {
+		t.Fatalf("swap should map to 1: %+v", f)
+	}
+}
+
+func TestBackendRates(t *testing.T) {
+	x := &plat{Platform: capacity.Platform{ID: "p1", Name: "平台A"}, pools: []capacity.Row{
+		{"name": "h1@ceph#pool1", "backendName": "ceph-ssd", "poolName": "pool1", "totalGb": 1000.0, "usedGb": 250.0, "allocatedGb": 500.0},
+		{"name": "h2@ceph#pool2", "backendName": "ceph-ssd", "poolName": "pool2", "totalGb": 1000.0, "usedGb": 350.0, "allocatedGb": 300.0},
+		{"name": "h1@nfs#p", "backendName": "nfs-1", "poolName": "p", "totalGb": 500.0, "usedGb": 50.0, "allocatedGb": 100.0},
+	}}
+	got := backendRates([]*plat{x}, Filter{})
+	if len(got) != 2 {
+		t.Fatalf("each backend once: %+v", got)
+	}
+	var ceph BackendRate
+	for _, b := range got {
+		if b.Name == "ceph-ssd" {
+			ceph = b
+		}
+	}
+	if ceph.Pools != 2 || ceph.TotalGb != 2000 || ceph.UsedPercent == nil || *ceph.UsedPercent != 30 || *ceph.AllocPercent != 40 {
+		t.Fatalf("%+v", ceph)
 	}
 }
 
@@ -139,19 +251,6 @@ func TestInitialSince(t *testing.T) {
 	}
 }
 
-func TestFactsOf(t *testing.T) {
-	now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
-	r := capacity.Row{"status": "shutoff"}
-	f := factsOf(r, vmState{Status: "shutoff", Since: now.Add(-48 * time.Hour)}, true, nil, now)
-	if f.ShutdownDays != 2 {
-		t.Fatalf("%+v", f)
-	}
-	f = factsOf(r, vmState{Status: "active", Since: now.Add(-48 * time.Hour)}, true, nil, now)
-	if f.ShutdownDays != 0 {
-		t.Fatal("stale state must be ignored")
-	}
-}
-
 func TestParseRange(t *testing.T) {
 	from, to := ParseRange("2020-01-01", "2026-09-30")
 	if to.Sub(from) > 367*24*time.Hour {
@@ -168,83 +267,5 @@ func TestStateGroup(t *testing.T) {
 		if stateGroup(c) != g {
 			t.Errorf("%s", c)
 		}
-	}
-}
-
-func mk(kind, name string, conds ...Cond) Policy {
-	p := Policy{Kind: kind, Name: name, Enabled: true, WindowDays: 10, Conds: conds}
-	if e := p.Validate(); len(e) > 0 {
-		panic(e)
-	}
-	return p
-}
-
-func TestZombie(t *testing.T) {
-	p := mk(KindZombie, "僵尸型虚拟机", Cond{Field: "status", Op: "=", Value: "active"}, Cond{Field: "writeAvg", Op: "<", Value: 1.0, Join: "AND"})
-	if ok, why := p.Eval(VMFacts{Status: "active", WriteAvg: fp(0.35), WriteDays: 10}); !ok || !strings.Contains(why, "写I/O平均速率 0.35KiB/s") {
-		t.Fatalf("zombie should hit: %v %q", ok, why)
-	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", WriteAvg: fp(0.35), WriteDays: 4}); ok {
-		t.Fatal("window not full must not hit")
-	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", WriteAvg: fp(1.0), WriteDays: 10}); ok {
-		t.Fatal("1KiB/s is not < 1")
-	}
-	if ok, _ := p.Eval(VMFacts{Status: "shutoff", WriteAvg: fp(0), WriteDays: 10}); ok {
-		t.Fatal("shutoff vm is not a zombie")
-	}
-	if ok, _ := p.Eval(VMFacts{Status: "active", WriteDays: 10}); ok {
-		t.Fatal("no write data must not hit")
-	}
-}
-
-func TestExcessAndShortage(t *testing.T) {
-	ex := mk(KindExcess, "资源过剩虚拟机", Cond{Field: "cpuMax", Op: "<", Value: 10.0}, Cond{Field: "memMax", Op: "<", Value: 10.0, Join: "OR"})
-	if ok, _ := ex.Eval(VMFacts{Status: "active", CPUMax: fp(9.9), MemMax: fp(50), DaysWithData: 10}); !ok {
-		t.Fatal("cpu persistently <10 should hit")
-	}
-	if ok, _ := ex.Eval(VMFacts{Status: "active", CPUMax: fp(10), MemMax: fp(50), DaysWithData: 10}); ok {
-		t.Fatal("10 is not < 10")
-	}
-	if ok, _ := ex.Eval(VMFacts{Status: "active", CPUMax: fp(1), MemMax: fp(1), DaysWithData: 9}); ok {
-		t.Fatal("9 of 10 days must not hit")
-	}
-	if ok, _ := ex.Eval(VMFacts{Status: "shutoff", CPUMax: fp(1), MemMax: fp(1), DaysWithData: 10}); ok {
-		t.Fatal("usage rules only apply to running vms")
-	}
-	sh := mk(KindShortage, "资源不足虚拟机", Cond{Field: "cpuMin", Op: ">", Value: 90.0}, Cond{Field: "memMin", Op: ">", Value: 90.0, Join: "OR"})
-	if ok, why := sh.Eval(VMFacts{Status: "active", CPUMin: fp(90.5), MemMin: fp(30), DaysWithData: 10}); !ok || !strings.Contains(why, "CPU使用率最小值 90.5%") {
-		t.Fatalf("cpu persistently >90 should hit: %v %q", ok, why)
-	}
-	if ok, _ := sh.Eval(VMFacts{Status: "active", CPUMin: fp(60), CPUMax: fp(99), MemMin: fp(30), DaysWithData: 10}); ok {
-		t.Fatal("a single dip below 90 breaks 'persistently'")
-	}
-	if ok, _ := sh.Eval(VMFacts{Status: "active", CPUMin: fp(95), MemMin: fp(95), DaysWithData: 3}); ok {
-		t.Fatal("window not full must not hit")
-	}
-	if want := "针对过去10天的数据分析,CPU使用率最小值 大于 90% OR 内存使用率最小值 大于 90%,建议提高其计算资源分配"; sh.ReasonText() != want {
-		t.Fatalf("got %q", sh.ReasonText())
-	}
-}
-
-func TestLongOff(t *testing.T) {
-	p := mk(KindLongOff, "长期关机虚机", Cond{Field: "shutdownDays", Op: ">=", Value: 30.0}, Cond{Field: "status", Op: "=", Value: "soft_deleted", Join: "OR"})
-	if ok, _ := p.Eval(VMFacts{Status: "shutoff", ShutdownDays: 30}); !ok {
-		t.Fatal("30 days should hit")
-	}
-	if ok, _ := p.Eval(VMFacts{Status: "shutoff", ShutdownDays: 29.9}); ok {
-		t.Fatal("29.9 days must not hit")
-	}
-	if ok, _ := p.Eval(VMFacts{Status: "soft_deleted"}); !ok {
-		t.Fatal("pending-recycle should hit")
-	}
-	if !strings.HasSuffix(p.ReasonText(), "建议删除以释放计算、存储资源") {
-		t.Fatal(p.ReasonText())
-	}
-}
-
-func TestKinds(t *testing.T) {
-	if len(Kinds) != 4 || !IsKind("zombie") || IsKind("downgrade") {
-		t.Fatal("kinds")
 	}
 }

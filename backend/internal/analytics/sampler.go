@@ -28,6 +28,8 @@ type Sampler struct {
 
 	mu   sync.Mutex
 	busy bool
+	bfMu sync.Mutex
+	bfOn map[string]bool
 }
 
 func NewSampler(db *sql.DB, st *Store, cs *capacity.Store, ms *monitor.Store, pm *provider.Manager) *Sampler {
@@ -75,6 +77,7 @@ func (m *Sampler) Tick(ctx context.Context) {
 		if err := m.One(ctx, capacity.Platform{ID: p.ID, Name: p.Name, EnvType: p.EnvType, ConsoleIP: p.ConsoleIP}); err != nil {
 			log.Printf("运营分析采样：平台 %s 失败: %v", p.Name, err)
 		}
+		m.maybeBackfill(ctx, p.ID, p.Name)
 	}
 }
 
@@ -94,7 +97,7 @@ func (m *Sampler) One(ctx context.Context, p capacity.Platform) error {
 		var list []UsageSample
 		for _, v := range snap.VMs {
 			if v.CPUPercent != nil || v.MemPercent != nil || v.WriteBps != nil {
-				u := UsageSample{VM: v.ID, CPU: v.CPUPercent, Mem: v.MemPercent}
+				u := UsageSample{VM: v.ID, CPU: v.CPUPercent, Mem: v.MemPercent, Ready: v.ReadyPercent, Swap: v.SwapMB, Lat: v.LatencyMs, Fs: v.FsPercent}
 				if v.WriteBps != nil {
 					kib := *v.WriteBps / 1024
 					u.Write = &kib
