@@ -101,6 +101,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/auth/me", s.guard("", s.me))
 	mux.Handle("POST /api/auth/change-password", s.guard("", s.changePassword))
 	mux.Handle("GET /api/alerts/unread-count", s.guard("", s.unreadAlerts))
+	mux.Handle("GET /api/dashboard/overview", s.guard("dashboard:view", s.dashboardOverview))
+	mux.Handle("GET /api/dashboard/trend", s.guard("monitor:view", s.dashboardTrend))
+	mux.Handle("GET /api/search", s.guard("", s.searchGlobal)) // 全局搜索：按各分组权限过滤结果
 
 	// 系统配置
 	mux.Handle("GET /api/settings", s.guard("settings:view", s.getSettings))

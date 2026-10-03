@@ -173,6 +173,7 @@ export const userApi = {
 };
 export const roleApi = {
   getRoleList: () => get('/roles'),
+  getRolePage: (params) => get('/roles', params),
   getRole: (id) => get(`/roles/${id}`),
   createRole: (data) => post('/roles', data),
   updateRole: (id, data) => put(`/roles/${id}`, data),
@@ -291,6 +292,10 @@ export const dashboardApi = {
   getOverview: (params) => get('/dashboard/overview', params),
   getTrend: (params) => get('/dashboard/trend', params),
   getUnreadAlerts: () => get('/alerts/unread-count', undefined, { skipErrorToast: true }),
+};
+
+export const searchApi = {
+  search: (q, limit = 6) => get('/search', { q, limit }, { skipErrorToast: true }),
 };
 
 export default http;

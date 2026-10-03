@@ -1,4 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, CheckCheck, AlertOctagon, AlertTriangle, Info, BellRing } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
@@ -20,7 +21,7 @@ const TYPE = [{ value: 'service', label: '服务' }, { value: 'storage', label: 
 const ACKED = [{ value: '0', label: '未确认' }, { value: '1', label: '已确认' }];
 const SEV_TAG = { critical: 'tag-danger', warning: 'tag-warning', info: 'tag-info' };
 const lab = (list, v) => list.find((x) => x.value === v)?.label || v || '-';
-const toParams = (q) => ({ keyword: q.keyword, severity: q.severity, status: q.status, type: q.type, acked: q.acked, sortKey: q.sort?.key, sortOrder: q.sort?.order });
+const toParams = (q) => ({ keyword: q.keyword, providerId: q.providerId, severity: q.severity, status: q.status, type: q.type, acked: q.acked, sortKey: q.sort?.key, sortOrder: q.sort?.order });
 
 /** AlertCenterPage —— 告警中心：统计 + 筛选 + 列表 + 详情抽屉 + 确认 / 同步 / 导出（对接 EMLA 第5章告警接口） */
 export default function AlertCenterPage() {
@@ -28,10 +29,15 @@ export default function AlertCenterPage() {
   const canAck = useCan('alert:ack');
   const canSync = useCan('alert:sync');
   const canExport = useCan('alert:export');
-  const list = useListQuery('alerts', (q) => alertApi.getAlertList({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 10, keyword: '', severity: '', status: '', type: '', acked: '', sort: { key: 'firedAt', order: 'desc' } });
+  const [sp] = useSearchParams();
+  const list = useListQuery('alerts', (q) => alertApi.getAlertList({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 10, keyword: '', providerId: '', severity: '', status: '', type: '', acked: '', sort: { key: 'firedAt', order: 'desc' } }, { keyword: sp.get('keyword'), providerId: sp.get('providerId') });
   const { query, setQuery } = list;
   const stats = useAsync(() => alertApi.getAlertStats(), []);
   const [detail, setDetail] = useState(null);
+  const openId = sp.get('open');
+  useEffect(() => { // 全局搜索 / 概览跳转：?open=告警ID 直接打开详情
+    if (openId) alertApi.getAlert(openId).then(setDetail).catch(() => {});
+  }, [openId]);
   const tableRef = useRef(null);
   // 详情抽屉纵向范围：上沿对齐工具栏（导出 Excel 所在行），下沿止于分页栏上方
   const drawerAnchor = useCallback(() => {

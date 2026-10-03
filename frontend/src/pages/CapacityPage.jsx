@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Play } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
@@ -24,6 +24,9 @@ export default function CapacityPage() {
   const ov = useAsync(() => capacityApi.getOverview(), []);
   const [sp] = useSearchParams();
   const [tab, setTab] = useState(['overview', 'steps', ...KINDS.map((k) => k.key)].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营分析等页面跳转到指定页签
+  const spKey = sp.toString();
+  useEffect(() => { const t = sp.get('tab'); if (['overview', 'steps', ...KINDS.map((k) => k.key)].includes(t)) setTab(t); }, [spKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const prefill = { keyword: sp.get('keyword') || '', providerId: sp.get('providerId') || '', open: sp.get('open') || '' }; // 全局搜索 / 概览跳转
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const d = ov.data;
@@ -61,7 +64,7 @@ export default function CapacityPage() {
           </div>
           <Tabs items={tabs} value={tab} onChange={setTab} className="mb-4" idPrefix="cap" />
           <div id="cap-panel" role="tabpanel" aria-labelledby={`cap-${tab}`}>
-            {tab === 'overview' ? <OverviewTab ov={d} onJump={setTab} /> : tab === 'steps' ? <StepsPanel platforms={d.platforms} /> : <ResourceTab key={tab} kind={tab} platforms={d.platforms} refreshKey={tick} />}
+            {tab === 'overview' ? <OverviewTab ov={d} onJump={setTab} /> : tab === 'steps' ? <StepsPanel platforms={d.platforms} /> : <ResourceTab key={tab} kind={tab} platforms={d.platforms} refreshKey={tick} prefill={prefill} />}
           </div>
         </>
       )}

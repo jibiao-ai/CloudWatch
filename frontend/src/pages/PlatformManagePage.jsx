@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Pencil, PlugZap, Plus, RefreshCw, Trash2, RotateCw } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
@@ -40,7 +41,8 @@ export default function PlatformManagePage() {
   const canSwitch = useCan('provider:write_switch');
   const canExport = useCan('provider:export');
 
-  const list = useListQuery('providers', providerApi.getProviderList, { page: 1, pageSize: 10, keyword: '', envType: '', status: '', sort: null });
+  const [sp] = useSearchParams();
+  const list = useListQuery('providers', providerApi.getProviderList, { page: 1, pageSize: 10, keyword: '', envType: '', status: '', sort: null }, { keyword: sp.get('keyword') });
   const { query, setQuery } = list;
   const [wizard, setWizard] = useState({ open: false, provider: null, key: 0 });
   const [del, setDel] = useState({ target: null, impact: null, loading: false, busy: false });

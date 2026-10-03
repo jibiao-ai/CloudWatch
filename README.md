@@ -18,11 +18,11 @@
 | 共享组件（CustomSelect / ConfirmModal / Toast / Pagination / Skeleton / EmptyState / StatusDot / CapacityBar / RangeSelector / DataTable / Drawer / Modal / FullscreenButton …） | ✅ |
 | 布局 + 侧栏（权限树生成 / 折叠持久化 / 图标模式 / 移动抽屉）+ 路由守卫 + 403/404/500 | ✅ |
 | 登录 / 强制改密 / 个人信息 | ✅ |
-| 运维概览（KPI · 容量条 · 趋势图 · 平台概况 · 高负载节点） | ✅ |
+| 平台概览（KPI · 容量水位 · 使用率趋势 · 各平台概况 · 高负载节点 · 活跃告警 · 优化建议；真实后端） | ✅ |
 | **平台管理**（三步向导：基本信息 / 认证信息 / 高级 · 认证填完才可「验证连接」 · 真实验证六组件域名 HTTP 连通 + Keystone Token · 同步入库 · 自动同步 · 写操作开关 · 影响范围删除） | ✅ 真实后端 |
 | 用户管理（含单个/批量删除，权限码 `user:delete`；不可删自己与最后一个超级管理员）/ 角色管理（功能权限树 + 数据权限三级 allow/deny）/ 审计日志 / 域名配置 / 系统配置 | ✅ |
 | 统一资源管理 / 资源视图 / 巡检 / 监控中心 / 容量 / 告警 / 拓扑 / 运营分析 | ⏳ 菜单与权限码已预留（占位页），待接口文档 |
-| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；**域名配置（hosts 映射 / 内置 DNS / Docker 注入）**；**平台管理（providers / tasks）**；其余模块（用户/角色/概览指标）暂为 mock（概览与角色数据范围的平台列表已读真实库） |
+| **后端（Go + MariaDB/MySQL）** | 🟡 已实现：认证 / 系统配置（5 组）/ 审计日志 / 图片资源 / 数据保留清理；**域名配置（hosts 映射 / 内置 DNS / Docker 注入）**；**平台管理（providers / tasks）**；**平台概览（/dashboard）与全局搜索（/search）**；其余模块（用户/角色）暂为 mock（角色数据范围的平台列表已读真实库） |
 
 ## 系统配置（真实后端）
 
@@ -144,7 +144,7 @@ npm run lint:rules          # 规则扫描（见下）
 可用 `zhaolei`（已锁定）、`chenjie`（已禁用）体验 423 / 403 登录分支。
 
 ### mock 模式（`VITE_USE_MOCK`）
-- `hybrid`（默认）：认证 / 系统配置 / 审计日志 / 图片资源 / 登录页信息 / 未读告警走**真实后端**，平台/用户/角色/概览仍为 mock；**域名配置走真实后端**；`vite dev/preview` 把 `/api` 代理到 `127.0.0.1:8080`（`VITE_PROXY_TARGET` 可改）。
+- `hybrid`（默认）：认证 / 系统配置 / 审计日志 / 图片资源 / 登录页信息 / 未读告警走**真实后端**，用户/角色仍为 mock；平台概览、全局搜索走真实后端；**域名配置走真实后端**；`vite dev/preview` 把 `/api` 代理到 `127.0.0.1:8080`（`VITE_PROXY_TARGET` 可改）。
 - `true`：全部 mock，无需后端。`false`：全部真实后端。
 
 ### 对接真实后端
@@ -197,7 +197,7 @@ npm run lint:rules          # 规则扫描（见下）
 ### 第15轮修复
 - **域名配置**：新增映射默认组件增加 `gnocchi`（`<gnocchi>.<根域名>`）；迁移 0006 为已有映射补上 gnocchi，启动时自动同步 hosts。
 - **平台管理**：自动补全并验证的组件增至 7 个（keystone / neutron / nova / cinder / glance / **gnocchi** / emla），验证连接逐个检测 gnocchi 域名的解析与 HTTP 连通性。
-- **控制台 IP 超链接**：平台管理列表、详情抽屉、概览页的控制台 IP 可点击，新标签页打开 `https://<IP>`（若录入值自带 http(s):// 则原样使用）。
+- **控制台 IP 超链接**：平台管理列表、详情抽屉、平台概览页的控制台 IP 可点击，新标签页打开 `https://<IP>`（若录入值自带 http(s):// 则原样使用）。
 - **文案**：「云管标识」统一改为「云贯标」。
 
 ### 第16轮修复（前端布局）
@@ -373,3 +373,27 @@ npm run lint:rules          # 规则扫描（见下）
 
 - 监控中心「宿主机」「集群存储」页签右侧补上数量角标（与服务状态、物理节点一致）：`PerformancePage` 统一请求 `/monitor/{id}/hosts`、`/pools`，页签角标与列表共用同一份数据（`HostsTab`/`PoolsTab` 通过 `q` 属性接收，不再各自请求）。
 - 去掉「系统管理」分组及折叠：平台管理、用户管理、角色管理、审计日志、域名配置、系统配置均为侧栏独立入口（后端 `perm.tree` 与前端 mock 菜单同步调整；路径、权限码不变，Sidebar/Breadcrumb 去掉对 `system` 分组的特判）。
+
+## 第35轮：标签页图标跟随主色 / 平台概览重做 / 全局搜索 / 角色管理分页
+
+**1. 浏览器标签页图标（Bug 修复）**
+- 根因：`public/favicon.svg` 是写死的红色静态文件，主题代码从未改动过它。
+- 现在 `utils/theme.js` 的 `applyBrandColor()` 同时生成 SVG data URI 图标（底色 = 当前主色，线条按主色亮度自动选深/白），写入 `<link id="app-favicon">`；系统配置里换主色（含预览）、换 logo 都会同步更新。
+- 配色缓存到 localStorage(`cw_fav`)，`index.html` 在首屏绘制前就读取，刷新不会先闪一下红色。
+- 后端 `primaryColor` 是唯一来源；登录页同样生效。
+
+**2. 平台概览（原「概览 / 运维概览」改名并重做，接真实后端）**
+- 菜单、权限字典、页面标题统一为「平台概览」（权限码 `dashboard:view` 不变）。
+- 后端：`GET /api/dashboard/overview`（汇总资产、监控、告警、优化建议；按 `capacity/monitor/alert/analytics:view` 分区块返回，无权限的区块不返回）、`GET /api/dashboard/trend?range=6h|24h|7d|30d&providerId=`（来自监控历史样本，按时间桶取平均）。
+- 前端：KPI（平台在线/总数、计算节点、虚拟机、活跃告警、平台服务、资产采集）→ 容量水位（vCPU/内存分配、存储使用）→ 使用率趋势 + 高负载节点 TOP6 → 各平台概况表 → 最新活跃告警 + 优化建议；所有指标可点击跳转到对应功能；顶部可按平台筛选。已删除 mock 的概览数据。
+- 组件拆分在 `components/dashboard/*`，页面远小于 400 行。
+
+**3. 全局搜索（顶栏 Ctrl/⌘ + K）**
+- 后端 `GET /api/search?q=&limit=`：覆盖云平台、虚拟机、物理节点、计算节点、云硬盘、虚拟网卡、集群存储、监控节点 / 磁盘 / 服务、告警、域名映射（主机地址）；多个关键词空格分隔需同时命中；按名称 / IP / MAC / 序列号等字段匹配，并告诉前端「命中了哪个字段」；按用户权限逐组过滤；`internal/search` 有单测。
+- 前端 `components/search/GlobalSearch.jsx`：250ms 防抖、分组结果、命中高亮、↑↓ 选择 / Enter 跳转 / Esc 关闭、弹层走 Portal 实色卡片。
+- 跳转：资产类 → `/capacity?tab=&keyword=&providerId=&open=`（自动打开详情抽屉）；监控类 → `/monitor?tab=&pid=&kw=`；告警 → `/alerts?open=<id>`（直接打开详情）；平台 → `/system/providers?keyword=`；域名映射 → `/system/domain#mappings`。
+- `useListQuery` 新增第 4 个参数 `override`（URL 预填，覆盖已保存的筛选并回到第 1 页）；`useClientTable` 的关键字改为多词 AND。
+
+**4. 角色管理分页**
+- 角色列表接入 `useListQuery` + `DataTable` 分页（与用户管理一致：10/20/50 条每页、跳页、状态保持），新增「名称/编码/描述」搜索与「内置/自定义」筛选；删除当前页最后一条自动回上一页。
+- `roleApi.getRolePage`（带分页参数）；`getRoleList()` 仍返回全量，供用户管理的角色下拉使用。

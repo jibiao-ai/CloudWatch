@@ -8,7 +8,7 @@
  */
 import { create } from 'zustand';
 import { tokenStorage } from '../utils/auth';
-import { applyTheme, applyBrandColor, DEFAULT_PRIMARY } from '../utils/theme';
+import { applyTheme, applyBrandColor, setFaviconLogo, DEFAULT_PRIMARY } from '../utils/theme';
 
 const THEME_KEY = 'cw_theme';
 const COLLAPSE_KEY = 'cw_sidebar_collapsed';
@@ -81,6 +81,7 @@ export const useStore = create((set, get) => ({
   brand: DEFAULT_BRAND,
   setBrand: (patch) => {
     const brand = { ...get().brand, ...patch };
+    if (patch.logoUrl !== undefined) setFaviconLogo(brand.logoUrl);
     applyBrandColor(brand.primaryColor, get().theme === 'dark');
     set({ brand });
   },

@@ -11,8 +11,13 @@ export function useClientTable({ rows, columns, searchText, filter, initialSort 
   const [pg, setPg] = useState({ page: 1, pageSize: ps });
 
   const filtered = useMemo(() => {
-    const k = keyword.trim().toLowerCase();
-    return rows.filter((r) => (!filter || filter(r)) && (!k || searchText(r).toLowerCase().includes(k)));
+    const ws = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean); // 多个词（空格分隔）需同时命中，与全局搜索一致
+    return rows.filter((r) => {
+      if (filter && !filter(r)) return false;
+      if (!ws.length) return true;
+      const t = searchText(r).toLowerCase();
+      return ws.every((w) => t.includes(w));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, keyword, filter]);
 

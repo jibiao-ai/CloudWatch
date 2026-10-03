@@ -3,7 +3,7 @@
  * 前端 Sidebar 只渲染此处返回的菜单，并再用 hasPermission 过滤；planned=true 表示模块尚在规划，页面为占位。
  */
 const TREE = [
-  { code: 'overview', name: '概览', icon: 'LayoutDashboard', children: [{ code: 'dashboard', name: '运维概览', path: '/dashboard', permission: 'dashboard:view', icon: 'Gauge' }] },
+  { code: 'overview', name: '平台概览', icon: 'LayoutDashboard', children: [{ code: 'dashboard', name: '平台概览', path: '/dashboard', permission: 'dashboard:view', icon: 'Gauge' }] },
   { code: 'resource-mgmt', name: '统一资源管理', icon: 'Boxes', children: [{ code: 'resource-mgmt-home', name: '资源纳管', path: '/planned/resource-mgmt', permission: 'resource:view', icon: 'Boxes', planned: true }] },
   { code: 'resource-view', name: '统一资源视图', icon: 'LayoutList', children: [{ code: 'resource-view-home', name: '资源总览', path: '/planned/resource-view', permission: 'resource:view', icon: 'LayoutList', planned: true }] },
   { code: 'inspection', name: '自动化巡检', icon: 'ClipboardCheck', children: [{ code: 'inspection-home', name: '巡检任务', path: '/planned/inspection', permission: 'inspection:view', icon: 'ClipboardCheck', planned: true }] },

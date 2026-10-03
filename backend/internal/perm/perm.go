@@ -75,7 +75,7 @@ func planned(code, name, group, perm, icon string) MenuItem {
 }
 
 var tree = []MenuGroup{
-	{"overview", "概览", "LayoutDashboard", []MenuItem{{Code: "dashboard", Name: "运维概览", Path: "/dashboard", Permission: "dashboard:view", Icon: "Gauge"}}},
+	{"overview", "平台概览", "LayoutDashboard", []MenuItem{{Code: "dashboard", Name: "平台概览", Path: "/dashboard", Permission: "dashboard:view", Icon: "Gauge"}}},
 	{"resource-mgmt", "统一资源管理", "Boxes", []MenuItem{planned("resource-mgmt-home", "资源纳管", "resource-mgmt", "resource:view", "Boxes")}},
 	{"resource-view", "统一资源视图", "LayoutList", []MenuItem{planned("resource-view-home", "资源总览", "resource-view", "resource:view", "LayoutList")}},
 	{"inspection", "自动化巡检", "ClipboardCheck", []MenuItem{planned("inspection-home", "巡检任务", "inspection", "inspection:view", "ClipboardCheck")}},

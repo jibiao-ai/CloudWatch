@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme="light">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link id="app-favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CloudWatch · 私有云可观测平台</title>
     <script>
@@ -12,6 +12,17 @@
           var t = localStorage.getItem('cw_theme');
           if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           document.documentElement.dataset.theme = t;
+          // 标签页图标：用上次缓存的主色，避免首屏先闪默认红色
+          var f = JSON.parse(localStorage.getItem('cw_fav') || 'null');
+          if (f && f.rgb) {
+            var bg = 'rgb(' + f.rgb.join(',') + ')', ink = 'rgb(' + String(f.onPrimary).split(' ').join(',') + ')';
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="' + bg + '"/>'
+              + '<path d="M6 32C13 20 22 14 32 14s19 6 26 18c-7 12-16 18-26 18S13 44 6 32z" fill="none" stroke="' + ink + '" stroke-width="3.2" stroke-linejoin="round"/>'
+              + '<circle cx="32" cy="32" r="11.5" fill="none" stroke="' + ink + '" stroke-width="2.6"/>'
+              + '<path d="M32 32V24.5M32 32l5.6 3.2" stroke="' + ink + '" stroke-width="2.8" stroke-linecap="round"/>'
+              + '<circle cx="32" cy="32" r="2.2" fill="' + ink + '"/></svg>';
+            document.getElementById('app-favicon').setAttribute('href', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+          }
         } catch (e) {}
       })();
     </script>

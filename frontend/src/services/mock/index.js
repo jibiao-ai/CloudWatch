@@ -7,7 +7,6 @@ import axios, { AxiosError } from 'axios';
 import { seedProviders, seedRoles, seedUsers, seedSettings, genAudit, MOCK_PASSWORDS } from './seed';
 import { buildMenus } from './menus';
 import { pickPolicy } from '../../utils/validators';
-import { dashboardOverview, dashboardTrend } from './dashboard';
 
 const DB_KEY = 'cw_mock_db_v1';
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -433,7 +432,14 @@ on('post', '/users/:id/reset-password', ({ params, ctx }) => {
 
 /* -- 角色 -- */
 const roleView = (r) => ({ ...r, userCount: db.users.filter((u) => u.roleIds.includes(r.id)).length });
-on('get', '/roles', () => db.roles.map(roleView), { need: 'role:view' });
+on('get', '/roles', ({ query }) => {
+  // 带 page 参数 → 分页（角色管理页）；否则返回全量数组（用户页的角色下拉、权限计算等）
+  if (!query.page && !query.pageSize) return db.roles.map(roleView);
+  const kw = String(query.keyword || '').trim().toLowerCase();
+  const list = db.roles.map(roleView).filter((r) => (!kw || `${r.name} ${r.code} ${r.description || ''}`.toLowerCase().includes(kw))
+    && (!query.type || (query.type === 'builtin') === !!r.builtin));
+  return paginate(list, query);
+}, { need: 'role:view' });
 on('get', '/roles/scope-tree', ({ ctx }) => ({
   providers: ctx.providers.map((p) => ({
     value: p.id, label: p.name,
@@ -563,9 +569,7 @@ on('post', '/settings/alert-channels/test', async ({ body }) => {
   return { ok: true, message: '测试消息已发送' };
 }, { need: 'settings:update' });
 
-/* -- 概览 -- */
-on('get', '/dashboard/overview', ({ query, ctx }) => dashboardOverview(ctx.providers, query), { need: 'dashboard:view', providers: true });
-on('get', '/dashboard/trend', ({ query }) => dashboardTrend(query), { need: 'dashboard:view' });
+/* -- 概览：已改为真实后端（/dashboard、/search） -- */
 on('get', '/alerts/unread-count', () => ({ count: 7 }));
 
 /* ---------------- 导出 xlsx ---------------- */
@@ -579,7 +583,7 @@ async function toXlsxBlob(payload) {
 }
 
 /* ---------------- 混合模式：这些前缀走真实后端，其余仍由本文件 mock ---------------- */
-export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts', '/monitor', '/capacity', '/topology', '/analytics', '/domain-config', '/providers', '/tasks'];
+export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts', '/monitor', '/capacity', '/topology', '/analytics', '/domain-config', '/providers', '/tasks', '/dashboard', '/search'];
 const isReal = (path) => REAL_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : `${p}/`) || path === p.replace(/\/$/, ''));
 
 let realHttp;

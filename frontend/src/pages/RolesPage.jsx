@@ -12,10 +12,14 @@ import EmptyState from '../components/EmptyState';
 import Skeleton from '../components/Skeleton';
 import RoleEditModal from '../components/role/RoleEditModal';
 import { roleApi } from '../services/api';
-import { useAsync } from '../hooks/useAsync';
+import SearchInput from '../components/SearchInput';
+import CustomSelect from '../components/CustomSelect';
+import { useListQuery } from '../hooks/useListQuery';
 import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { USER_STATUS } from '../data/dict';
+
+const TYPE_OPTS = [{ value: 'builtin', label: '内置' }, { value: 'custom', label: '自定义' }];
 
 /** RolesPage —— 角色管理：内置角色只读（仅可复制为新角色）/ 权限配置弹窗 / 角色下用户抽屉 */
 export default function RolesPage() {
@@ -23,7 +27,8 @@ export default function RolesPage() {
   const canCreate = useCan('role:create');
   const canUpdate = useCan('role:update');
   const canDelete = useCan('role:delete');
-  const { data, loading, refreshing, error, reload } = useAsync(() => roleApi.getRoleList(), []);
+  const list = useListQuery('roles', roleApi.getRolePage, { page: 1, pageSize: 10, keyword: '', type: '' });
+  const { query, setQuery, refreshing, reload } = list;
   const [edit, setEdit] = useState({ open: false, role: null, key: 0 });
   const [del, setDel] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -38,7 +43,11 @@ export default function RolesPage() {
   };
   const doDelete = async () => {
     setBusy(true);
-    try { await roleApi.deleteRole(del.id); toast.success('角色已删除', del.name); setDel(null); reload(); } catch (e) { toast.error('删除失败', e.message); } finally { setBusy(false); }
+    try {
+      await roleApi.deleteRole(del.id); toast.success('角色已删除', del.name); setDel(null);
+      // 当前页被删空时回到上一页
+      if (list.rows.length <= 1 && query.page > 1) setQuery({ page: query.page - 1 }, { resetPage: false }); else reload();
+    } catch (e) { toast.error('删除失败', e.message); } finally { setBusy(false); }
   };
   const doCopy = async () => {
     const e = {};
@@ -71,7 +80,12 @@ export default function RolesPage() {
         <button type="button" className="btn-default" onClick={reload}><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> 刷新</button>
         {canCreate && <button type="button" className="btn-primary" onClick={() => setEdit({ open: true, role: null, key: Date.now() })}><Plus size={16} /> 新增角色</button>}
       </>} />
-      <DataTable columns={columns} rows={data || []} rowKey="id" loading={loading} refreshing={refreshing} error={error} onRetry={reload} empty={{ title: '暂无角色' }} />
+      <DataTable columns={columns} rows={list.rows} rowKey="id" loading={list.loading} refreshing={refreshing} error={list.error} onRetry={reload} empty={{ title: '暂无角色' }}
+        page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })}
+        toolbar={<>
+          <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="搜索角色名称 / 编码 / 描述" width={280} />
+          <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="类型" aria-label="角色类型" value={query.type} onChange={(type) => setQuery({ type })} options={TYPE_OPTS} /></div>
+        </>} />
       {edit.open && <RoleEditModal key={edit.key} open role={edit.role} onClose={() => setEdit({ open: false, role: null, key: 0 })} onSaved={() => { setEdit({ open: false, role: null, key: 0 }); reload(); }} />}
 
       <Modal open={!!copy} width={440} title={`复制角色：${copy?.name || ''}`} subtitle="复制其全部功能权限与数据权限，生成可编辑的自定义角色" onClose={() => setCopy(null)}

@@ -62,7 +62,60 @@ export function applyBrandColor(hex, isDark) {
   root.setProperty('--c-primary', trip(rgb));
   root.setProperty('--c-primary-hover', trip(hover));
   root.setProperty('--c-primary-text', trip(text));
-  root.setProperty('--c-on-primary', luminance(rgb) > 0.6 ? '20 20 24' : '255 255 255');
+  const onPrimary = luminance(rgb) > 0.6 ? '20 20 24' : '255 255 255';
+  root.setProperty('--c-on-primary', onPrimary);
+  applyFavicon(rgb, onPrimary);
+}
+
+/* ---------------- 浏览器标签页图标（跟随主色） ---------------- */
+const FAV_KEY = 'cw_fav';
+let favLogo = '';
+
+/** 按主色生成与 Logo 同款的 SVG 图标（data URI），底色=主色，线条=按钮上文字色 */
+export function buildFaviconDataUri(rgb, onPrimary) {
+  const bg = `rgb(${rgb.join(',')})`;
+  const ink = `rgb(${String(onPrimary).split(' ').join(',')})`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">`
+    + `<rect width="64" height="64" rx="16" fill="${bg}"/>`
+    + `<path d="M6 32C13 20 22 14 32 14s19 6 26 18c-7 12-16 18-26 18S13 44 6 32z" fill="none" stroke="${ink}" stroke-width="3.2" stroke-linejoin="round"/>`
+    + `<circle cx="32" cy="32" r="11.5" fill="none" stroke="${ink}" stroke-width="2.6"/>`
+    + `<path d="M32 32V24.5M32 32l5.6 3.2" stroke="${ink}" stroke-width="2.8" stroke-linecap="round"/>`
+    + `<circle cx="32" cy="32" r="2.2" fill="${ink}"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function writeFavicon(href, type) {
+  if (typeof document === 'undefined') return;
+  let link = document.getElementById('app-favicon');
+  if (!link) {
+    link = document.createElement('link');
+    link.id = 'app-favicon';
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  if (link.getAttribute('href') !== href) {
+    // 部分浏览器只在替换节点时才刷新标签页图标
+    const next = link.cloneNode();
+    next.setAttribute('href', href);
+    if (type) next.setAttribute('type', type); else next.removeAttribute('type');
+    link.replaceWith(next);
+  }
+}
+
+/** 同步标签页图标：配置了自定义 Logo 时用 Logo，否则按主色生成 */
+export function applyFavicon(rgb, onPrimary) {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify({ rgb, onPrimary })); } catch { /* ignore */ }
+  if (favLogo) { writeFavicon(favLogo, ''); return; }
+  writeFavicon(buildFaviconDataUri(rgb, onPrimary), 'image/svg+xml');
+}
+
+/** 自定义 Logo 变化时调用；传空串恢复为主色图标 */
+export function setFaviconLogo(url) {
+  favLogo = url || '';
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(FAV_KEY) || 'null'); } catch { /* ignore */ }
+  const rgb = cached?.rgb || hexToRgb(DEFAULT_PRIMARY);
+  applyFavicon(rgb, cached?.onPrimary || '255 255 255');
 }
 
 export function applyTheme(theme) {

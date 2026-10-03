@@ -1,11 +1,12 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Menu, Moon, Sun, Bell, Search } from 'lucide-react';
+import { Menu, Moon, Sun, Bell } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Breadcrumb from './Breadcrumb';
 import UserMenu from './UserMenu';
 import FullscreenButton from './FullscreenButton';
 import Skeleton from './Skeleton';
+import GlobalSearch from './search/GlobalSearch';
 import Portal from './Portal';
 import { useStore } from '../store/useStore';
 import { dashboardApi, providerApi } from '../services/api';
@@ -77,10 +78,7 @@ export default function MainLayout() {
             <button type="button" className="btn-icon -ml-2" aria-label="打开菜单" onClick={() => setMobileOpen(true)}><Menu size={19} /></button>
           )}
           <div className="min-w-0 flex-1"><Breadcrumb /></div>
-          <button type="button" className="hidden md:flex items-center gap-2 h-9 w-56 px-3 rounded-md bg-muted text-fg-subtle text-[13px] hover:bg-hover transition" aria-label="全局搜索" title="全局搜索（规划中）">
-            <Search size={15} /> 搜索平台 / 资源…
-            <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-card border border-line text-fg-muted">Ctrl K</kbd>
-          </button>
+          <GlobalSearch />
           <Link to="/alerts" className="btn-icon relative" aria-label={`告警通知，${unread} 条未确认`} title="告警中心" hidden={!hasPermission('alert:view')}>
             <Bell size={18} />
             {unread > 0 && <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-on text-[10px] leading-4 text-center font-medium">{unread > 99 ? '99+' : unread}</span>}

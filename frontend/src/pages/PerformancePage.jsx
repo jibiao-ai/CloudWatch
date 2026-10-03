@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Play } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
@@ -29,13 +29,22 @@ export default function PerformancePage() {
   const toast = useToast();
   const canCollect = useCan('monitor:collect');
   const plats = useAsync(() => monitorApi.getOverview(), []);
-  const [pid, setPid] = useState('');
   const [sp] = useSearchParams();
+  const [pid, setPid] = useState(sp.get('pid') || '');
   const [tab, setTab] = useState(['overview', 'services', 'nodes', 'hosts', 'disks', 'vms', 'pools', 'steps'].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营分析跳转到指定页签
   const [range, setRange] = useState('6h');
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
-  const [jump, setJump] = useState({ n: 0, kw: '' }); // 总览全局搜索跳转：带入目标页签的关键字
+  const [jump, setJump] = useState({ n: 0, kw: sp.get('kw') || '' }); // 总览全局搜索跳转：带入目标页签的关键字
+  const spKey = sp.toString();
+  const firstSp = useRef(true);
+  useEffect(() => { // 全局搜索 / 概览在本页内再次跳转：同步平台、页签与关键字
+    if (firstSp.current) { firstSp.current = false; return; }
+    if (sp.get('pid')) setPid(sp.get('pid'));
+    const t = sp.get('tab');
+    if (['overview', 'services', 'nodes', 'hosts', 'disks', 'vms', 'pools', 'steps'].includes(t)) setTab(t);
+    setJump((j) => ({ n: j.n + 1, kw: sp.get('kw') || '' }));
+  }, [spKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!pid && plats.data?.length) setPid(plats.data[0].id); }, [plats.data, pid]);
   const snap = useAsync(() => (pid ? monitorApi.getSnapshot(pid) : Promise.resolve(null)), [pid, tick]);
   const hosts = useAsync(() => (pid ? monitorApi.getHosts(pid) : Promise.resolve(null)), [pid, tick]); // 宿主机 / 集群存储：页签角标与列表共用同一份数据

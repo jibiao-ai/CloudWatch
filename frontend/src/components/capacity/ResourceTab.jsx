@@ -14,7 +14,7 @@ const DEFAULT_SORT_KEY = 'providerName';
  * ResourceTab —— 资产管理单类资源列表：全部平台聚合；服务端搜索 / 状态与平台筛选 / 排序 / 分页（默认 10 条/页，与告警中心一致）
  * 点击行打开详情抽屉（全部字段 + 接口原始 JSON）
  */
-export default function ResourceTab({ kind, platforms, refreshKey, onCounted }) {
+export default function ResourceTab({ kind, platforms, refreshKey, onCounted, prefill }) {
   const [facets, setFacets] = useState([]);
   const [all, setAll] = useState(0);
   const initSort = { key: DEFAULT_SORT_KEY, order: 'asc' };
@@ -24,7 +24,7 @@ export default function ResourceTab({ kind, platforms, refreshKey, onCounted }) 
     setAll(res.all || 0);
     onCounted?.(kind, res.all || 0);
     return res;
-  }, { page: 1, pageSize: 10, keyword: '', providerId: '', status: '', sort: initSort });
+  }, { page: 1, pageSize: 10, keyword: '', providerId: '', status: '', sort: initSort }, { keyword: prefill?.keyword, providerId: prefill?.providerId, status: prefill?.keyword || prefill?.providerId ? '' : undefined });
   const { query, setQuery } = list;
   const first = useRef(true);
   useEffect(() => {
@@ -33,6 +33,13 @@ export default function ResourceTab({ kind, platforms, refreshKey, onCounted }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
   const [detail, setDetail] = useState(null);
+  const opened = useRef('');
+  useEffect(() => { // 全局搜索跳转：列表加载后自动打开目标资源的详情抽屉
+    const id = prefill?.open;
+    if (!id || opened.current === id || list.loading || list.refreshing) return;
+    const hit = list.rows.find((r) => String(r.id) === id);
+    if (hit) { opened.current = id; setDetail({ ...hit }); }
+  }, [prefill?.open, list.rows, list.loading, list.refreshing]);
   const tableRef = useRef(null);
   const anchor = useCallback(() => {
     const root = tableRef.current;

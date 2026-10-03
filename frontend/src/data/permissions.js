@@ -4,7 +4,7 @@
  * 菜单可见性与用户实际权限一律以后端 /auth/me 返回为准，前端不硬编码。
  */
 export const PERMISSION_MODULES = [
-  { code: 'dashboard', name: '概览', menu: 'dashboard:view', buttons: [] },
+  { code: 'dashboard', name: '平台概览', menu: 'dashboard:view', buttons: [] },
   {
     code: 'provider', name: '平台管理', menu: 'provider:view',
     buttons: [
