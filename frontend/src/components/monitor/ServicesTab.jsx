@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CheckCircle2, AlertTriangle, Layers } from 'lucide-react';
 import MonTable from './MonTable';
 import HealthTag from './HealthTag';
+import { PlatformCell } from './cells';
 import CustomSelect from '../CustomSelect';
 import StatCard from '../StatCard';
 import { SERVICE_CATEGORIES, serviceCategory, serviceName } from '../../utils/monitorUtil';
@@ -12,13 +13,14 @@ const CATS = [{ value: '', label: '全部分类' }, ...SERVICE_CATEGORIES.map((c
 const kind = (s) => (s.state == null ? 'na' : s.state === 0 ? 'ok' : 'bad');
 
 /** ServicesTab —— 服务状态：友好命名（对照表）+ 分类 + 指标名 + 状态 + 实例数 + 采集时间 + 补充标签；可搜索 / 筛选 / 排序 / 分页 */
-export default function ServicesTab({ snap, initialKeyword }) {
+export default function ServicesTab({ rows: src, plat, allTotal, initialKeyword }) {
   const [st, setSt] = useState('');
   const [cat, setCat] = useState('');
-  const rows = useMemo(() => snap.services.map((s) => ({ ...s, label: serviceName(s.name), cat: serviceCategory(s.name), kind: kind(s) })), [snap.services]);
+  const rows = useMemo(() => src.map((s) => ({ ...s, label: serviceName(s.name), cat: serviceCategory(s.name), kind: kind(s) })), [src]);
   const cnt = useMemo(() => ({ ok: rows.filter((r) => r.kind === 'ok').length, bad: rows.filter((r) => r.kind === 'bad').length }), [rows]);
   const columns = useMemo(() => [
     { key: 'label', title: '服务名称', width: 200, sortable: true, render: (s) => <span className="font-medium">{s.label}</span> },
+    { key: 'platform', title: '所属云平台', width: 170, sortable: true, sortBy: (s) => s._p?.name, render: (s) => <PlatformCell platform={s._p} /> },
     { key: 'cat', title: '分类', width: 120, sortable: true, render: (s) => <span className="tag-default">{s.cat}</span> },
     { key: 'kind', title: '状态', width: 100, sortable: true, sortBy: (s) => (s.state == null ? -1 : s.state), render: (s) => <HealthTag value={s.state} okText="正常" badText="异常" /> },
     { key: 'instances', title: '实例数', width: 90, sortable: true, align: 'right', render: (s) => <span className="tabular-nums">{s.instances || '—'}</span> },
@@ -34,8 +36,8 @@ export default function ServicesTab({ snap, initialKeyword }) {
         <StatCard icon={CheckCircle2} label="运行正常" value={cnt.ok} hint="指标值 0 = 健康" tone="success" />
         <StatCard icon={AlertTriangle} label="运行异常" value={cnt.bad} hint="指标值非 0 = 不健康" tone={cnt.bad ? 'danger' : 'success'} />
       </div>
-      <MonTable columns={columns} rows={rows} keyFn={(s) => s.name} initialKeyword={initialKeyword} placeholder="搜索服务名称 / 指标名" filterFn={filterFn} emptyTitle="暂无服务状态数据"
-        searchText={(s) => `${s.label} ${s.name} ${s.cat}`} initialSort={{ key: 'kind', order: 'desc' }}
+      <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(s) => `${s._pid}|${s.name}`} initialKeyword={initialKeyword} placeholder="搜索服务名称 / 指标名 / 云平台" filterFn={filterFn} emptyTitle="暂无服务状态数据"
+        searchText={(s) => `${s._p?.name || ''} ${s.label} ${s.name} ${s.cat}`} initialSort={{ key: 'kind', order: 'desc' }}
         filters={() => (
           <>
             <div className="w-[130px]"><CustomSelect aria-label="状态筛选" value={st} onChange={setSt} options={STATUS} /></div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Copy, Lock, Pencil, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
@@ -36,6 +36,12 @@ export default function RolesPage() {
   const [copyF, setCopyF] = useState({ name: '', code: '' });
   const [copyErr, setCopyErr] = useState({});
   const [drawer, setDrawer] = useState({ role: null, users: null, loading: false });
+  const [selected, setSelected] = useState([]);
+  const [batchDel, setBatchDel] = useState(false);
+  useEffect(() => setSelected([]), [query.page, query.pageSize, query.keyword, query.type]);
+  const selRoles = list.rows.filter((r) => selected.includes(r.id));
+  // 选中项含内置角色或仍有用户的角色时，批量删除置灰（后端同样会拒绝）
+  const blockedReason = selRoles.some((r) => r.builtin) ? '选中项包含内置角色，不可删除' : selRoles.some((r) => r.userCount) ? '选中项包含仍有用户的角色，请先调整用户角色' : '';
 
   const openUsers = async (r) => {
     setDrawer({ role: r, users: null, loading: true });
@@ -48,6 +54,17 @@ export default function RolesPage() {
       // 当前页被删空时回到上一页
       if (list.rows.length <= 1 && query.page > 1) setQuery({ page: query.page - 1 }, { resetPage: false }); else reload();
     } catch (e) { toast.error('删除失败', e.message); } finally { setBusy(false); }
+  };
+  const doBatchDelete = async () => {
+    setBusy(true);
+    const ok = []; const fail = [];
+    for (const r of selRoles) {
+      try { await roleApi.deleteRole(r.id); ok.push(r); } catch (e) { fail.push(`${r.name}：${e.message}`); }
+    }
+    setBusy(false); setBatchDel(false); setSelected([]);
+    if (ok.length) toast.success('角色已删除', `${ok.length} 个`);
+    if (fail.length) toast.error(`${fail.length} 个角色删除失败`, fail.join('；'));
+    if (ok.length >= list.rows.length && query.page > 1) setQuery({ page: query.page - 1 }, { resetPage: false }); else reload();
   };
   const doCopy = async () => {
     const e = {};
@@ -82,6 +99,8 @@ export default function RolesPage() {
       </>} />
       <DataTable columns={columns} rows={list.rows} rowKey="id" loading={list.loading} refreshing={refreshing} error={list.error} onRetry={reload} empty={{ title: '暂无角色' }}
         page={query.page} pageSize={query.pageSize} total={list.total} onPageChange={(p) => setQuery(p, { resetPage: false })}
+        selectable={canDelete} selected={selected} onSelectedChange={setSelected}
+        selectionBar={canDelete && <Tooltip content={blockedReason}><span><button type="button" disabled={!!blockedReason} className="btn-default btn-sm !text-danger disabled:opacity-40" onClick={() => setBatchDel(true)}><Trash2 size={14} /> 批量删除</button></span></Tooltip>}
         toolbar={<>
           <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="搜索角色名称 / 编码 / 描述" width={280} />
           <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="类型" aria-label="角色类型" value={query.type} onChange={(type) => setQuery({ type })} options={TYPE_OPTS} /></div>
@@ -96,6 +115,7 @@ export default function RolesPage() {
         </div>
       </Modal>
       <ConfirmModal open={!!del} danger title={`删除角色「${del?.name || ''}」？`} description="此操作不可恢复。" targets={del ? [del.name] : []} impactList={del?.userCount ? [`该角色下仍有 ${del.userCount} 个用户，后端将拒绝删除，请先调整用户角色`] : ['已无用户使用该角色，删除后其权限配置一并移除']} confirmText="确认删除" loading={busy} onCancel={() => setDel(null)} onConfirm={doDelete} />
+      <ConfirmModal open={batchDel} danger title={`删除 ${selRoles.length} 个角色？`} description="此操作不可恢复。" targets={selRoles.map((r) => r.name)} impactList={['角色及其功能权限、数据权限配置一并移除', '已无用户使用这些角色']} confirmText="确认删除" loading={busy} onCancel={() => setBatchDel(false)} onConfirm={doBatchDelete} />
       <Drawer open={!!drawer.role} title={`角色用户：${drawer.role?.name || ''}`} subtitle={`共 ${drawer.users?.length ?? '…'} 个用户`} width={480} onClose={() => setDrawer({ role: null, users: null, loading: false })}>
         {drawer.loading ? <Skeleton.Table rows={5} cols={2} /> : !drawer.users?.length ? <EmptyState compact title="该角色下暂无用户" /> : (
           <ul className="divide-y divide-line rounded-lg border border-line">{drawer.users.map((u) => (

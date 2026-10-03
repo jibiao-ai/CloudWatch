@@ -86,13 +86,6 @@ func vmFacts(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time)
 		f.set("readyAvg", u.ReadyAvg, u.ReadyDays)
 		f.set("latAvg", u.LatAvg, u.LatDays)
 		f.set("fsMax", u.FsMax, u.FsDays)
-		if u.SwapMax != nil {
-			sw := 0.0
-			if *u.SwapMax > 0 {
-				sw = 1
-			}
-			f.set("swap", &sw, u.SwapDays)
-		}
 	}
 	if hasState && st.Status == status {
 		d := round1(now.Sub(st.Since).Hours() / 24)
@@ -319,9 +312,6 @@ func (c cand) optRow() map[string]any {
 		row["status"], row["statusText"] = strings.ToLower(s(r, "status")), s(r, "statusText")
 		for _, k := range []string{"cpuAvg", "cpuMax", "memAvg", "memMax", "writeAvg", "readyAvg", "latAvg", "fsMax"} {
 			row[k] = v(k)
-		}
-		if sw, ok := c.facts.Vals["swap"]; ok {
-			row["swap"] = sw > 0
 		}
 		if d, ok := c.facts.Vals["shutdownDays"]; ok {
 			row["shutdownDays"] = d

@@ -3,7 +3,7 @@
 ## 概念
 - 资源类型：`vm / host / pool / disk`（虚拟机侧 = vm；物理侧 = host+pool+disk）。
 - 策略 `Policy{Kind, Name, ResourceType, Enabled, WindowDays, Conds[], Scope, Advice, Builtin}`。内置策略 ID 固定英文：
-  `cpu_excess mem_excess cpu_tight mem_short longoff io_pressure disk_full zombie`（虚拟机侧 8）、`host_cpu host_mem pool_full orphan_disk`（物理侧 4）；自定义 `c_`+8位hex。
+  `cpu_excess mem_excess cpu_tight mem_short longoff io_pressure zombie`（虚拟机侧 7；disk_full 已于迁移 0015 删除，Swap 指标已取消）、`host_cpu host_mem pool_full orphan_disk`（物理侧 4）；自定义 `c_`+8位hex。
 - 条件 `Cond{Field, Op, Value, Join}`：`AND` 优先于 `OR`；分组内全部命中才算该组命中。
 - **持续型条件**：使用率类字段 + `<`/`<=`，或字段以 `Min` 结尾 → 必须 `Facts.Days[field] >= WindowDays` 才生效（避免刚开始采样就误判）；使用率类条件只对「运行中(active)」虚拟机生效。
 - 评估：`Engine.evaluate()` → `(policies, map[kind][]cand, map[kind]*polDiag)`；`cand.matched` / `isIgn`（已忽略）；忽略键 `providerId/resId`。
@@ -23,6 +23,6 @@ kind 为空时按 side 汇总全部策略，每行带 `kind / policy / key=kind|
 | 指标 | 来源 | 可得性 |
 |---|---|---|
 | vCPU/内存使用率、磁盘读写速率 | Gnocchi `cpu_util / memory.util / disk.read|write.bytes.rate` | 文档内，稳定 |
-| CPU 就绪占比、Swap、磁盘时延、虚机内文件系统使用率 | 候选指标名「尽力采集」(`monitor.ExtMetrics`) | 平台不提供则对应 4 条策略（vCPU紧张/内存不足/IO压力/磁盘空间高风险）恒无结果，不误报 |
+| CPU 就绪占比、磁盘时延、虚机内文件系统使用率 | 候选指标名「尽力采集」(`monitor.ExtMetrics`) | 平台不提供则对应策略（vCPU紧张/IO压力）恒无结果，不误报 |
 | 计算节点 CPU/内存 | 监控采集 `metric_samples` | 非持续型，立即生效 |
 | 集群存储 / 孤立磁盘 | 资产快照 | 立即生效 |

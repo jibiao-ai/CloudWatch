@@ -44,7 +44,6 @@ function metricCols(resType, rows) {
     add('readyAvg', pctCol('readyAvg', 'CPU就绪占比')); add('latAvg', msCol('latAvg', '磁盘时延')); add('fsMax', pctCol('fsMax', '文件系统使用率'));
     add('writeAvg', rateCol('writeAvg', '写I/O平均速率'));
     add('shutdownDays', { key: 'shutdownDays', title: '持续关机', width: 110, align: 'right', render: (r) => <span className="tabular-nums">{r.shutdownDays == null ? '-' : `${r.shutdownDays} 天`}</span> });
-    if (rows.some((r) => r.swap != null)) out.push({ key: 'swap', title: '内存交换', width: 100, render: (r) => (r.swap == null ? dash : r.swap ? '存在' : '不存在') });
   } else if (resType === 'host') {
     add('cpuAvg', pctCol('cpuAvg', 'CPU平均使用率')); add('cpuMax', pctCol('cpuMax', 'CPU最大使用率')); add('memAvg', pctCol('memAvg', '内存平均使用率')); add('memMax', pctCol('memMax', '内存最大使用率'));
   } else if (resType === 'pool') {

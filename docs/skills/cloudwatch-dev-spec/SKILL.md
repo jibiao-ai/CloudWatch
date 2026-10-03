@@ -78,6 +78,6 @@ hooks：`useAsync(fn, deps)`（loading/refreshing/error/reload）、`useListQuer
 - `references/iron-rules.md` — 铁律逐条说明与违规/正确示例
 - `references/frontend-patterns.md` — 页面/筛选/表格/弹层/日期选择/全局搜索 的代码范式
 - `references/backend-patterns.md` — handler、审计、权限、迁移、导出、分页范式
-- `references/analytics-policy-engine.md` — 运营分析优化策略引擎（12 条内置 + 自定义）与「无数据」排查
+- `references/analytics-policy-engine.md` — 运营分析优化策略引擎（11 条内置 + 自定义）与「无数据」排查
 - `references/deploy-and-verify.md` — 打包部署、远程验证、常见故障
 - `references/checklist.md` — 提交前检查清单

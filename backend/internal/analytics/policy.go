@@ -110,7 +110,6 @@ var Fields = []FieldDef{
 	pf("cpuAvg", ResVM, "vCPU平均使用率"), pf("cpuMax", ResVM, "vCPU最大使用率"), pf("cpuMin", ResVM, "vCPU最小使用率"),
 	pf("memAvg", ResVM, "内存平均使用率"), pf("memMax", ResVM, "内存最大使用率"), pf("memMin", ResVM, "内存最小使用率"),
 	pf("readyAvg", ResVM, "CPU就绪时间占比"),
-	{Key: "swap", Res: ResVM, Label: "内存交换(Swap)", Type: "enum", Ops: []string{"="}, Options: []Opt{{"yes", "存在"}, {"no", "不存在"}}},
 	{Key: "latAvg", Res: ResVM, Label: "磁盘平均读/写时延", Type: "ms", Unit: "ms", Ops: numOps},
 	pf("fsMax", ResVM, "文件系统使用率"),
 	{Key: "writeAvg", Res: ResVM, Label: "磁盘平均写I/O速率", Type: "rate", Unit: "KiB/s", Ops: numOps},
@@ -137,7 +136,7 @@ func fieldFor(res, key string) *FieldDef {
 
 // condRes 条件所属资源类型（Validate / 评估时由策略设置）。
 func (c *Cond) isUsage() bool {
-	for _, p := range []string{"cpu", "mem", "write", "ready", "lat", "fs", "swap"} {
+	for _, p := range []string{"cpu", "mem", "write", "ready", "lat", "fs"} {
 		if strings.HasPrefix(c.Field, p) {
 			return true
 		}
@@ -374,9 +373,6 @@ func (p *Policy) condEval(c Cond, f Facts) hit {
 	if !has {
 		return hit{}
 	}
-	if fd.Type == "enum" { // swap：1 存在 / 0 不存在
-		return hit{ok: (v > 0) == (fmt.Sprint(c.Value) == "yes"), text: fd.Label + " " + map[bool]string{true: "存在", false: "不存在"}[v > 0]}
-	}
 	if c.num == nil {
 		return hit{}
 	}
@@ -467,7 +463,18 @@ func parseConds(raw string) []Cond {
 	if json.Unmarshal([]byte(raw), &cs) != nil {
 		return nil
 	}
+	// 「内存交换(Swap)」指标已取消：历史策略里残留的该条件直接丢弃，并修正首条条件的连接符
+	kept := cs[:0]
+	for _, c := range cs {
+		if c.Field != "swap" {
+			kept = append(kept, c)
+		}
+	}
+	cs = kept
 	for i := range cs {
+		if i == 0 {
+			cs[i].Join = ""
+		}
 		if n, ok := toNum(cs[i].Value); ok {
 			cs[i].Value, cs[i].num = n, &n
 		}

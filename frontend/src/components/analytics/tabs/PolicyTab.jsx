@@ -11,7 +11,7 @@ import { useToast } from '../../../hooks/useToast';
 import { formatDateTime } from '../../../utils/format';
 import { RES_LABEL } from '../util';
 
-/** PolicyTab —— 运营分析 · 优化策略：内置 12 条（虚拟机侧 8 / 物理侧 4）可调阈值，另可新建自定义策略（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
+/** PolicyTab —— 运营分析 · 优化策略：内置 11 条（虚拟机侧 7 / 物理侧 4）可调阈值，另可新建自定义策略（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
 export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword = '' }) {
   const canEdit = useCan('analytics:policy_update');
   const toast = useToast();
@@ -21,7 +21,13 @@ export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword =
   const [busy, setBusy] = useState(false);
   const all = q.data?.list || [];
   const kw = keyword.trim().toLowerCase();
-  const list = kw ? all.filter((p) => `${p.name} ${RES_LABEL[p.resourceType] || ''} ${p.reason} ${p.scopeText}`.toLowerCase().includes(kw)) : all;
+  const [pg, setPg] = useState({ page: 1, pageSize: 10 });
+  const matched = kw ? all.filter((p) => `${p.name} ${RES_LABEL[p.resourceType] || ''} ${p.reason} ${p.scopeText}`.toLowerCase().includes(kw)) : all;
+  // 前端分页（与优化建议列表一致：默认每页 10 条）；筛选 / 删除后页码越界时回到最后一页
+  const maxPage = Math.max(1, Math.ceil(matched.length / pg.pageSize));
+  const page = Math.min(pg.page, maxPage);
+  const list = matched.slice((page - 1) * pg.pageSize, page * pg.pageSize);
+  useEffect(() => setPg((x) => (x.page === 1 ? x : { ...x, page: 1 })), [kw]);
   useEffect(() => {
     if (openKind && canEdit && all.length) { setModal({ open: true, policy: all.find((p) => p.kind === openKind) || null }); onOpened?.(); }
   }, [openKind, all.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -46,7 +52,8 @@ export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword =
   ];
   return (
     <>
-      <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload} empty={kw ? { title: '没有匹配的策略', description: '请调整全局搜索关键字' } : { title: '暂无策略' }}
+      <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload}
+        page={page} pageSize={pg.pageSize} total={matched.length} onPageChange={(p) => setPg((x) => ({ ...x, ...p }))} empty={kw ? { title: '没有匹配的策略', description: '请调整全局搜索关键字' } : { title: '暂无策略' }}
         toolbar={<h3 className="text-sm font-semibold text-fg">优化策略</h3>}
         extra={canEdit && <button type="button" className="btn-primary" onClick={() => setModal({ open: true, policy: null })}><Plus size={15} /> 创建优化策略</button>} />
       <PolicyModal open={modal.open} policy={modal.policy} meta={q.data || {}} onClose={close} onSaved={() => { close(); q.reload(); onSaved?.(); }} onIgnored={onSaved} />

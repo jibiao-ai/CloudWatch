@@ -43,8 +43,8 @@ func TestVMBuiltinPolicies(t *testing.T) {
 			usageFacts("active", 30, map[string]float64{"memAvg": 19.9}), usageFacts("shutoff", 30, map[string]float64{"memAvg": 5})},
 		{"vCPU紧张", builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: ">", Value: 80.0}, Cond{Field: "readyAvg", Op: ">", Value: 10.0, Join: "AND"}, active()),
 			usageFacts("active", 1, map[string]float64{"cpuAvg": 90, "readyAvg": 12}), usageFacts("active", 30, map[string]float64{"cpuAvg": 90, "readyAvg": 10})},
-		{"内存不足", builtin(ResVM, 30, Cond{Field: "memAvg", Op: ">", Value: 85.0}, Cond{Field: "swap", Op: "=", Value: "yes", Join: "AND"}, active()),
-			usageFacts("active", 30, map[string]float64{"memAvg": 90, "swap": 1}), usageFacts("active", 30, map[string]float64{"memAvg": 90, "swap": 0})},
+		{"内存不足", builtin(ResVM, 30, Cond{Field: "memAvg", Op: ">", Value: 85.0}, active()),
+			usageFacts("active", 30, map[string]float64{"memAvg": 90}), usageFacts("shutoff", 30, map[string]float64{"memAvg": 90})},
 		{"IO压力", builtin(ResVM, 30, Cond{Field: "latAvg", Op: ">", Value: 20.0}, active()),
 			usageFacts("active", 30, map[string]float64{"latAvg": 25}), usageFacts("active", 30, map[string]float64{"latAvg": 20})},
 		{"磁盘空间高风险", builtin(ResVM, 30, Cond{Field: "fsMax", Op: ">", Value: 90.0}, active()),
@@ -184,10 +184,13 @@ func TestVMFactsOf(t *testing.T) {
 	if _, ok := f.Vals["shutdownDays"]; ok {
 		t.Fatal("stale state must be ignored")
 	}
-	sw := 3.0
-	f = vmFacts(capacity.Row{"status": "ACTIVE"}, vmState{}, false, &Usage{SwapMax: &sw, SwapDays: 4}, now)
-	if f.Vals["swap"] != 1 || f.Days["swap"] != 4 {
-		t.Fatalf("swap should map to 1: %+v", f)
+	if _, ok := f.Vals["swap"]; ok {
+		t.Fatal("swap metric is cancelled")
+	}
+	// 历史策略里残留的 swap 条件在解析时被丢弃
+	cs := parseConds(`[{"field":"memAvg","op":">","value":85},{"field":"swap","op":"=","value":"yes","join":"AND"},{"field":"status","op":"=","value":"active","join":"AND"}]`)
+	if len(cs) != 2 || cs[0].Field != "memAvg" || cs[1].Field != "status" {
+		t.Fatalf("swap cond should be dropped: %+v", cs)
 	}
 }
 
