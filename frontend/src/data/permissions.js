@@ -56,7 +56,7 @@ export const PERMISSION_MODULES = [
     buttons: [{ code: 'settings:update', name: '保存配置' }],
   },
   { code: 'resource', name: '统一资源视图', menu: 'resource:view', buttons: [] },
-  { code: 'inspection', name: '自动化巡检', menu: 'inspection:view', buttons: [] },
+  { code: 'inspection', name: '自动化巡检', menu: 'inspection:view', buttons: [{ code: 'inspection:run', name: '发起巡检' }, { code: 'inspection:export', name: '导出报告' }, { code: 'inspection:config', name: '巡检设置' }, { code: 'inspection:delete', name: '删除报告' }] },
   { code: 'monitor', name: '监控中心', menu: 'monitor:view', buttons: [{ code: 'monitor:collect', name: '立即采集' }] },
   { code: 'capacity', name: '资产管理', menu: 'capacity:view', buttons: [{ code: 'capacity:collect', name: '立即采集' }] },
   {

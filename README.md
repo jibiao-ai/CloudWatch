@@ -445,3 +445,22 @@ npm run lint:rules          # 规则扫描（见下）
 - **物理节点总核数/使用核数**：Nova hypervisors 只覆盖计算节点，控制/存储节点原先为空。现按主机名 / IP 匹配资产管理的物理机 `cpuCores` 补全总核数；无 Nova 分配数据的节点，使用核数按 CPU 使用率 × 总核数估算并取整，直接显示整数核数（不带「≈」，已去掉 `coresEst`）。Nova 有值的节点仍以 Nova 为准。
 - **总览**：「虚拟机（Nova）」卡片改为「计算节点」（取计算节点数），「云主机总数」改为「虚拟机」。
 - **采集明细 /ecms/dashboard 失败**：定位为平台侧 EMLA 故障，而非我方超时或网络不可用。北京生产环境对 `dashboard_instances_vcpu_usage` / `dashboard_instances_memory_usage` 返回 HTTP 200，但 `results[].error` 内是平台内部 HTTP 500；不带 `metrics_filter` 的整体请求会一直挂起直至我方 30 秒超时；其余 dashboard 指标正常。现在采集步骤改为按指标过滤请求（路径含 `metrics_filter`），并在步骤错误中显示平台返回的原始错误。
+
+## 第40轮补充（Bug 修复 + 自动化巡检）
+
+### Bug 修复
+- **资产管理 · 物理节点状态分布**：`unmaintain_error` 显示为「恢复失败」（`capacity/labels.go`）。
+
+### 自动化巡检（菜单「自动化巡检 → 巡检报告」，路径 `/inspection`）
+对已对接的云平台**只读**巡检，数据来自已落库的监控快照、`metric_samples` 历史样本、告警中心、资产管理与运营分析策略；可选「巡检前先实时采集」（失败自动回退到最近一次数据，并在报告里提示）。
+
+- **21 个检查项**（`inspection/model.go` 的 `Catalog`）：平台控制服务状态、核心服务健康度、节点与计算服务状态、物理节点资源使用率、云资源使用情况、存储集群健康、**集群容量状态**（含按近 7 天增速的耗尽预测）、存储池容量与状态、磁盘健康（SMART）、固态盘寿命、**磁盘容量使用率**、**集群存储 IO 性能**、**磁盘延迟**、**集群正在告警**、云主机运行状态、**长期关机云主机**、**僵尸云主机**、**CPU / 内存使用率偏高的云主机**、云硬盘状态、监控数据时效与采集。长期关机 / 僵尸沿用运营分析的策略定义（`analytics.Engine.Hits`）。
+- **不包含**「平台许可与维保」「云产品许可」（按需求去掉，报告与检查项中均无此内容，单元测试会校验）。
+- **判定与评分**：每项结果为 正常 / 预警 / 异常 / 未采集；平台健康评分 = 100 − 12×异常项 − 4×预警项（未采集不计分）；综合评估取最差。阈值（固态盘寿命、磁盘/存储/存储池使用率、容量耗尽天数、vCPU/内存/节点 CPU/内存、磁盘 I/O、磁盘延迟、云主机偏高线、数据过期分钟、明细表行数）均可在「巡检设置」中调整并带校验；报告会保存本次使用的阈值快照。
+- **执行**：`POST /api/inspection/run` 立即返回任务（`tasks.kind='inspect'`），前端轮询进度；同一时刻只运行一次。定时巡检（每天 / 每周 + 时刻，东八区，触发窗口 30 分钟，按「已执行过」去重）；服务重启时中断的巡检任务置失败。
+- **Word 报告**（`inspection/docx*.go`，无第三方依赖，手写 OOXML）：封面（Logo / 品牌名 / 综合评估 / 评分 / 日期）→ 一、巡检结论总览 → 各平台「巡检详情」（环境信息、结果总览、按分组的检查项明细表、结论与建议）→ 巡检记录（含阈值表）；页眉页脚、页码。文件名 `云平台自动化巡检报告_yyyymmdd_hhmm.docx`。
+- **接口**：`GET /api/inspection/reports`（keyword/overall/trigger/from/to/sortKey/sortOrder/page/pageSize）、`GET /api/inspection/reports/{id}`、`GET /api/inspection/reports/{id}/export`、`DELETE /api/inspection/reports/{id}`、`POST /api/inspection/run`、`GET /api/inspection/tasks/{id}`、`GET|PUT /api/inspection/config`。权限 `inspection:view / run / export / config / delete`（迁移 `0016_inspection.sql` 给内置角色追加；管理员为 `*`），发起 / 导出 / 删除 / 修改设置均写审计日志。
+- **保留期**：报告按 `settings.Retention.InspectionDays` 清理（以完成时间计）。
+- **前端**：`pages/InspectionPage.jsx` + `components/inspection/*`（立即巡检弹窗 + 进度、报告详情抽屉、巡检设置弹窗、删除确认）。
+- **代码结构**：`monitor.VisibleNodes` 从 `api` 抽出，供巡检与监控中心共用「物理节点」口径。
+- **验证**：`go test ./...` 通过；本机 2 个演示平台实跑 42 项并导出 15 页 Word（LibreOffice 转 PDF 逐页检查）；Playwright 走通 发起巡检 → 详情 → 导出 Word → 设置。演示环境无 IOPS / 延迟 / 云主机使用率数据，对应项显示「未采集」。

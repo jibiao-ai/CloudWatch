@@ -288,6 +288,19 @@ export const alertApi = {
   exportAlerts: (params, opt) => blob('/alerts/export', params, opt),
 };
 
+/* ============================ 自动化巡检 ============================ */
+export const inspectionApi = {
+  list: (params) => get('/inspection/reports', params),
+  get: (id) => get(`/inspection/reports/${id}`),
+  /** 发起巡检：返回 { taskId }，用 pollTask 轮询 */
+  run: (providerIds) => post('/inspection/run', { providerIds }),
+  remove: (id) => del(`/inspection/reports/${id}`),
+  /** 导出 Word（.docx） */
+  exportDocx: (id, opt) => blob(`/inspection/reports/${id}/export`, undefined, opt),
+  getConfig: () => get('/inspection/config'),
+  saveConfig: (data) => put('/inspection/config', data, { skipErrorToast: true }),
+};
+
 export const dashboardApi = {
   getOverview: (params) => get('/dashboard/overview', params),
   getTrend: (params) => get('/dashboard/trend', params),

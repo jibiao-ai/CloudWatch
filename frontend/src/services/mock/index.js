@@ -583,7 +583,7 @@ async function toXlsxBlob(payload) {
 }
 
 /* ---------------- 混合模式：这些前缀走真实后端，其余仍由本文件 mock ---------------- */
-export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts', '/monitor', '/capacity', '/topology', '/analytics', '/domain-config', '/providers', '/tasks', '/dashboard', '/search'];
+export const REAL_PREFIXES = ['/auth/', '/settings', '/audit-logs', '/assets/', '/public/portal-info', '/alerts', '/monitor', '/capacity', '/topology', '/analytics', '/inspection', '/domain-config', '/providers', '/tasks', '/dashboard', '/search'];
 const isReal = (path) => REAL_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : `${p}/`) || path === p.replace(/\/$/, ''));
 
 let realHttp;
