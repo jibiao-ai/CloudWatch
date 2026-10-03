@@ -557,3 +557,36 @@ func (e *Engine) IgnoreList(ctx context.Context, plats []capacity.Platform, kind
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
 	return out, nil
 }
+
+// Hits 指定策略当前命中的资源（不含「已忽略」），供自动化巡检引用；返回的策略信息中 Enabled=false 表示该策略已停用。
+// providerID 非空时只评估该平台。每行同 OptRows，并带 kind / policy / reason。
+func (e *Engine) Hits(ctx context.Context, plats []capacity.Platform, providerID string, kinds ...string) (map[string][]map[string]any, map[string]Policy, error) {
+	ps, err := e.load(ctx, plats, providerID)
+	if err != nil {
+		return nil, nil, err
+	}
+	pols, cands, _, err := e.evaluate(ctx, ps)
+	if err != nil {
+		return nil, nil, err
+	}
+	want := map[string]bool{}
+	for _, k := range kinds {
+		want[k] = true
+	}
+	hits, info := map[string][]map[string]any{}, map[string]Policy{}
+	for _, p := range pols {
+		if !want[p.Kind] {
+			continue
+		}
+		info[p.Kind] = p
+		for _, c := range cands[p.Kind] {
+			if c.isIgn || !c.matched {
+				continue
+			}
+			row := c.optRow()
+			row["kind"], row["policy"], row["reason"] = p.Kind, p.Name, c.reason
+			hits[p.Kind] = append(hits[p.Kind], row)
+		}
+	}
+	return hits, info, nil
+}
