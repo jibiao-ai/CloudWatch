@@ -48,9 +48,8 @@ type Node struct {
 	CPUSystem   *float64 `json:"-"`
 	CPUIowait   *float64 `json:"-"`
 	CoresTotal  *float64 `json:"coresTotal"` // Nova hypervisor vcpus
-	CoresUsed   *float64 `json:"coresUsed"`  // Nova hypervisor vcpus_used（已分配 vCPU）；非计算节点无此值时按 CPU 使用率 × 总核数估算（CoresEst=true）
-	CoresEst    bool     `json:"coresEst,omitempty"`
-	VMCount     *float64 `json:"vmCount"` // Nova hypervisor running_vms
+	CoresUsed   *float64 `json:"coresUsed"`  // Nova hypervisor vcpus_used（已分配 vCPU）；非计算节点无此值时按 CPU 使用率 × 总核数估算（取整）
+	VMCount     *float64 `json:"vmCount"`    // Nova hypervisor running_vms
 	MemTotal    *float64 `json:"memTotal"`
 	MemFree     *float64 `json:"memFree"`
 	MemCached   *float64 `json:"memCached"`

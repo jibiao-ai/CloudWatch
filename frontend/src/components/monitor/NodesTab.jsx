@@ -13,7 +13,7 @@ export default function NodesTab({ rows, plat, allTotal, initialKeyword, refresh
     { key: 'hostIp', title: '节点 IP', width: 130, sortable: true, render: (n) => <code className="text-[13px]">{n.hostIp || '—'}</code> },
     { key: 'platform', title: '所属云平台', width: 170, sortable: true, sortBy: (n) => n._p?.name, render: (n) => <PlatformCell platform={n._p} /> },
     { key: 'coresTotal', title: '总核数', width: 90, sortable: true, align: 'right', render: (n) => <span className="tabular-nums" title="计算节点取自 Nova，其余节点按主机名 / IP 匹配资产管理物理机">{num(n.coresTotal, formatNumber)}</span> },
-    { key: 'coresUsed', title: '使用核数', width: 100, sortable: true, align: 'right', render: (n) => <span className="tabular-nums" title={n.coresEst ? '该节点无 Nova 分配数据，按 CPU 使用率 × 总核数估算' : 'Nova 计算节点已分配 vCPU（vcpus_used）'}>{n.coresEst && n.coresUsed != null ? '≈ ' : ''}{num(n.coresUsed, formatNumber)}</span> },
+    { key: 'coresUsed', title: '使用核数', width: 100, sortable: true, align: 'right', render: (n) => <span className="tabular-nums" title="计算节点取 Nova 已分配 vCPU；其余节点按 CPU 使用率 × 总核数取整">{num(n.coresUsed == null ? null : Math.round(n.coresUsed), formatNumber)}</span> },
     { key: 'cpuPercent', title: 'CPU 使用率', width: 170, sortable: true, render: (n) => <PctCell value={n.cpuPercent} /> },
     { key: 'memPercent', title: '内存使用率', width: 170, sortable: true, render: (n) => <PctCell value={n.memPercent} /> },
     { key: 'memTotal', title: '内存总量', width: 100, sortable: true, align: 'right', render: (n) => <span className="tabular-nums">{n.memTotal != null ? formatBytes(n.memTotal) : '—'}</span> },

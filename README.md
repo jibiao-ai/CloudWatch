@@ -442,6 +442,6 @@ npm run lint:rules          # 规则扫描（见下）
 
 ## 第39轮补充（监控中心 4 项问题修复）
 - **服务状态**：只展示对照表中的 35 项服务（后端 `monitor/service_rules.go` 白名单，旧快照读取时同样过滤）；去掉「附加信息」「实例数」两列。线上真实取值口径与文档（0 健康）不一致，已按指标分类判定：`check_*`/`mysql_up`/`probe_success`/`hostha` 为 1 正常；`*_up_total` >0 正常；`*_down_percent` 为 0 正常；compute / compute_management / compute_scheduler / block_storage / virtualization_management 为「异常个数」，0 正常；control_* / rabbitmq / log_collection / event_mesh / data_protection 为可用百分比，100 正常；time_synchronization / automation_center ≥1 正常（后两者口径待平台方确认）。判定结果输出为 `healthy` 字段，总览/搜索/仪表盘的异常数统一用它。
-- **物理节点总核数/使用核数**：Nova hypervisors 只覆盖计算节点，控制/存储节点原先为空。现按主机名 / IP 匹配资产管理的物理机 `cpuCores` 补全总核数；无 Nova 分配数据的节点，使用核数按 CPU 使用率 × 总核数估算，前端以「≈」标注（`coresEst`）。Nova 有值的节点仍以 Nova 为准。
+- **物理节点总核数/使用核数**：Nova hypervisors 只覆盖计算节点，控制/存储节点原先为空。现按主机名 / IP 匹配资产管理的物理机 `cpuCores` 补全总核数；无 Nova 分配数据的节点，使用核数按 CPU 使用率 × 总核数估算并取整，直接显示整数核数（不带「≈」，已去掉 `coresEst`）。Nova 有值的节点仍以 Nova 为准。
 - **总览**：「虚拟机（Nova）」卡片改为「计算节点」（取计算节点数），「云主机总数」改为「虚拟机」。
 - **采集明细 /ecms/dashboard 失败**：定位为平台侧 EMLA 故障，而非我方超时或网络不可用。北京生产环境对 `dashboard_instances_vcpu_usage` / `dashboard_instances_memory_usage` 返回 HTTP 200，但 `results[].error` 内是平台内部 HTTP 500；不带 `metrics_filter` 的整体请求会一直挂起直至我方 30 秒超时；其余 dashboard 指标正常。现在采集步骤改为按指标过滤请求（路径含 `metrics_filter`），并在步骤错误中显示平台返回的原始错误。

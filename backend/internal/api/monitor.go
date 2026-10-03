@@ -202,8 +202,8 @@ func (s *Server) visibleNodes(ctx context.Context, pl capacity.Platform, nodes [
 			}
 		}
 		if n.CoresUsed == nil && n.CoresTotal != nil && n.CPUPercent != nil { // 无 Nova 已分配 vCPU：按 CPU 使用率估算
-			u := math.Round(*n.CPUPercent**n.CoresTotal) / 100
-			n.CoresUsed, n.CoresEst = &u, true
+			u := math.Round(*n.CPUPercent * *n.CoresTotal / 100) // 取整核数
+			n.CoresUsed = &u
 		}
 	}
 	return out
