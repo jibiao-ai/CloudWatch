@@ -136,7 +136,7 @@ func (s *Server) dashboardOverview(w http.ResponseWriter, r *http.Request, p *au
 		}
 	}
 
-	var topNodes []dashNode
+	var cpuNodes, memNodes []dashNode
 	if canMon {
 		var cpuSum, memSum float64
 		var cpuN, memN int
@@ -173,28 +173,29 @@ func (s *Server) dashboardOverview(w http.ResponseWriter, r *http.Request, p *au
 					x.Storage = dashUsage{Used: used, Cap: *c.TotalBytes}
 				}
 			}
-			for _, n := range sn.Nodes {
-				if n.CPUPercent != nil || n.MemPercent != nil {
-					topNodes = append(topNodes, dashNode{Provider: x.Name, ProviderID: x.ID, Node: n.Name, HostIP: n.HostIP, CPU: n.CPUPercent, Mem: n.MemPercent})
+			for _, n := range s.visibleNodes(ctx, plats[i], sn.Nodes) { // 排除 OpenStack Nova 虚拟机
+				dn := dashNode{Provider: x.Name, ProviderID: x.ID, Node: n.Name, HostIP: n.HostIP, CPU: n.CPUPercent, Mem: n.MemPercent}
+				if n.CPUPercent != nil {
+					cpuNodes = append(cpuNodes, dn)
+				}
+				if n.MemPercent != nil {
+					memNodes = append(memNodes, dn)
 				}
 			}
 		}
 		out["cpuUseAvg"], out["memUseAvg"] = avgPtr(cpuSum, cpuN), avgPtr(memSum, memN)
-		load := func(n dashNode) float64 {
-			m := 0.0
-			if n.CPU != nil {
-				m = *n.CPU
+		top := func(l []dashNode, val func(dashNode) float64) []dashNode {
+			sort.SliceStable(l, func(i, j int) bool { return val(l[i]) > val(l[j]) })
+			if len(l) > 5 {
+				l = l[:5]
 			}
-			if n.Mem != nil && *n.Mem > m {
-				m = *n.Mem
+			if l == nil {
+				l = []dashNode{}
 			}
-			return m
+			return l
 		}
-		sort.SliceStable(topNodes, func(i, j int) bool { return load(topNodes[i]) > load(topNodes[j]) })
-		if len(topNodes) > 6 {
-			topNodes = topNodes[:6]
-		}
-		out["topNodes"] = topNodes
+		out["topCpu"] = top(cpuNodes, func(n dashNode) float64 { return *n.CPU })
+		out["topMem"] = top(memNodes, func(n dashNode) float64 { return *n.Mem })
 	}
 	for _, x := range rows { // 存储合计：全部平台实际/存储池口径相加
 		totals["storageUsed"] += x.Storage.Used

@@ -397,3 +397,15 @@ npm run lint:rules          # 规则扫描（见下）
 **4. 角色管理分页**
 - 角色列表接入 `useListQuery` + `DataTable` 分页（与用户管理一致：10/20/50 条每页、跳页、状态保持），新增「名称/编码/描述」搜索与「内置/自定义」筛选；删除当前页最后一条自动回上一页。
 - `roleApi.getRolePage`（带分页参数）；`getRoleList()` 仍返回全量，供用户管理的角色下拉使用。
+
+## 第36轮：物理节点列顺序 / 监控中心物理节点排除 Nova 虚拟机 / 平台概览高负载 TOP5 拆分
+
+1. **资产管理 → 物理节点**：列顺序调整为「主机名」第一列、「所属云平台」第二列，其余列顺序不变（`components/capacity/columns.jsx`）。
+2. **监控中心 → 物理节点**：与资产管理同口径，排除型号含「OpenStack Nova」的虚拟机。
+   - `capacity.Store` 加载快照时记录被排除的 Nova 行的标识（短主机名 / 完整主机名 / FQDN / IP），通过 `NovaKeys()` 对外提供；`api.visibleNodes()` 按「短主机名或 IP」过滤 `monitor.Snapshot.Nodes`。
+   - 作用范围：`GET /api/monitor/{id}`（页签角标数量与列表同步变化）、平台概览高负载统计、全局搜索的「监控 · 节点」。资产管理没有该平台物理节点数据（或没有被排除项）时不做过滤。
+   - 单测：`capacity/phys_test.go` 新增 `TestNovaKeys`。
+3. **平台概览**
+   - 「高负载节点 TOP 6」拆分为「CPU 使用率 TOP 5」「内存使用率 TOP 5」两张卡片，每张上方柱状图、下方列表（排名 / 节点 / 平台 / 使用率条 / 百分比，点击进入监控中心物理节点并带搜索词）；数据来自 `GET /api/dashboard/overview` 的 `topCpu` / `topMem`（各 5 条，已排除 Nova 虚拟机，原 `topNodes` 字段移除）；柱色取自 `useChartPalette()`。
+   - 「资源使用率趋势」与两张 TOP5 卡片统一高度（`DASH_CARD_H`，`components/dashboard/TopLoad.jsx`）。
+   - 版面顺序：KPI → 容量水位 → 趋势 → CPU / 内存 TOP5 → 最新活跃告警 + 优化建议 → **各平台概况（置底）**。

@@ -7,8 +7,10 @@ import (
 
 	"github.com/jibiao-ai/cloudwatch/internal/analytics"
 	"github.com/jibiao-ai/cloudwatch/internal/auth"
+	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
+	"github.com/jibiao-ai/cloudwatch/internal/provider"
 )
 
 // providerBrief 监控页顶部平台选择器所需的精简信息 + 最近一次采集状态。
@@ -45,13 +47,15 @@ func (s *Server) monitorOverview(w http.ResponseWriter, r *http.Request, _ *auth
 
 func (s *Server) monitorSnapshot(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	id := r.PathValue("id")
-	if _, err := s.Providers.Store.Get(r.Context(), id); err != nil {
+	pv, err := s.Providers.Store.Get(r.Context(), id)
+	if err != nil {
 		return err
 	}
 	sn, err := s.Monitor.Store.Snapshot(r.Context(), id)
 	if err != nil {
 		return err
 	}
+	sn.Nodes = s.visibleNodes(r.Context(), capPlatform(*pv), sn.Nodes) // 物理节点：排除 OpenStack Nova 虚拟机
 	httpx.OK(w, sn)
 	return nil
 }
@@ -165,4 +169,24 @@ func (s *Server) monitorVMUsage(w http.ResponseWriter, r *http.Request, _ *auth.
 	}
 	httpx.OK(w, map[string]any{"days": analytics.VMUsageDays, "usage": m})
 	return nil
+}
+
+// visibleNodes 监控中心「物理节点」：与资产管理同口径，排除型号为 OpenStack Nova 的虚拟机（按短主机名 / IP 匹配资产管理排除的那批）。
+func (s *Server) visibleNodes(ctx context.Context, pl capacity.Platform, nodes []monitor.Node) []monitor.Node {
+	nova, err := s.Capacity.Store.NovaKeys(ctx, pl)
+	if err != nil || len(nova) == 0 {
+		return nodes
+	}
+	out := make([]monitor.Node, 0, len(nodes))
+	for _, n := range nodes {
+		if nova[capacity.ShortName(n.Name)] || (n.HostIP != "" && nova[n.HostIP]) {
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+func capPlatform(p provider.Provider) capacity.Platform {
+	return capacity.Platform{ID: p.ID, Name: p.Name, EnvType: p.EnvType, ConsoleIP: p.ConsoleIP}
 }

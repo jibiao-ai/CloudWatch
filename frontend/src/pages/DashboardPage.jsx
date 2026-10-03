@@ -9,7 +9,8 @@ import ErrorState from '../components/ErrorState';
 import { KpiRow, CapacityRow } from '../components/dashboard/KpiCapacity';
 import TrendCard from '../components/dashboard/TrendCard';
 import PlatformTable from '../components/dashboard/PlatformTable';
-import { TopNodes, RecentAlerts, Suggestions } from '../components/dashboard/SidePanels';
+import { TopLoadCard } from '../components/dashboard/TopLoad';
+import { RecentAlerts, Suggestions } from '../components/dashboard/SidePanels';
 import { dashboardApi } from '../services/api';
 import { useAsync } from '../hooks/useAsync';
 import { useStore } from '../store/useStore';
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const canTrend = ov.data ? ov.data.perms.monitor : true;
   const tr = useAsync(() => (canTrend ? dashboardApi.getTrend({ range, providerId: pid || undefined }) : Promise.resolve({ points: [] })), [range, pid, canTrend]);
   const d = ov.data;
+  const byPid = (l) => (l || []).filter((n) => !pid || n.providerId === pid);
   const rows = (d?.platforms || []).filter((p) => !pid || p.id === pid);
 
   return (
@@ -41,17 +43,22 @@ export default function DashboardPage() {
         <>
           <KpiRow data={d} />
           {d.perms.capacity && <CapacityRow totals={d.totals} />}
-          <div className="grid gap-4 grid-cols-1 xl:grid-cols-3">
-            <div className="xl:col-span-2 min-w-0">{d.perms.monitor && <TrendCard state={tr} range={range} onRange={setRange} />}</div>
-            <div className="min-w-0">{d.perms.monitor && <TopNodes rows={(d.topNodes || []).filter((n) => !pid || n.providerId === pid)} />}</div>
-          </div>
-          <PlatformTable rows={rows} perms={d.perms} />
+          {d.perms.monitor && (
+            <>
+              <TrendCard state={tr} range={range} onRange={setRange} />
+              <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+                <TopLoadCard metric="cpu" rows={byPid(d.topCpu)} />
+                <TopLoadCard metric="mem" rows={byPid(d.topMem)} />
+              </div>
+            </>
+          )}
           {(d.perms.alert || d.perms.analytics) && (
             <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
               {d.perms.alert && <RecentAlerts rows={(d.recentAlerts || []).filter((a) => !pid || a.providerId === pid)} />}
               {d.perms.analytics && <Suggestions rows={d.suggestions} />}
             </div>
           )}
+          <PlatformTable rows={rows} perms={d.perms} />
         </>
       )}
     </div>

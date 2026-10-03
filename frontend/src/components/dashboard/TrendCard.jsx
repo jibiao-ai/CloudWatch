@@ -7,6 +7,7 @@ import EmptyState from '../EmptyState';
 import ChartTooltip from '../ChartTooltip';
 import { useChartPalette } from '../../hooks/useChartPalette';
 import { formatDateTime, pad } from '../../utils/format';
+import { DASH_CARD_H } from './TopLoad';
 
 export const TREND_RANGES = [{ key: '6h', label: '6 小时' }, { key: '24h', label: '24 小时' }, { key: '7d', label: '7 天' }, { key: '30d', label: '30 天' }];
 const SERIES = [{ key: 'cpu', name: 'vCPU 使用率', idx: 0 }, { key: 'mem', name: '内存使用率', idx: 1 }, { key: 'storage', name: '存储使用率', idx: 2 }];
@@ -23,7 +24,7 @@ export default function TrendCard({ state, range, onRange }) {
   const points = state.data?.points || [];
   const shown = useMemo(() => SERIES.filter((s) => only === 'all' || only === s.key), [only]);
   return (
-    <section className="card p-4" aria-label="使用率趋势">
+    <section className={`card p-4 flex flex-col ${DASH_CARD_H}`} aria-label="使用率趋势">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div>
           <h2 className="text-sm font-medium text-fg">资源使用率趋势</h2>
@@ -37,7 +38,7 @@ export default function TrendCard({ state, range, onRange }) {
             className={`h-7 px-2.5 rounded-md text-xs transition ${only === s.key ? 'bg-primary-soft text-primary-text font-medium' : 'bg-muted text-fg-muted hover:bg-hover'}`}>{s.name}</button>
         ))}
       </div>
-      <div className="h-[280px]">
+      <div className="flex-1 min-h-0">
         {state.loading ? <Skeleton.Chart /> : state.error ? <ErrorState error={state.error} onRetry={state.reload} /> : !points.length ? <EmptyState compact title="暂无趋势数据" description="监控采集落库后将展示历史曲线" /> : (
           <ResponsiveContainer>
             <AreaChart data={points} margin={{ top: 6, right: 8, left: -14, bottom: 0 }}>

@@ -6,14 +6,14 @@ import { formatBytes } from '../../utils/format';
 const projCol = () => ({ key: 'projectName', title: '项目名称', width: 160, sortable: true, render: (r) => clip(r.projectName, 150) });
 
 const phys = [
+  { key: 'hostname', title: '主机名', width: 170, sortable: true, render: (r) => <span className="font-medium truncate block max-w-[160px]" title={r.fqdn || r.hostname}>{r.hostname || '—'}</span> },
+  platCol(),
   { key: 'serial', title: '序列号', width: 140, sortable: true, render: (r) => txt(r.serial, 'font-mono') },
   { key: 'model', title: '型号', width: 150, sortable: true, render: (r) => clip(r.model, 140) },
   { key: 'cpuModel', title: 'CPU 型号', width: 240, sortable: true, render: (r) => clip(r.cpuModel, 230) },
   { key: 'cpuCores', title: 'CPU 核数', width: 90, sortable: true, align: 'right', render: (r) => numCell(r.cpuCores) },
   { key: 'memoryBytes', title: '内存大小', width: 100, sortable: true, align: 'right', render: (r) => numCell(r.memoryBytes, (v) => formatBytes(v, 2)) },
   { key: 'nicCount', title: '网卡数量', width: 90, sortable: true, align: 'right', render: (r) => numCell(r.nicCount) },
-  platCol(),
-  { key: 'hostname', title: '主机名', width: 170, sortable: true, render: (r) => <span className="font-medium truncate block max-w-[160px]" title={r.fqdn || r.hostname}>{r.hostname || '—'}</span> },
   statusCol('status', '状态', 90),
   { key: 'ip', title: '管理 IP', width: 130, sortable: true, render: (r) => txt(r.ip, 'font-mono') },
   { key: 'ipmiIp', title: '带外 IP', width: 130, sortable: true, render: (r) => txt(r.ipmiIp, 'font-mono') },

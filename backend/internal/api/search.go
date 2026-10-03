@@ -211,7 +211,7 @@ func (s *Server) searchMonitor(ctx context.Context, plats []capacity.Platform, w
 		if err != nil {
 			return nil, err
 		}
-		for _, n := range sn.Nodes {
+		for _, n := range s.visibleNodes(ctx, pl, sn.Nodes) {
 			if !search.All(strings.ToLower(n.Name+" "+n.HostIP), words) {
 				continue
 			}

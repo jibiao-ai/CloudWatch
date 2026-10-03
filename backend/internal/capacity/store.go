@@ -45,6 +45,7 @@ type entry struct {
 	sig  string
 	meta Meta
 	rows map[string][]Row // kind → 行（已注入平台字段与 _s 搜索文本，不含 raw）
+	nova map[string]bool  // 被排除的 OpenStack Nova 虚拟机的标识（短主机名 / IP，小写）
 }
 
 func gz(v any) ([]byte, error) {
@@ -162,7 +163,7 @@ func (s *Store) load(ctx context.Context, p Platform) (*entry, error) {
 	}
 	s.mu.Unlock()
 
-	e := &entry{sig: sig, meta: Meta{OK: ok, Error: errMsg, DurationMs: dur, Steps: []Step{}}, rows: map[string][]Row{}}
+	e := &entry{sig: sig, meta: Meta{OK: ok, Error: errMsg, DurationMs: dur, Steps: []Step{}}, rows: map[string][]Row{}, nova: map[string]bool{}}
 	if col.Valid {
 		t := col.Time
 		e.meta.CollectedAt = &t
@@ -185,6 +186,10 @@ func (s *Store) load(ctx context.Context, p Platform) (*entry, error) {
 			for _, r := range all {
 				if !isNovaModel(r) {
 					rows = append(rows, r)
+					continue
+				}
+				for _, k := range novaKeys(r) { // 记下被排除的虚拟机标识，供监控中心等同口径过滤
+					e.nova[k] = true
 				}
 			}
 		}
@@ -251,4 +256,50 @@ func (s *Store) Rows(ctx context.Context, p Platform, kind string) ([]Row, *Meta
 	}
 	m := e.meta
 	return e.rows[kind], &m, nil
+}
+
+// NovaKeys 某平台物理节点接口里被判定为 OpenStack Nova 虚拟机（已排除出资产管理）的标识集合：
+// 小写短主机名（取第一个「.」之前）与 IP。监控中心据此同口径过滤物理节点。
+func (s *Store) NovaKeys(ctx context.Context, p Platform) (map[string]bool, error) {
+	e, err := s.load(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	return e.nova, nil
+}
+
+// novaKeys 一条 Nova 虚拟机物理节点行的标识：短主机名、完整主机名、FQDN、IP。
+func novaKeys(r Row) []string {
+	var out []string
+	for _, k := range []string{"hostname", "name", "fqdn"} {
+		if v := strings.ToLower(strings.TrimSpace(toStr(r[k]))); v != "" {
+			out = append(out, v, ShortName(v))
+		}
+	}
+	if v := strings.TrimSpace(toStr(r["ip"])); v != "" {
+		out = append(out, v)
+	}
+	return out
+}
+
+// ShortName 取主机名第一个「.」之前的部分（已是 IP 时原样返回），并转小写。
+func ShortName(h string) string {
+	h = strings.ToLower(strings.TrimSpace(h))
+	if i := strings.IndexByte(h, '.'); i > 0 && !isIPv4(h) {
+		return h[:i]
+	}
+	return h
+}
+
+func isIPv4(s string) bool {
+	n := 0
+	for _, c := range s {
+		switch {
+		case c == '.':
+			n++
+		case c < '0' || c > '9':
+			return false
+		}
+	}
+	return n == 3
 }

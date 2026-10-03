@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Lightbulb } from 'lucide-react';
-import CapacityBar from '../CapacityBar';
 import EmptyState from '../EmptyState';
 import { fromNow } from '../../utils/format';
 
@@ -16,32 +15,6 @@ function Panel({ title, more, children, label }) {
       </div>
       {children}
     </section>
-  );
-}
-
-/** TopNodes —— 高负载计算节点 TOP6（取 CPU / 内存较高者排序），点击进入监控中心节点页并带上搜索词 */
-export function TopNodes({ rows }) {
-  return (
-    <Panel title="高负载节点 TOP 6" more={['/monitor?tab=nodes', '监控中心']}>
-      {!rows?.length ? <EmptyState compact title="暂无节点监控数据" /> : (
-        <ul className="divide-y divide-line">
-          {rows.map((n) => (
-            <li key={n.providerId + n.node}>
-              <Link to={`/monitor?tab=nodes&pid=${n.providerId}&kw=${encodeURIComponent(n.node)}`} className="block px-4 py-2.5 hover:bg-hover/60 transition-colors">
-                <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                  <span className="text-sm font-medium text-fg truncate">{n.node} <span className="text-xs font-mono text-fg-muted font-normal">{n.hostIp}</span></span>
-                  <span className="text-xs text-fg-muted truncate">{n.provider}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <CapacityBar compact used={n.cpu ?? 0} total={100} label="CPU" />
-                  <CapacityBar compact used={n.mem ?? 0} total={100} label="内存" />
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
   );
 }
 
