@@ -20,6 +20,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/config"
 	"github.com/jibiao-ai/cloudwatch/internal/db"
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
+	"github.com/jibiao-ai/cloudwatch/internal/inspection"
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
 	"github.com/jibiao-ai/cloudwatch/internal/provider"
 	"github.com/jibiao-ai/cloudwatch/internal/retention"
@@ -60,12 +61,14 @@ func main() {
 	ast := analytics.NewStore(d)
 	sm := analytics.NewSampler(d, ast, cm.Store, mm.Store, pm)
 	srv := &api.Server{DB: d, Providers: pm, Monitor: mm, Capacity: cm, Settings: st, Auth: au, Audit: audit.New(d), Retention: retention.New(d, st, au), Hosts: hm, Analytics: &analytics.Engine{St: ast, Cap: cm.Store, Mon: mm.Store}}
+	srv.Inspection = inspection.NewManager(d, mm, cm, srv.Analytics)
 	srv.Retention.Start(ctx)
-	pm.Start(ctx) // 平台按「同步间隔」后台自动同步；重启时中断的任务置失败
-	cm.Start(ctx) // 资产管理：物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
-	sm.Start(ctx) // 运营分析：把资源数量 / 云主机使用率 / 状态历史按时间积累下来
-	mm.Start(ctx) // 性能指标采集 + 告警同步（间隔复用平台同步间隔）
-	hm.Start(ctx) // 启动即按库中配置同步 hosts / DNS / Docker，重启后自动恢复
+	pm.Start(ctx)             // 平台按「同步间隔」后台自动同步；重启时中断的任务置失败
+	cm.Start(ctx)             // 资产管理：物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
+	sm.Start(ctx)             // 运营分析：把资源数量 / 云主机使用率 / 状态历史按时间积累下来
+	mm.Start(ctx)             // 性能指标采集 + 告警同步（间隔复用平台同步间隔）
+	srv.Inspection.Start(ctx) // 自动化巡检：定时巡检调度，重启时中断的任务置失败
+	hm.Start(ctx)             // 启动即按库中配置同步 hosts / DNS / Docker，重启后自动恢复
 
 	hs := &http.Server{
 		Addr: cfg.Addr, Handler: srv.Handler(),

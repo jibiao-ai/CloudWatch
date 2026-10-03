@@ -15,6 +15,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 	"github.com/jibiao-ai/cloudwatch/internal/hosts"
 	"github.com/jibiao-ai/cloudwatch/internal/httpx"
+	"github.com/jibiao-ai/cloudwatch/internal/inspection"
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
 	"github.com/jibiao-ai/cloudwatch/internal/provider"
 	"github.com/jibiao-ai/cloudwatch/internal/retention"
@@ -22,16 +23,17 @@ import (
 )
 
 type Server struct {
-	DB        *sql.DB
-	Settings  *settings.Store
-	Auth      *auth.Service
-	Audit     *audit.Service
-	Retention *retention.Job
-	Hosts     *hosts.Manager
-	Providers *provider.Manager
-	Monitor   *monitor.Manager
-	Capacity  *capacity.Manager
-	Analytics *analytics.Engine
+	DB         *sql.DB
+	Settings   *settings.Store
+	Auth       *auth.Service
+	Audit      *audit.Service
+	Retention  *retention.Job
+	Hosts      *hosts.Manager
+	Providers  *provider.Manager
+	Monitor    *monitor.Manager
+	Capacity   *capacity.Manager
+	Analytics  *analytics.Engine
+	Inspection *inspection.Manager
 }
 
 const maxBody = 8 << 20 // 设置里可能带 Logo / 背景图（base64），放宽到 8MB
@@ -143,6 +145,15 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/capacity/{kind}", s.guard("capacity:view", s.capacityList))
 	mux.Handle("GET /api/capacity/{kind}/{providerId}/{id}", s.guard("capacity:view", s.capacityDetail))
 	// 资源拓扑（聚合 平台管理 / 资产管理 / 监控中心 / 告警中心 已落库数据）
+	// 自动化巡检
+	mux.Handle("GET /api/inspection/reports", s.guard("inspection:view", s.inspectionList))
+	mux.Handle("GET /api/inspection/reports/{id}", s.guard("inspection:view", s.inspectionGet))
+	mux.Handle("GET /api/inspection/reports/{id}/export", s.guard("inspection:export", s.inspectionExport))
+	mux.Handle("DELETE /api/inspection/reports/{id}", s.guard("inspection:delete", s.inspectionDelete))
+	mux.Handle("POST /api/inspection/run", s.guard("inspection:run", s.inspectionRun))
+	mux.Handle("GET /api/inspection/tasks/{id}", s.guard("inspection:view", s.inspectionTask))
+	mux.Handle("GET /api/inspection/config", s.guard("inspection:view", s.inspectionConfig))
+	mux.Handle("PUT /api/inspection/config", s.guard("inspection:config", s.inspectionSaveConfig))
 	mux.Handle("GET /api/analytics/overview", s.guard("analytics:view", s.analyticsOverview))
 	mux.Handle("GET /api/analytics/trend", s.guard("analytics:view", s.analyticsTrend))
 	mux.Handle("GET /api/analytics/base", s.guard("analytics:view", s.analyticsBase))
