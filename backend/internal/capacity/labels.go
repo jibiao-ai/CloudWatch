@@ -37,7 +37,7 @@ var portStatus = map[string]lab{
 }
 
 var physStatus = map[string]lab{"ready": {"就绪", "success"}, "discover": {"发现中", "info"}, "provisioning": {"部署中", "info"}, "deploying": {"部署中", "info"},
-	"error": {"异常", "danger"}, "offline": {"离线", "danger"}, "maintenance": {"维护中", "warning"}, "deleting": {"删除中", "warning"}, "stopped": {"已停止", "default"}}
+	"error": {"异常", "danger"}, "unmaintain_error": {"恢复失败", "danger"}, "offline": {"离线", "danger"}, "maintenance": {"维护中", "warning"}, "deleting": {"删除中", "warning"}, "stopped": {"已停止", "default"}}
 
 var hvState = map[string]lab{"up": {"运行中", "success"}, "down": {"已宕机", "danger"}}
 var hvStatus = map[string]lab{"enabled": {"已启用", "success"}, "disabled": {"已禁用", "warning"}}
