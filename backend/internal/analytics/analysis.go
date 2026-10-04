@@ -361,16 +361,16 @@ func (e *Engine) VMUsage(ctx context.Context, providerID string) (map[string]VMU
 	return out, nil
 }
 
-// ---------- 云主机分析 ----------
+// ---------- 虚拟机分析 ----------
 
-// VMAnalysis 云主机分析页。
+// VMAnalysis 虚拟机分析页。
 type VMAnalysis struct {
 	Platforms []Dist   `json:"platforms"`
 	Status    []Dist   `json:"status"`
 	Options   VMOption `json:"options"`
 }
 
-// VMOption 云主机分析筛选项。
+// VMOption 虚拟机分析筛选项。
 type VMOption struct {
 	Platforms []Opt2 `json:"platforms"`
 	Hosts     []Opt2 `json:"hosts"`

@@ -96,7 +96,7 @@ func (s *Server) analyticsExportSheets(w http.ResponseWriter, r *http.Request, p
 		}
 		sheets = append(sheets, xSheet{Name: "计算节点云主机分布", Head: []string{"计算节点", "运行中", "已关机/其他", "合计"}, Rows: hv})
 	case "vm":
-		title = "云主机分析"
+		title = "虚拟机分析"
 		v, err := s.Analytics.VMAnalysis(ctx, ps, anFilter(r))
 		if err != nil {
 			return err

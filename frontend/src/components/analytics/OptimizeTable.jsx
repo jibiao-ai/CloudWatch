@@ -6,6 +6,7 @@ import ExportButton from '../ExportButton';
 import Tooltip from '../Tooltip';
 import { Seg, Filter } from './Panel';
 import { IpCell, platCol } from './columns';
+import { FlavorCell } from '../monitor/cells';
 import { pctText, RES_LABEL, RES_UNIT } from './util';
 import { formatBytes } from '../../utils/format';
 import { analyticsApi } from '../../services/api';
@@ -31,7 +32,7 @@ function resCols(resType) {
   if (resType === 'disk') return [{ key: 'sizeGb', title: '大小', width: 100, align: 'right', render: (r) => (r.sizeGb == null ? dash : formatBytes(r.sizeGb * 1024 ** 3, 2)) }, { key: 'statusText', title: '状态', width: 100, render: (r) => r.statusText || dash }, { key: 'volumeType', title: '类型', width: 130, render: (r) => r.volumeType || dash }];
   return [
     { key: 'ips', title: 'IP地址', width: 170, render: (r) => <IpCell list={r.ipList} /> },
-    { key: 'flavor', title: '实例规格', width: 140, render: (r) => r.flavor || dash },
+    { key: 'flavor', title: '规格名称', width: 150, render: (r) => <FlavorCell name={r.flavor} vcpus={r.vcpus} ramMb={r.ramMb} /> },
   ];
 }
 /** 命中指标列（只显示该策略数据里实际出现的指标） */

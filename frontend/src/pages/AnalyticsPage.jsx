@@ -13,7 +13,7 @@ import { useCan } from '../hooks/useCan';
 const TABS = [
   { key: 'home', label: '总览' },
   { key: 'base', label: '资源分析' },
-  { key: 'vm', label: '云主机分析' },
+  { key: 'vm', label: '虚拟机分析' },
   { key: 'disk', label: '磁盘分析' },
   { key: 'optimize', label: '优化建议' },
   { key: 'policy', label: '优化策略' },
@@ -30,7 +30,7 @@ const SEARCH = {
 };
 
 /**
- * AnalyticsPage —— 运营中心（总览 / 资源分析 / 云主机分析 / 磁盘分析 / 优化建议 / 优化策略）：
+ * AnalyticsPage —— 运营中心（总览 / 资源分析 / 虚拟机分析 / 磁盘分析 / 优化建议 / 优化策略）：
  * 与「配置中心」一致，只占一个菜单项，各功能是同一页面内的页签；页签与优化类型同步到地址栏（?tab= &kind=），便于刷新与分享
  */
 export default function AnalyticsPage() {

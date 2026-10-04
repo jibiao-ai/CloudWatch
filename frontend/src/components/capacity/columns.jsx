@@ -1,6 +1,7 @@
 import React from 'react';
 import { statusCol, uuidCol, platCol, txt, clip, time, numCell, gbCell, gb, mb, Usage } from './capUtil';
 import { formatBytes } from '../../utils/format';
+import { FlavorCell } from '../monitor/cells';
 
 /** 各类资源的列定义（sortable 的 key 与后端行字段一致，服务端排序） */
 const projCol = () => ({ key: 'projectName', title: '项目名称', width: 160, sortable: true, render: (r) => clip(r.projectName, 150) });
@@ -34,7 +35,7 @@ const nodes = [
 const vms = [
   { key: 'name', title: '虚拟机名称', width: 180, sortable: true, render: (r) => <span className="font-medium truncate block max-w-[170px]" title={r.name}>{r.name || '—'}</span> },
   { key: 'ips', title: '虚机 IP', width: 170, sortable: true, render: (r) => clip(r.ips, 160) },
-  { key: 'flavor', title: '规格名称', width: 150, sortable: true, render: (r) => clip(r.flavor, 140) },
+  { key: 'flavor', title: '规格名称', width: 150, sortable: true, render: (r) => <FlavorCell name={r.flavor} vcpus={r.vcpus} ramMb={r.ramMb} /> },
   uuidCol('UUID'), statusCol('status', '状态', 90), projCol(), platCol(),
   { key: 'node', title: '计算节点', width: 150, sortable: true, render: (r) => txt(r.node) },
   { key: 'createdAt', title: '创建时间', width: 160, sortable: true, render: (r) => time(r.createdAt) },

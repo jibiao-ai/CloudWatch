@@ -52,10 +52,14 @@ func nv(p *float64) any {
 	return *p
 }
 
+// flavorText 规格名称（与监控中心 / 配置中心一致，如 4C-8G）；云平台未提供规格名称时才退化为 "NvCPU xGB"。
 func flavorText(r capacity.Row) string {
+	if n := s(r, "flavor"); n != "" {
+		return n
+	}
 	cpu, ram := fv(r, "vcpus"), fv(r, "ramMb")
 	if cpu == 0 && ram == 0 {
-		return s(r, "flavor")
+		return ""
 	}
 	g := trimNum(math.Round(ram/1024*10) / 10)
 	return fmt.Sprintf("%dvCPU %sGB", int(cpu), g)
@@ -292,7 +296,7 @@ func OptCols(res string) []Col {
 	case ResDisk:
 		return []Col{{"name", "云硬盘"}, {"platform", "所属云平台"}, {"reason", "建议原因"}, {"sizeGb", "大小(G)"}, {"statusText", "状态"}, {"volumeType", "类型"}}
 	}
-	return []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"ips", "IP地址"}, {"flavor", "实例规格"}, {"reason", "建议原因"}, {"cpuAvg", "vCPU平均使用率"}, {"memAvg", "内存平均使用率"}, {"writeAvg", "写I/O平均速率(KiB/s)"}, {"readyAvg", "CPU就绪占比"}, {"latAvg", "磁盘时延(ms)"}, {"fsMax", "文件系统使用率"}, {"shutdownDays", "持续关机(天)"}}
+	return []Col{{"name", "名称"}, {"platform", "所属云平台"}, {"ips", "IP地址"}, {"flavor", "规格名称"}, {"reason", "建议原因"}, {"cpuAvg", "vCPU平均使用率"}, {"memAvg", "内存平均使用率"}, {"writeAvg", "写I/O平均速率(KiB/s)"}, {"readyAvg", "CPU就绪占比"}, {"latAvg", "磁盘时延(ms)"}, {"fsMax", "文件系统使用率"}, {"shutdownDays", "持续关机(天)"}}
 }
 
 // OptColsAll 「全部 / 按侧汇总」导出列：公共列 + 各资源类型的关键指标。
@@ -313,6 +317,7 @@ func (c cand) optRow() map[string]any {
 	case ResVM:
 		ips := ipList(r)
 		row["ips"], row["ipList"], row["flavor"] = strings.Join(ips, ", "), ips, flavorText(r)
+		row["vcpus"], row["ramMb"] = r["vcpus"], r["ramMb"]
 		row["status"], row["statusText"] = strings.ToLower(s(r, "status")), s(r, "statusText")
 		for _, k := range []string{"cpuAvg", "cpuMax", "memAvg", "memMax", "writeAvg", "readyAvg", "latAvg", "fsMax"} {
 			row[k] = v(k)
