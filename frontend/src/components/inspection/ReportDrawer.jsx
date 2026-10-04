@@ -53,7 +53,7 @@ function Overview({ p }) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-5 gap-3">
-        <div className="card p-3"><div className="text-xs text-fg-muted">健康评分</div><div className="text-2xl font-semibold tabular-nums">{p.score}</div></div>
+        <div className="card p-3" title="已采集检查项的加权通过率（正常 100%、预警 65%、异常 15%），未采集项不计入；满分 100"><div className="text-xs text-fg-muted">健康评分</div><div className="text-2xl font-semibold tabular-nums">{p.score}</div></div>
         {['ok', 'warn', 'bad', 'na'].map((k) => <div key={k} className="card p-3"><div className="text-xs text-fg-muted">{STATUS[k].label}</div><div className={`text-2xl font-semibold tabular-nums ${COUNT_TONE[k]}`}>{p.counts[k]}</div></div>)}
       </div>
       {(p.notes || []).map((n) => <p key={n} className="text-xs text-warning bg-warning-soft rounded-lg px-3 py-2">提示：{n}</p>)}

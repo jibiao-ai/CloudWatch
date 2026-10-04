@@ -51,8 +51,27 @@ func TestGradeAndScore(t *testing.T) {
 	if worse(OK, Warn) != Warn || worse(Bad, Warn) != Bad || worse(NA, OK) != OK {
 		t.Fatal("worse 错误")
 	}
-	if scoreOf(Counts{OK: 10, Warn: 2, Bad: 1}) != 80 || scoreOf(Counts{NA: 3}) != 0 || scoreOf(Counts{Bad: 20}) != 0 {
-		t.Fatal("scoreOf 错误")
+	cases := []struct {
+		c    Counts
+		want int
+	}{
+		{Counts{OK: 10}, 100},
+		{Counts{OK: 10, NA: 4}, 100}, // 未采集不参与评分
+		{Counts{OK: 10, Warn: 2, Bad: 1}, 88},
+		{Counts{OK: 11, Bad: 3, NA: 7}, 82},
+		{Counts{OK: 3, Warn: 6, Bad: 11, NA: 1}, 43}, // 此前被算成 0 分
+		{Counts{OK: 99, Warn: 1}, 94},                // 有预警不应满分
+		{Counts{OK: 99, Bad: 1}, 89},                 // 有异常不应显示优秀
+		{Counts{Bad: 20}, 15},
+		{Counts{NA: 3}, 0}, // 全部未采集无法评估
+	}
+	for _, tc := range cases {
+		if got := scoreOf(tc.c); got != tc.want {
+			t.Fatalf("scoreOf(%+v)=%d，期望 %d", tc.c, got, tc.want)
+		}
+	}
+	if s := scoreOf(Counts{Bad: 1000}); s < 1 {
+		t.Fatal("有采集数据时评分不应为 0")
 	}
 	if overallOf(Counts{OK: 3, Warn: 1}) != Warn || overallOf(Counts{OK: 1, Bad: 1}) != Bad || overallOf(Counts{NA: 2}) != NA || overallOf(Counts{OK: 2}) != OK {
 		t.Fatal("overallOf 错误")

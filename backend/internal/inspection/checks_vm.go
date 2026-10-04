@@ -2,6 +2,7 @@ package inspection
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -477,7 +478,7 @@ func checkFresh(in *Input, c Config) Item {
 		it.Advice = "该平台尚无监控数据，请在「平台管理」检查对接配置并在监控中心手动采集。"
 		return it
 	}
-	age := in.Now.Sub(*in.Snap.CollectedAt).Minutes()
+	age := math.Max(0, in.Now.Sub(*in.Snap.CollectedAt).Minutes())
 	it.Status = OK
 	var rows [][]string
 	rows = append(rows, []string{"监控数据采集时间", cst(*in.Snap.CollectedAt), fmt.Sprintf("%s 分钟前", num(age, 0))})
@@ -485,7 +486,7 @@ func checkFresh(in *Input, c Config) Item {
 		it.Status = Warn
 	}
 	if in.CapMeta != nil && in.CapMeta.CollectedAt != nil {
-		rows = append(rows, []string{"资产数据采集时间", cst(*in.CapMeta.CollectedAt), fmt.Sprintf("%s 分钟前", num(in.Now.Sub(*in.CapMeta.CollectedAt).Minutes(), 0))})
+		rows = append(rows, []string{"资产数据采集时间", cst(*in.CapMeta.CollectedAt), fmt.Sprintf("%s 分钟前", num(math.Max(0, in.Now.Sub(*in.CapMeta.CollectedAt).Minutes()), 0))})
 	}
 	failed := 0
 	var frows [][]string

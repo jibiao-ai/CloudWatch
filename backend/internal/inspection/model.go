@@ -85,6 +85,7 @@ type Report struct {
 	FinishedAt time.Time        `json:"finishedAt"`
 	Overall    string           `json:"overall"`
 	Score      int              `json:"score"`
+	ScoreVer   int              `json:"scoreVer"` // 评分算法版本
 	Counts     Counts           `json:"counts"`
 	Summary    string           `json:"summary"`
 	Refreshed  bool             `json:"refreshed"` // 巡检前是否实时调用了平台接口

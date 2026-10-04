@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -227,4 +229,54 @@ func (s *Store) ScheduledSince(ctx context.Context, t time.Time) bool {
 	var n int
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM inspection_results WHERE trigger_type='schedule' AND started_at>=?`, t.UTC()).Scan(&n)
 	return n > 0
+}
+
+var scoreInText = regexp.MustCompile(`健康评分 \d+`)
+
+// Rescore 将评分算法版本低于 ScoreVer 的历史报告按新算法重新计分（含摘要中的评分文字与列表冗余列），返回更新条数。
+func (s *Store) Rescore(ctx context.Context) (int, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, detail FROM inspection_results WHERE detail IS NOT NULL AND detail<>''`)
+	if err != nil {
+		return 0, err
+	}
+	type upd struct {
+		id     int64
+		detail string
+		score  int
+		sum    string
+	}
+	var todo []upd
+	for rows.Next() {
+		var id int64
+		var detail string
+		if err := rows.Scan(&id, &detail); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		var r Report
+		if json.Unmarshal([]byte(detail), &r) != nil || r.ScoreVer >= ScoreVer || len(r.Platforms) == 0 {
+			continue
+		}
+		for i := range r.Platforms {
+			p := &r.Platforms[i]
+			p.Score = scoreOf(p.Counts)
+			p.Summary = scoreInText.ReplaceAllString(p.Summary, fmt.Sprintf("健康评分 %d", p.Score))
+		}
+		Merge(&r)
+		b, err := json.Marshal(&r)
+		if err != nil {
+			continue
+		}
+		todo = append(todo, upd{id, string(b), r.Score, r.Summary})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	for _, u := range todo {
+		if _, err := s.db.ExecContext(ctx, `UPDATE inspection_results SET detail=?, score=?, summary=? WHERE id=?`, u.detail, u.score, u.sum, u.id); err != nil {
+			return 0, err
+		}
+	}
+	return len(todo), nil
 }

@@ -2,6 +2,7 @@ package inspection
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -95,14 +96,32 @@ func overallOf(c Counts) string {
 	return OK
 }
 
-// scoreOf 健康评分：满分 100，每个异常项扣 12 分，每个预警项扣 4 分；未采集项不计分。
+// 评分权重：每个已采集的检查项按状态计分（正常 1、预警 0.65、异常 0.15），未采集项不参与评分。
+const (
+	wOK   = 1.0
+	wWarn = 0.65
+	wBad  = 0.15
+	// ScoreVer 评分算法版本；升级时会对历史报告自动重算。
+	ScoreVer = 2
+)
+
+// scoreOf 健康评分（0~100）：已采集检查项的加权通过率。
+// 为保证评分与综合评估一致：存在异常项时最高 89 分，存在预警项时最高 94 分；
+// 有采集数据时最低 1 分，没有任何已采集项时为 0（无法评估）。
 func scoreOf(c Counts) int {
-	s := 100 - 12*c.Bad - 4*c.Warn
-	if s < 0 {
-		s = 0
-	}
-	if c.OK+c.Warn+c.Bad == 0 {
+	n := c.OK + c.Warn + c.Bad
+	if n == 0 {
 		return 0
+	}
+	s := int(math.Round(100 * (float64(c.OK)*wOK + float64(c.Warn)*wWarn + float64(c.Bad)*wBad) / float64(n)))
+	switch {
+	case c.Bad > 0 && s > 89:
+		s = 89
+	case c.Warn > 0 && s > 94:
+		s = 94
+	}
+	if s < 1 {
+		s = 1
 	}
 	return s
 }
@@ -179,8 +198,9 @@ func Merge(r *Report) {
 			n++
 		}
 	}
+	r.Score, r.ScoreVer = 0, ScoreVer
 	if n > 0 {
-		r.Score = score / n
+		r.Score = int(math.Round(float64(score) / float64(n)))
 	}
 	names := make([]string, 0, len(r.Platforms))
 	for _, p := range r.Platforms {
