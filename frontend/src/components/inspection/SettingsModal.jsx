@@ -9,7 +9,7 @@ import CustomSelect from '../CustomSelect';
 import LoadingButton from '../LoadingButton';
 import { inspectionApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { WEEKDAYS } from './common';
+import { WEEKDAYS, MONTH_DAYS } from './common';
 
 /** [错误键, 名称, 预警字段, 异常字段, 单位, 说明] */
 const PAIRS = [
@@ -66,7 +66,7 @@ export default function SettingsModal({ open, onClose, catalog, groups, onSaved 
     if (Object.values(t).some((v) => Number.isNaN(v))) { toast.error('保存失败', '阈值必须是数字'); return; }
     setBusy(true);
     try {
-      const out = await inspectionApi.saveConfig({ ...cfg, thresholds: t, schedule: { ...cfg.schedule, weekday: Number(cfg.schedule.weekday) } });
+      const out = await inspectionApi.saveConfig({ ...cfg, thresholds: t, schedule: { ...cfg.schedule, weekday: Number(cfg.schedule.weekday), day: Number(cfg.schedule.day) || 1 } });
       toast.success('巡检设置已保存');
       onSaved?.(out);
       onClose();
@@ -118,8 +118,9 @@ export default function SettingsModal({ open, onClose, catalog, groups, onSaved 
                 </div>
                 {cfg.schedule.enabled && (
                   <div className="space-y-4 pl-1">
-                    <Radio aria-label="执行频率" value={cfg.schedule.mode} onChange={(v) => sch('mode', v)} options={[{ value: 'daily', label: '每天' }, { value: 'weekly', label: '每周' }]} />
+                    <Radio aria-label="执行频率" value={cfg.schedule.mode} onChange={(v) => sch('mode', v)} options={[{ value: 'daily', label: '每天' }, { value: 'weekly', label: '每周' }, { value: 'monthly', label: '每月' }]} />
                     {cfg.schedule.mode === 'weekly' && <FormField label="星期"><div className="w-[140px]"><CustomSelect value={cfg.schedule.weekday} onChange={(v) => sch('weekday', v)} options={WEEKDAYS} /></div></FormField>}
+                    {cfg.schedule.mode === 'monthly' && <FormField label="每月日期"><div className="w-[140px]"><CustomSelect value={cfg.schedule.day || 1} onChange={(v) => sch('day', v)} options={MONTH_DAYS} /></div><p className="text-xs text-fg-muted mt-1">当月没有该日期时（如 31 日遇到 2 月）改为当月最后一天执行</p></FormField>}
                     <FormField label="执行时间（HH:MM）" error={errs.time}><input className="field !w-[120px]" placeholder="02:00" maxLength={5} value={cfg.schedule.time} onChange={(e) => sch('time', e.target.value)} /></FormField>
                   </div>
                 )}

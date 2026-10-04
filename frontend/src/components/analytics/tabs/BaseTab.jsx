@@ -12,13 +12,14 @@ import SearchHits, { withPlat } from '../SearchHits';
 import { optsOf } from '../util';
 import { analyticsApi } from '../../../services/api';
 import { useAsync } from '../../../hooks/useAsync';
+import TabExport from '../TabExport';
 
 const DIST = [{ value: 'host', label: '计算节点' }, { value: 'pool', label: '集群存储' }];
 const METRICS = [{ value: 'cpu', label: 'CPU使用率' }, { value: 'mem', label: '内存使用率' }, { value: 'storage', label: '集群存储使用率' }];
 const EMPTY = { providerId: '', host: '', pool: '' };
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
 
-/** BaseTab —— 运营分析 · 资源分析：计算节点 / 集群存储的分配率、使用率（含每套存储后端）；分布类图表以横向轮播展示（每 60 秒自动切换）；计算节点与集群存储的明细在「监控中心」 */
+/** BaseTab —— 运营中心 · 资源分析：计算节点 / 集群存储的分配率、使用率（含每套存储后端）；分布类图表以横向轮播展示（每 60 秒自动切换）；计算节点与集群存储的明细在「监控中心」 */
 export default function BaseTab({ tick, keyword, onClearKeyword }) {
   const [flt, setFlt] = useState(EMPTY);
   const [dist, setDist] = useState('host');
@@ -46,6 +47,7 @@ export default function BaseTab({ tick, keyword, onClearKeyword }) {
           <Link to="/monitor?tab=hosts" className="text-primary-text hover:underline">在监控中心查看计算节点信息</Link>
           <Link to="/monitor?tab=pools" className="text-primary-text hover:underline">在监控中心查看集群存储信息</Link>
         </span>
+        <TabExport kind="base" title="资源分析" params={params} filters={{ 云平台: plats.find((x) => x.value === flt.providerId)?.label, 计算节点: flt.host, 集群存储: flt.pool }} />
       </FilterBar>
       {q.error ? <div className="card"><ErrorState error={q.error} onRetry={q.reload} /></div> : (
         <>

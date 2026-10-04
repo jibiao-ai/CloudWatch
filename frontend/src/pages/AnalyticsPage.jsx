@@ -7,6 +7,7 @@ import VMTab from '../components/analytics/tabs/VMTab';
 import DiskTab from '../components/analytics/tabs/DiskTab';
 import OptimizeTab from '../components/analytics/tabs/OptimizeTab';
 import PolicyTab from '../components/analytics/tabs/PolicyTab';
+import TabExport from '../components/analytics/TabExport';
 import { useCan } from '../hooks/useCan';
 
 const TABS = [
@@ -29,8 +30,8 @@ const SEARCH = {
 };
 
 /**
- * AnalyticsPage —— 运营分析（总览 / 资源分析 / 云主机分析 / 磁盘分析 / 优化建议 / 优化策略）：
- * 与「资产管理」一致，只占一个菜单项，各功能是同一页面内的页签；页签与优化类型同步到地址栏（?tab= &kind=），便于刷新与分享
+ * AnalyticsPage —— 运营中心（总览 / 资源分析 / 云主机分析 / 磁盘分析 / 优化建议 / 优化策略）：
+ * 与「配置中心」一致，只占一个菜单项，各功能是同一页面内的页签；页签与优化类型同步到地址栏（?tab= &kind=），便于刷新与分享
  */
 export default function AnalyticsPage() {
   const [sp, setSp] = useSearchParams();
@@ -42,8 +43,9 @@ export default function AnalyticsPage() {
   const openPolicy = sp.get('open');
 
   return (
-    <AnalyticsShell title="运营分析" description="汇总全部所属云平台下的云主机、磁盘、计算节点与集群存储：资源分配率 / 使用率、分布与趋势、虚拟机侧与物理侧优化建议及优化策略；明细请到监控中心（虚拟机 / 计算节点 / 集群存储）与资产管理查看，数据来自采集快照，使用率与趋势随时间持续积累"
+    <AnalyticsShell title="运营中心" description="汇总全部所属云平台下的云主机、磁盘、计算节点与集群存储：资源分配率 / 使用率、分布与趋势、虚拟机侧与物理侧优化建议及优化策略；明细请到监控中心（虚拟机 / 计算节点 / 集群存储）与配置中心查看，数据来自采集快照，使用率与趋势随时间持续积累"
       tabs={TABS} tab={tab} onTab={(k) => go(k === 'home' ? {} : { tab: k })} idPrefix="an"
+      actions={tab === 'home' ? <TabExport kind="home" title="总览" /> : undefined}
       searchPlaceholder={SEARCH[tab]}>
       {(d, tick, reloadOv, kw, clearKw) => {
         switch (tab) {

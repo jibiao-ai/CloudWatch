@@ -5,7 +5,7 @@ import { PlatCell, numCell } from '../capacity/capUtil';
 import { useClientTable } from '../../hooks/useClientTable';
 import { formatDateTime, fromNow } from '../../utils/format';
 
-/** PlatformTable —— 各所属云平台的资源数量与资产采集状态（排序 / 分页，列风格同资产管理「总览」）；keyword 来自页头的全局搜索 */
+/** PlatformTable —— 各所属云平台的资源数量与资产采集状态（排序 / 分页，列风格同配置中心「总览」）；keyword 来自页头的全局搜索 */
 export default function PlatformTable({ platforms, keyword = '' }) {
   const columns = useMemo(() => [
     { key: 'name', title: '所属云平台', width: 200, sortable: true, render: (p) => <PlatCell platform={p} /> },

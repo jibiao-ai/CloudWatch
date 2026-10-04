@@ -79,7 +79,7 @@ func Evaluate(in *Input, c Config) PlatformReport {
 			pr.Advices = append(pr.Advices, it.Advice)
 		}
 	}
-	pr.Advices = append(pr.Advices, "建议定期（每日或每周）执行自动化巡检，持续关注资源使用率、告警与磁盘寿命趋势。", "本次巡检为只读采集，未对平台做任何变更；如需处理告警或更换硬件，请按变更流程在窗口期操作。")
+	pr.Advices = append(pr.Advices, "建议定期（每日、每周或每月）执行自动巡检，持续关注资源使用率、告警与磁盘寿命趋势。", "本次巡检为只读采集，未对平台做任何变更；如需处理告警或更换硬件，请按变更流程在窗口期操作。")
 	pr.Summary = summaryOf(in, pr)
 	return pr
 }
@@ -140,7 +140,7 @@ func envInfo(in *Input) []KV {
 			kv = append(kv, KV{"云主机数", fmt.Sprint(vmTotal(s.Instances))})
 		}
 	}
-	kv = append(kv, KV{"巡检时间", cst(in.Now)}, KV{"巡检方式", "自动化巡检（仅读取已采集的监控 / 资产数据与 GET 查询，未对平台做任何变更）"})
+	kv = append(kv, KV{"巡检时间", cst(in.Now)}, KV{"巡检方式", "自动巡检（仅读取已采集的监控 / 资产数据与 GET 查询，未对平台做任何变更）"})
 	return kv
 }
 
@@ -172,10 +172,10 @@ func summaryOf(in *Input, pr PlatformReport) string {
 			}
 		}
 	}
-	sb := fmt.Sprintf("本次于 %s 对云平台「%s」进行自动化巡检（只读），共 %d 个检查项：正常 %d、预警 %d、异常 %d、未采集 %d。综合评估：平台整体运行【%s】，健康评分 %d。",
+	sb := fmt.Sprintf("本次于 %s 对云平台「%s」进行自动巡检（只读），共 %d 个检查项：正常 %d、预警 %d、异常 %d、未采集 %d。综合评估：平台整体运行【%s】，健康评分 %d。",
 		cst(in.Now), in.Plat.Name, len(pr.Items), pr.Counts.OK, pr.Counts.Warn, pr.Counts.Bad, pr.Counts.NA, StatusText[pr.Overall], pr.Score)
 	if pr.Overall == NA {
-		sb = fmt.Sprintf("本次于 %s 对云平台「%s」进行自动化巡检，但尚未采集到有效的监控数据，无法给出综合评估。请先在监控中心完成一次数据采集。", cst(in.Now), in.Plat.Name)
+		sb = fmt.Sprintf("本次于 %s 对云平台「%s」进行自动巡检，但尚未采集到有效的监控数据，无法给出综合评估。请先在监控中心完成一次数据采集。", cst(in.Now), in.Plat.Name)
 	} else if len(focus) > 0 {
 		sb += "需关注：" + joinMax(focus, 8) + "。"
 	}

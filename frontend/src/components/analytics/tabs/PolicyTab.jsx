@@ -10,8 +10,9 @@ import { useCan } from '../../../hooks/useCan';
 import { useToast } from '../../../hooks/useToast';
 import { formatDateTime } from '../../../utils/format';
 import { RES_LABEL } from '../util';
+import TabExport from '../TabExport';
 
-/** PolicyTab —— 运营分析 · 优化策略：内置 11 条（虚拟机侧 7 / 物理侧 4）可调阈值，另可新建自定义策略（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
+/** PolicyTab —— 运营中心 · 优化策略：内置 11 条（虚拟机侧 7 / 物理侧 4）可调阈值，另可新建自定义策略（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
 export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword = '' }) {
   const canEdit = useCan('analytics:policy_update');
   const toast = useToast();
@@ -55,7 +56,10 @@ export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword =
       <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload}
         page={page} pageSize={pg.pageSize} total={matched.length} onPageChange={(p) => setPg((x) => ({ ...x, ...p }))} empty={kw ? { title: '没有匹配的策略', description: '请调整全局搜索关键字' } : { title: '暂无策略' }}
         toolbar={<h3 className="text-sm font-semibold text-fg">优化策略</h3>}
-        extra={canEdit && <button type="button" className="btn-primary" onClick={() => setModal({ open: true, policy: null })}><Plus size={15} /> 创建优化策略</button>} />
+        extra={<>
+          <TabExport kind="policy" title="优化策略" />
+          {canEdit && <button type="button" className="btn-primary" onClick={() => setModal({ open: true, policy: null })}><Plus size={15} /> 创建优化策略</button>}
+        </>} />
       <PolicyModal open={modal.open} policy={modal.policy} meta={q.data || {}} onClose={close} onSaved={() => { close(); q.reload(); onSaved?.(); }} onIgnored={onSaved} />
       <ConfirmModal open={!!del} danger title="删除优化策略" description={`确认删除策略「${del?.name || ''}」？`} impactList={['该策略的优化建议与忽略项将一并清除', '内置策略不可删除']} confirmText="删除" loading={busy} onConfirm={doDelete} onCancel={() => setDel(null)} />
     </>

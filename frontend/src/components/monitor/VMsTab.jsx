@@ -7,6 +7,7 @@ import { PlatformCell, PctCell } from './cells';
 import { monitorApi } from '../../services/api';
 import { useAsync } from '../../hooks/useAsync';
 import { formatBytes, formatDateTime } from '../../utils/format';
+import { xr, xs } from '../../utils/xlsxExport';
 
 const STATE = { ACTIVE: ['运行中', 'tag-success'], SHUTOFF: ['已关机', 'tag-default'], ERROR: ['异常', 'tag-danger'], PAUSED: ['已暂停', 'tag-warning'], SUSPENDED: ['已挂起', 'tag-warning'], SHELVED: ['已搁置', 'tag-info'], SHELVED_OFFLOADED: ['已搁置', 'tag-info'], BUILD: ['创建中', 'tag-info'], REBOOT: ['重启中', 'tag-info'], HARD_REBOOT: ['重启中', 'tag-info'], MIGRATING: ['迁移中', 'tag-info'], RESIZE: ['调整中', 'tag-info'], VERIFY_RESIZE: ['调整中', 'tag-info'], DELETED: ['已删除', 'tag-default'] };
 const stateOf = (s) => STATE[s] || [s || '未知', 'tag-default'];
@@ -34,10 +35,21 @@ export default function VMsTab({ rows, platforms, plat, allTotal, initialKeyword
     { key: 'createdAt', title: '创建时间', width: 160, sortable: true, render: (v) => <span className="tabular-nums text-[13px]">{v.createdAt ? formatDateTime(v.createdAt) : '—'}</span> },
     { key: 'detail', title: '监控详情', width: 110, sticky: 'right', align: 'center', render: (v) => <button type="button" className="btn-ghost btn-sm" onClick={() => setSel(v)}><Activity size={14} />详情</button> },
   ], [um, days]);
+  const exportSpec = useMemo(() => ({
+    name: '虚拟机',
+    cols: [
+      { title: '云主机', get: (v) => xs(v.name) }, { title: '云主机 ID', get: (v) => xs(v.id) }, { title: '状态', get: (v) => stateOf(v.status)[0] }, { title: 'IP 地址', get: (v) => xs(v.ips) },
+      { title: '所属云平台', get: (v) => v._p?.name || '' }, { title: '控制台 IP', get: (v) => v._p?.consoleIp || '' }, { title: '所在节点', get: (v) => xs(v.node) },
+      { title: 'vCPU(核)', get: (v) => xs(v.vcpus) }, { title: '内存(MiB)', get: (v) => xs(v.ramMb) },
+      { title: 'CPU 使用率(%)', get: (v) => xr(v.cpuPercent) }, { title: '内存使用率(%)', get: (v) => xr(v.memPercent) },
+      { title: `CPU 最大使用率(%)（${days}天）`, get: (v) => xr(um[`${v._pid}/${v.id}`]?.cpuMax) }, { title: `内存最大使用率(%)（${days}天）`, get: (v) => xr(um[`${v._pid}/${v.id}`]?.memMax) },
+      { title: '创建时间', get: (v) => (v.createdAt ? formatDateTime(v.createdAt) : '') },
+    ],
+  }), [um, days]);
   const filterFn = useMemo(() => (v) => !st || v.status === st, [st]);
   return (
     <>
-      <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(v) => `${v._pid}|${v.id}`} initialKeyword={initialKeyword} placeholder="搜索云主机名称 / ID / IP / 节点 / 云平台" filterFn={filterFn} emptyTitle="暂无云主机数据"
+      <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(v) => `${v._pid}|${v.id}`} initialKeyword={initialKeyword} placeholder="搜索云主机名称 / ID / IP / 节点 / 云平台" filterFn={filterFn} emptyTitle="暂无云主机数据" exportSpec={exportSpec}
         searchText={(v) => `${v.name} ${v.id} ${v.ips} ${v.node} ${v.flavor} ${v.vcpus || ''} ${v._p?.name || ''} ${v._p?.consoleIp || ''} ${stateOf(v.status)[0]}`} initialSort={{ key: 'name', order: 'asc' }}
         filters={() => <div className="w-[130px]"><CustomSelect aria-label="状态筛选" value={st} onChange={setSt} options={states} /></div>} />
       <VMDetailModal vm={sel} platform={sel?._p} providerId={sel?._pid} onClose={() => setSel(null)} />

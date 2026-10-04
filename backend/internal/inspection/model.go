@@ -1,4 +1,4 @@
-// Package inspection 自动化巡检：基于已对接云平台的监控接口（EMLA）与资源接口（Nova / Cinder）数据，
+// Package inspection 自动巡检：基于已对接云平台的监控接口（EMLA）与资源接口（Nova / Cinder）数据，
 // 对服务状态、磁盘、集群容量、存储 IO、磁盘延迟、实时告警、云主机健康等逐项巡检，生成可追溯的巡检报告，并支持导出 Word 文档。
 // 巡检全程只读：不会对云平台做任何变更。
 package inspection
@@ -143,9 +143,10 @@ type Thresholds struct {
 // Schedule 定时巡检（东八区）。
 type Schedule struct {
 	Enabled bool   `json:"enabled"`
-	Mode    string `json:"mode"`    // daily | weekly
+	Mode    string `json:"mode"`    // daily | weekly | monthly
 	Time    string `json:"time"`    // HH:MM
 	Weekday int    `json:"weekday"` // 1..7（周一..周日），weekly 时有效
+	Day     int    `json:"day"`     // 1..31（每月几号），monthly 时有效；当月没有该日期时取当月最后一天
 }
 
 // Config 巡检配置。
@@ -165,7 +166,7 @@ func DefaultConfig() Config {
 			VCPUWarn: 70, VCPUBad: 85, MemWarn: 70, MemBad: 85, NodeCPUWarn: 80, NodeCPUBad: 90, NodeMemWarn: 80, NodeMemBad: 90,
 			DiskIOWarn: 70, DiskIOBad: 90, LatencyWarn: 20, LatencyBad: 50, VMCPUHigh: 85, VMMemHigh: 90, StaleMin: 30, ListMax: 30,
 		},
-		Schedule:     Schedule{Mode: "daily", Time: "02:00", Weekday: 1},
+		Schedule:     Schedule{Mode: "daily", Time: "02:00", Weekday: 1, Day: 1},
 		RefreshFirst: true,
 		Disabled:     []string{},
 	}
@@ -217,7 +218,7 @@ func (c *Config) Normalize() FieldErrors {
 		e["listMax"] = "明细表行数上限取值范围为 5 ~ 200"
 	}
 	s := &c.Schedule
-	if s.Mode != "daily" && s.Mode != "weekly" {
+	if s.Mode != "daily" && s.Mode != "weekly" && s.Mode != "monthly" {
 		s.Mode = "daily"
 	}
 	if _, err := time.Parse("15:04", s.Time); err != nil {
@@ -225,6 +226,9 @@ func (c *Config) Normalize() FieldErrors {
 	}
 	if s.Weekday < 1 || s.Weekday > 7 {
 		s.Weekday = 1
+	}
+	if s.Day < 1 || s.Day > 31 {
+		s.Day = 1
 	}
 	known := map[string]bool{}
 	for _, d := range Catalog {
@@ -279,8 +283,8 @@ var Catalog = []Def{
 	{"perf_lat", "性能", "磁盘延迟", "各节点磁盘 I/O 延迟（当前与近 24 小时峰值）"},
 	{"alert_firing", "告警", "集群正在告警", "告警中心中仍在告警的事件，按告警类型归拢"},
 	{"vm_state", "云主机", "云主机运行状态", "云主机状态分布，以及处于错误状态的云主机"},
-	{"vm_longoff", "云主机", "长期关机云主机", "按运营分析「长期关机虚机」策略判定，长期占用资源但未使用的云主机"},
-	{"vm_zombie", "云主机", "僵尸云主机", "按运营分析「僵尸型虚拟机」策略判定，运行中但几乎无业务负载的云主机"},
+	{"vm_longoff", "云主机", "长期关机云主机", "按运营中心「长期关机虚机」策略判定，长期占用资源但未使用的云主机"},
+	{"vm_zombie", "云主机", "僵尸云主机", "按运营中心「僵尸型虚拟机」策略判定，运行中但几乎无业务负载的云主机"},
 	{"vm_cpu", "云主机", "CPU 使用率偏高的云主机", "运行中云主机的当前或近 30 天平均 CPU 使用率偏高"},
 	{"vm_mem", "云主机", "内存使用率偏高的云主机", "运行中云主机的当前或近 30 天平均内存使用率偏高"},
 	{"vol_state", "云主机", "云硬盘状态", "云硬盘是否存在错误状态"},

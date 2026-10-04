@@ -92,7 +92,7 @@ export default function App() {
           <Route path="/login" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
           <Route element={<RequireAuth><MainLayout /></RequireAuth>}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            {/* 运营分析旧子路径 → 同一页面的对应页签 */}
+            {/* 运营中心旧子路径 → 同一页面的对应页签 */}
             {[['base', 'base'], ['vm', 'vm'], ['disk', 'disk'], ['optimize', 'optimize'], ['policy', 'policy']].map(([p, t]) => (
               <Route key={p} path={`/analytics/${p}`} element={<Navigate to={`/analytics?tab=${t}`} replace />} />
             ))}

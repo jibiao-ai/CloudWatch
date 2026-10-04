@@ -57,9 +57,9 @@ export const PERMISSION_MODULES = [
   },
   // 「统一资源视图」权限暂时隐藏（对应菜单尚未上线），恢复时取消注释：
   // { code: 'resource', name: '统一资源视图', menu: 'resource:view', buttons: [] },
-  { code: 'inspection', name: '自动化巡检', menu: 'inspection:view', buttons: [{ code: 'inspection:run', name: '发起巡检' }, { code: 'inspection:export', name: '导出报告' }, { code: 'inspection:config', name: '巡检设置' }, { code: 'inspection:delete', name: '删除报告' }] },
-  { code: 'monitor', name: '监控中心', menu: 'monitor:view', buttons: [{ code: 'monitor:collect', name: '立即采集' }] },
-  { code: 'capacity', name: '资产管理', menu: 'capacity:view', buttons: [{ code: 'capacity:collect', name: '立即采集' }] },
+  { code: 'inspection', name: '自动巡检', menu: 'inspection:view', buttons: [{ code: 'inspection:run', name: '发起巡检' }, { code: 'inspection:export', name: '导出报告' }, { code: 'inspection:config', name: '巡检设置' }, { code: 'inspection:delete', name: '删除报告' }] },
+  { code: 'monitor', name: '监控中心', menu: 'monitor:view', buttons: [{ code: 'monitor:collect', name: '立即采集' }, { code: 'monitor:export', name: '导出 Excel' }] },
+  { code: 'capacity', name: '配置中心', menu: 'capacity:view', buttons: [{ code: 'capacity:collect', name: '立即采集' }, { code: 'capacity:export', name: '导出 Excel' }] },
   {
     code: 'alert', name: '告警中心', menu: 'alert:view',
     buttons: [
@@ -69,7 +69,7 @@ export const PERMISSION_MODULES = [
     ],
   },
   { code: 'topology', name: '资源拓扑', menu: 'topology:view', buttons: [] },
-  { code: 'analytics', name: '运营分析', menu: 'analytics:view', buttons: [{ code: 'analytics:ignore', name: '忽略建议' }, { code: 'analytics:policy_update', name: '修改优化策略' }, { code: 'analytics:export', name: '导出' }] },
+  { code: 'analytics', name: '运营中心', menu: 'analytics:view', buttons: [{ code: 'analytics:ignore', name: '忽略建议' }, { code: 'analytics:policy_update', name: '修改优化策略' }, { code: 'analytics:export', name: '导出' }] },
 ];
 
 export const ALL_PERMISSION_CODES = PERMISSION_MODULES.flatMap((m) => [m.menu, ...m.buttons.map((b) => b.code)]);

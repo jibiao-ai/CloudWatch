@@ -1,6 +1,6 @@
 /**
  * 搜索结果 → 跳转地址。各分组的 item.id 语义见后端 search.go：
- *  - 资产类（vms/phys/nodes/volumes/ports/pools）：资产行 id，资产管理页自动带入关键字并打开详情
+ *  - 资产类（vms/phys/nodes/volumes/ports/pools）：资产行 id，配置中心页自动带入关键字并打开详情
  *  - 监控类：节点名 / 磁盘 / 服务名，监控中心切到对应平台与页签并带入关键字
  */
 const q = (o) => Object.entries(o).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');

@@ -1,6 +1,6 @@
 import { Cloud, Server, Cpu, Monitor, HardDrive, Cable, Database, Network } from 'lucide-react';
 
-/** 节点类型 → 名称 / 图标 / 对应的资产管理页签 */
+/** 节点类型 → 名称 / 图标 / 对应的配置中心页签 */
 export const TYPES = {
   platform: { label: '云平台', icon: Cloud },
   phys: { label: '物理节点', icon: Server, kind: 'phys' },

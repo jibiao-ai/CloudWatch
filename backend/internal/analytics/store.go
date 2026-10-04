@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Store 运营分析的持久化。
+// Store 运营中心的持久化。
 type Store struct{ db *sql.DB }
 
 func NewStore(db *sql.DB) *Store { return &Store{db: db} }

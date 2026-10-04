@@ -237,17 +237,21 @@ export const monitorApi = {
   getHosts: (id) => get(`/monitor/${id}/hosts`),
   /** 监控中心「集群存储」：存储后端容量 / 分配率 / 使用率 */
   getPools: (id) => get(`/monitor/${id}/pools`),
-  /** 各云主机近 30 天 CPU / 内存平均与最大使用率（来自运营分析按天汇总） */
+  /** 各云主机近 30 天 CPU / 内存平均与最大使用率（来自运营中心按天汇总） */
   getVMUsage: (id) => get(`/monitor/${id}/vm-usage`, undefined, { skipErrorToast: true }),
+  /** 导出审计：Excel 在浏览器端按当前筛选结果生成，这里仅记录审计日志 */
+  exportLog: (data) => post('/monitor/export-log', data, { skipErrorToast: true }),
   getVMMetrics: (id, vmId, range) => get(`/monitor/${id}/vms/${vmId}/metrics`, { range }, { skipErrorToast: true, timeout: 60000 }),
 };
-/* ============================ 资产管理（第6章：Nova / Cinder / Neutron） ============================ */
+/* ============================ 配置中心（第6章：Nova / Cinder / Neutron） ============================ */
 export const capacityApi = {
   getOverview: () => get('/capacity/overview'),
   /** kind: nodes | vms | volumes | ports | pools；全部平台聚合，服务端搜索 / 排序 / 分页 */
   list: (kind, params) => get(`/capacity/${kind}`, params),
   getDetail: (kind, providerId, id) => get(`/capacity/${kind}/${encodeURIComponent(providerId)}/${encodeURIComponent(id)}`, undefined, { skipErrorToast: true }),
   /** 立即采集：不传 providerId 则依次采集全部平台，耗时较长 */
+  /** 导出当前筛选结果（不分页）：params 含 kind / keyword / providerId / status / sortKey / sortOrder */
+  exportList: ({ kind, ...params }, opt) => blob(`/capacity/${kind}/export`, params, opt),
   collect: (providerId) => post(`/capacity/collect${providerId ? `?providerId=${encodeURIComponent(providerId)}` : ''}`, {}, { timeout: 300000 }),
 };
 
@@ -257,7 +261,7 @@ export const topologyApi = {
   getGraph: (providerId) => get(`/topology/${encodeURIComponent(providerId)}`),
 };
 
-/* ============================ 运营分析 ============================ */
+/* ============================ 运营中心 ============================ */
 export const analyticsApi = {
   getOverview: () => get('/analytics/overview'),
   getTrend: (params) => get('/analytics/trend', params),
@@ -267,6 +271,8 @@ export const analyticsApi = {
   getVMBands: (params) => get('/analytics/vm/bands', params),
   getDisk: (params) => get('/analytics/disk', params),
   exportOpt: (params, opt) => blob('/analytics/export/opt', params, opt),
+  /** 各页签统计数据导出（多工作表）：kind = home | base | vm | disk | policy */
+  exportTab: (kind, params, opt) => blob(`/analytics/export/${kind}`, params, opt),
   getOptSummary: () => get('/analytics/optimize/summary'),
   getOptList: (params) => get('/analytics/optimize/list', params),
   setIgnore: (data) => post('/analytics/optimize/ignore', data),
@@ -288,7 +294,7 @@ export const alertApi = {
   exportAlerts: (params, opt) => blob('/alerts/export', params, opt),
 };
 
-/* ============================ 自动化巡检 ============================ */
+/* ============================ 自动巡检 ============================ */
 export const inspectionApi = {
   list: (params) => get('/inspection/reports', params),
   get: (id) => get(`/inspection/reports/${id}`),

@@ -125,7 +125,7 @@ type Series struct {
 type Step struct {
 	Key        string `json:"key"`
 	Label      string `json:"label"`
-	Path       string `json:"path"` // 请求路径（采集明细展示，与资产管理一致）
+	Path       string `json:"path"` // 请求路径（采集明细展示，与配置中心一致）
 	OK         bool   `json:"ok"`
 	Count      int    `json:"count"` // 返回 / 解析条数
 	Error      string `json:"error,omitempty"`

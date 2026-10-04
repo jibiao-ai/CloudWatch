@@ -83,7 +83,7 @@ export default function Overview({ items, onOpen }) {
     <div className="space-y-4" id="topo-overview">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Cloud} label="云平台" value={items.length} hint={bad ? `${bad} 个平台需关注` : '全部平台健康'} tone={bad ? 'warning' : 'success'} />
-        <StatCard icon={Server} label="物理节点 / 计算节点" value={`${sum('phys', 'total')} / ${sum('host', 'total')}`} hint="资产管理" tone="primary" />
+        <StatCard icon={Server} label="物理节点 / 计算节点" value={`${sum('phys', 'total')} / ${sum('host', 'total')}`} hint="配置中心" tone="primary" />
         <StatCard icon={Monitor} label="虚拟机" value={sum('vm', 'total')} hint={`已停止 ${sum('vm', 'off')} 台`} tone="info" />
         <StatCard icon={critical ? TriangleAlert : BellRing} label="未恢复告警" value={alerts} hint={abn ? `${abn} 个资源异常 / 告警` : critical ? `严重 ${critical} 条` : '告警中心'} tone={critical ? 'danger' : alerts ? 'warning' : 'success'} />
       </div>

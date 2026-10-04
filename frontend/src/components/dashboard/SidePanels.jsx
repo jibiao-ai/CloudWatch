@@ -42,10 +42,10 @@ export function RecentAlerts({ rows }) {
   );
 }
 
-/** Suggestions —— 运营分析命中的优化建议（有命中资源的策略） */
+/** Suggestions —— 运营中心命中的优化建议（有命中资源的策略） */
 export function Suggestions({ rows }) {
   return (
-    <Panel title="优化建议" more={['/analytics', '运营分析']}>
+    <Panel title="优化建议" more={['/analytics', '运营中心']}>
       {!rows?.length ? <EmptyState compact title="暂无命中的优化建议" /> : (
         <ul className="divide-y divide-line">
           {rows.slice(0, 6).map((s) => (

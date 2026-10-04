@@ -88,7 +88,7 @@ func headerXML(b Brand, hasLogo bool, lw, lh int64) string {
 	if b.Subtitle != "" {
 		inner.WriteString(run{text: "  |  " + b.Subtitle, color: colGrey, size: 17}.xml())
 	}
-	inner.WriteString(`<w:r><w:tab/></w:r>` + run{text: "云平台自动化巡检报告", color: colGrey, size: 17}.xml())
+	inner.WriteString(`<w:r><w:tab/></w:r>` + run{text: "云平台自动巡检报告", color: colGrey, size: 17}.xml())
 	return xmlHead + `<w:hdr ` + nsMain + `><w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:space="4" w:color="` + colNavy + `"/></w:pBdr><w:tabs><w:tab w:val="right" w:pos="` + fmt.Sprint(contenW) + `"/></w:tabs><w:spacing w:after="0"/></w:pPr>` + inner.String() + `</w:p></w:hdr>`
 }
 

@@ -11,6 +11,7 @@ type Query struct {
 	Kind, Keyword, ProviderID, Status string
 	SortKey, SortOrder                string
 	Page, PageSize                    int
+	All                               bool // 导出用：不分页，返回全部匹配行
 }
 
 type Facet struct {
@@ -140,6 +141,13 @@ func (s *Store) Search(ctx context.Context, plats []Platform, q Query) (*PageRes
 			}
 			return c < 0
 		})
+	}
+	if q.All {
+		out := make([]Row, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, hide(r))
+		}
+		return &PageResult{List: out, Total: len(rows), All: len(base), Page: 1, PageSize: len(rows), Facets: facets}, nil
 	}
 	if q.PageSize < 1 || q.PageSize > 200 {
 		q.PageSize = 10

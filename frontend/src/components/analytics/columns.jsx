@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PlatCell } from '../capacity/capUtil';
 
-/** 所属云平台列：平台名 + 控制台 IP + 控制台链接（与资产管理一致） */
+/** 所属云平台列：平台名 + 控制台 IP + 控制台链接（与配置中心一致） */
 export const platCol = () => ({ key: 'platform', title: '所属云平台', width: 170, sortable: true, render: (r) => <PlatCell platform={{ name: r.platform, consoleIp: r.consoleIp }} /> });
 
 /** IpCell —— IP 地址：多个时显示第 1 个 + 「更多」展开 */

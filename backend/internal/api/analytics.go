@@ -144,8 +144,8 @@ func cellText(v any) any {
 // analyticsExport GET /analytics/export/opt?kind=&ignored=  导出某条优化策略的资源明细
 func (s *Server) analyticsExport(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	t0 := time.Now()
-	if r.PathValue("kind") != "opt" {
-		return httpx.Err(404, "未知的导出类型")
+	if k := r.PathValue("kind"); k != "opt" {
+		return s.analyticsExportSheets(w, r, p, k, t0)
 	}
 	ps, err := s.plats(r)
 	if err != nil {

@@ -2,7 +2,7 @@ import React from 'react';
 import { Search, X } from 'lucide-react';
 
 /**
- * SearchHits —— 运营分析图表类页签的全局搜索结果：在该页签可筛选的对象（所属云平台 / 计算节点 / 集群存储 …）中按关键字匹配，
+ * SearchHits —— 运营中心图表类页签的全局搜索结果：在该页签可筛选的对象（所属云平台 / 计算节点 / 集群存储 …）中按关键字匹配，
  * 点击某一项即应用为该页签的筛选条件。
  * 属性：keyword / groups[{ type, items:[{ value, label, sub, ... }], onPick(item) }] / onClear
  */

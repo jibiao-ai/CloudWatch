@@ -41,7 +41,7 @@ export function FilterBar({ children }) {
 }
 
 /**
- * Filter —— 下拉筛选。默认带标签（用于 FilterBar）；bare=true 时只显示下拉（用于表格工具栏，占位文字为「全部…」，与资产管理一致）
+ * Filter —— 下拉筛选。默认带标签（用于 FilterBar）；bare=true 时只显示下拉（用于表格工具栏，占位文字为「全部…」，与配置中心一致）
  */
 export function Filter({ label, options, value, onChange, width = 190, bare = false, placeholder, clearable = true }) {
   const sel = (

@@ -8,7 +8,7 @@ import { AllocPanel, UsePanel, TrendPanel } from '../Blocks';
 import { RES_GROUPS, RES_UNIT } from '../util';
 import { formatNumber } from '../../../utils/format';
 
-/** HomeTab —— 运营分析 · 总览：资源数量、分配率与使用率；云主机趋势 / 优化建议 / 各云平台资源汇总以横向轮播展示（每 60 秒自动切换） */
+/** HomeTab —— 运营中心 · 总览：资源数量、分配率与使用率；云主机趋势 / 优化建议 / 各云平台资源汇总以横向轮播展示（每 60 秒自动切换） */
 export default function HomeTab({ d, tick, onOpt, keyword }) {
   const t = d.totals;
   const okN = d.platforms.filter((p) => p.collectedAt && p.ok).length;

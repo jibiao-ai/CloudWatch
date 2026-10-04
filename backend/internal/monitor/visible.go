@@ -7,7 +7,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 )
 
-// VisibleNodes 物理节点：排除 OpenStack Nova 虚拟机，并按资产管理补全核数 / 已用核数（监控中心与自动化巡检共用）。
+// VisibleNodes 物理节点：排除 OpenStack Nova 虚拟机，并按配置中心补全核数 / 已用核数（监控中心与自动巡检共用）。
 func VisibleNodes(ctx context.Context, cs *capacity.Store, pl capacity.Platform, nodes []Node) []Node {
 	nova, err := cs.NovaKeys(ctx, pl)
 	if err != nil {
@@ -26,7 +26,7 @@ func VisibleNodes(ctx context.Context, cs *capacity.Store, pl capacity.Platform,
 	}
 	for i := range out {
 		n := &out[i]
-		if n.CoresTotal == nil { // Nova 已给出的核数优先；其余按资产管理匹配
+		if n.CoresTotal == nil { // Nova 已给出的核数优先；其余按配置中心匹配
 			t, ok := cores[capacity.ShortName(n.Name)]
 			if !ok && n.HostIP != "" {
 				t, ok = cores[n.HostIP]

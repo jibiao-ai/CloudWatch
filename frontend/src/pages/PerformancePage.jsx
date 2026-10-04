@@ -25,7 +25,7 @@ import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
 import { RANGES } from '../utils/monitorUtil';
 
-/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 计算节点 / 磁盘状态 / 虚拟机 / 集群存储 / 采集明细）：默认汇总全部云平台，各列表可按「所属云平台」筛选（与资产管理一致）；数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
+/** PerformancePage —— 监控中心（总览 / 服务状态 / 物理节点 / 计算节点 / 磁盘状态 / 虚拟机 / 集群存储 / 采集明细）：默认汇总全部云平台，各列表可按「所属云平台」筛选（与配置中心一致）；数据来自各平台 EMLA（/apis/monitoring/v1/ecms/*），后台按平台同步间隔采集并落库 */
 const TAB_KEYS = ['overview', 'services', 'nodes', 'hosts', 'disks', 'vms', 'pools', 'steps'];
 
 export default function PerformancePage() {
@@ -34,7 +34,7 @@ export default function PerformancePage() {
   const plats = useAsync(() => monitorApi.getOverview(), []);
   const [sp] = useSearchParams();
   const [pid, setPid] = useState(sp.get('pid') || ''); // 空 = 全部云平台（默认）
-  const [tab, setTab] = useState(TAB_KEYS.includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营分析跳转到指定页签
+  const [tab, setTab] = useState(TAB_KEYS.includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营中心跳转到指定页签
   const [range, setRange] = useState('6h');
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);

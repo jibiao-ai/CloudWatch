@@ -4,6 +4,17 @@ import DataState from './DataState';
 import { PlatformCell, PctCell, num } from './cells';
 import { Tag } from '../capacity/capUtil';
 import { formatNumber } from '../../utils/format';
+import { xr, xs } from '../../utils/xlsxExport';
+
+const EXPORT = {
+  name: '计算节点',
+  cols: [
+    { title: '计算节点', get: (h) => h.name }, { title: '节点 IP', get: (h) => xs(h.ip) }, { title: '所属云平台', get: (h) => h._p?.name || '' }, { title: '控制台 IP', get: (h) => h._p?.consoleIp || '' },
+    { title: '运行状态', get: (h) => xs(h.stateText) }, { title: '运行虚拟机数', get: (h) => xs(h.runningVms) },
+    { title: 'vCPU 已分配', get: (h) => xs(h.vcpusUsed) }, { title: 'vCPU 容量', get: (h) => xs(h.vcpusCap) },
+    { title: 'CPU 分配率(%)', get: (h) => xr(h.cpuAlloc) }, { title: '内存分配率(%)', get: (h) => xr(h.memAlloc) }, { title: 'CPU 使用率(%)', get: (h) => xr(h.cpuUse) }, { title: '内存使用率(%)', get: (h) => xr(h.memUse) },
+  ],
+};
 
 /** HostsTab —— 计算节点：分配率（Nova 超分配：已分配 / 容量）与使用率（监控实时），比率统一 1 位小数；样式与物理节点一致，无「集群」列 */
 export default function HostsTab({ plat, allTotal, initialKeyword, q }) {
@@ -22,7 +33,7 @@ export default function HostsTab({ plat, allTotal, initialKeyword, q }) {
   return (
     <DataState q={q}>
       {(d) => <MonTable columns={columns} rows={d.list} plat={plat} allTotal={allTotal} keyFn={(h) => `${h._pid}|${h.name}`} initialKeyword={initialKeyword} placeholder="搜索计算节点名称 / IP / 云平台"
-        searchText={(h) => `${h.name} ${h.ip} ${h._p?.name || ''} ${h._p?.consoleIp || ''} ${h.stateText || ''}`} emptyTitle="暂无计算节点数据" initialSort={{ key: 'name', order: 'asc' }} />}
+        searchText={(h) => `${h.name} ${h.ip} ${h._p?.name || ''} ${h._p?.consoleIp || ''} ${h.stateText || ''}`} emptyTitle="暂无计算节点数据" exportSpec={EXPORT} initialSort={{ key: 'name', order: 'asc' }} />}
     </DataState>
   );
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jibiao-ai/cloudwatch/internal/analytics"
@@ -177,4 +178,26 @@ func (s *Server) visibleNodes(ctx context.Context, pl capacity.Platform, nodes [
 
 func capPlatform(p provider.Provider) capacity.Platform {
 	return capacity.Platform{ID: p.ID, Name: p.Name, EnvType: p.EnvType, ConsoleIP: p.ConsoleIP}
+}
+
+// monitorExportLog POST /monitor/export-log  监控中心各表格的 Excel 在浏览器端按当前筛选结果生成，这里只负责记录审计日志。
+func (s *Server) monitorExportLog(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
+	t0 := time.Now()
+	b, err := httpx.ReadBody(r, 4<<10)
+	if err != nil {
+		return err
+	}
+	var in struct {
+		Tab   string `json:"tab"`
+		Count int    `json:"count"`
+	}
+	if err := httpx.DecodeJSON(b, &in); err != nil {
+		return err
+	}
+	if len([]rune(in.Tab)) > 30 {
+		in.Tab = string([]rune(in.Tab)[:30])
+	}
+	s.rec(r, p, "monitor", "export", "导出监控中心「"+in.Tab+"」（"+strconv.Itoa(in.Count)+" 条）", "/monitor", nil, nil, t0)
+	httpx.OK(w, map[string]any{"ok": true})
+	return nil
 }

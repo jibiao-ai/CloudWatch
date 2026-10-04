@@ -8,4 +8,5 @@ export const STATUS = {
 export const OVERALL_OPTIONS = [{ value: 'ok', label: '正常' }, { value: 'warn', label: '预警' }, { value: 'bad', label: '异常' }];
 export const TRIGGER = { manual: '手动发起', schedule: '定时巡检' };
 export const TRIGGER_OPTIONS = [{ value: 'manual', label: '手动发起' }, { value: 'schedule', label: '定时巡检' }];
+export const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: `${i + 1} 日` }));
 export const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((label, i) => ({ value: i + 1, label }));

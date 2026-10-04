@@ -75,7 +75,7 @@ export default function NodeDrawer({ node, graph, idx, focusOnly, onToggleFocus,
               </div>))}
           </section>
         )}
-        <section><h3 className="text-[13px] font-semibold text-fg mb-2 flex items-center gap-1.5"><Crosshair size={13} />基本属性（资产管理）</h3>
+        <section><h3 className="text-[13px] font-semibold text-fg mb-2 flex items-center gap-1.5"><Crosshair size={13} />基本属性（配置中心）</h3>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
             {node.attrs.filter((a) => a[1] !== '' && a[1] != null).map(([k, v]) => <div key={k} className="min-w-0"><dt className="text-xs text-fg-muted">{k}</dt><dd className="text-sm text-fg mt-0.5 break-all">{v}</dd></div>)}
           </dl>

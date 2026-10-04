@@ -35,6 +35,6 @@ export function useClientTable({ rows, columns, searchText, filter, initialSort 
     keyword, setKeyword: (v) => { setKeyword(v); setPg((p) => ({ ...p, page: 1 })); },
     sort, setSort: (s) => { setSort(s || initialSort); setPg((p) => ({ ...p, page: 1 })); },
     page, pageSize: pg.pageSize, setPage: ({ page: p, pageSize: s }) => setPg({ page: p, pageSize: s }),
-    total: sorted.length, all: rows.length, pageRows,
+    total: sorted.length, all: rows.length, pageRows, sorted, // sorted：当前筛选 + 排序后的全部行（供导出）
   };
 }

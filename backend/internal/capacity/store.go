@@ -258,7 +258,7 @@ func (s *Store) Rows(ctx context.Context, p Platform, kind string) ([]Row, *Meta
 	return e.rows[kind], &m, nil
 }
 
-// NovaKeys 某平台物理节点接口里被判定为 OpenStack Nova 虚拟机（已排除出资产管理）的标识集合：
+// NovaKeys 某平台物理节点接口里被判定为 OpenStack Nova 虚拟机（已排除出配置中心）的标识集合：
 // 小写短主机名（取第一个「.」之前）与 IP。监控中心据此同口径过滤物理节点。
 func (s *Store) NovaKeys(ctx context.Context, p Platform) (map[string]bool, error) {
 	e, err := s.load(ctx, p)
@@ -268,7 +268,7 @@ func (s *Store) NovaKeys(ctx context.Context, p Platform) (map[string]bool, erro
 	return e.nova, nil
 }
 
-// PhysCores 某平台资产管理「物理节点」的 CPU 核数索引：键为小写短主机名 / 完整主机名 / FQDN / 管理 IP / 带外 IP。
+// PhysCores 某平台配置中心「物理节点」的 CPU 核数索引：键为小写短主机名 / 完整主机名 / FQDN / 管理 IP / 带外 IP。
 // 监控中心物理节点按此匹配补全「总核数」（Nova 计算节点接口只覆盖计算节点，控制 / 存储节点没有核数）。
 func (s *Store) PhysCores(ctx context.Context, p Platform) (map[string]float64, error) {
 	rows, _, err := s.Rows(ctx, p, "phys")

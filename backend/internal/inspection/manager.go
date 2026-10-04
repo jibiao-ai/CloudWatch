@@ -79,6 +79,18 @@ func scheduleDue(s Schedule, now time.Time) (time.Time, bool) {
 			return time.Time{}, false
 		}
 	}
+	if s.Mode == "monthly" {
+		day := s.Day
+		if day < 1 || day > 31 {
+			day = 1
+		}
+		if last := time.Date(n.Year(), n.Month()+1, 0, 0, 0, 0, 0, analytics.CST).Day(); day > last {
+			day = last // 当月没有该日期（如 31 号遇到 2 月）时，取当月最后一天
+		}
+		if n.Day() != day {
+			return time.Time{}, false
+		}
+	}
 	target := time.Date(n.Year(), n.Month(), n.Day(), hm.Hour(), hm.Minute(), 0, 0, analytics.CST)
 	if n.Before(target) || n.Sub(target) > 30*time.Minute {
 		return time.Time{}, false
@@ -200,9 +212,9 @@ func (m *Manager) run(taskID string, plats []capacity.Platform, trigger, operato
 	}
 	Merge(rep)
 	if n == 1 {
-		rep.Title = fmt.Sprintf("%s 自动化巡检报告", plats[0].Name)
+		rep.Title = fmt.Sprintf("%s 自动巡检报告", plats[0].Name)
 	} else {
-		rep.Title = fmt.Sprintf("云平台自动化巡检报告（%d 个平台）", n)
+		rep.Title = fmt.Sprintf("云平台自动巡检报告（%d 个平台）", n)
 	}
 	rep.FinishedAt = time.Now()
 	id, err := m.Store.Save(ctx, rep)
@@ -270,7 +282,7 @@ func (m *Manager) load(ctx context.Context, in *Input) error {
 		if h, pol, err := m.Analytics.Hits(ctx, []capacity.Platform{pl}, pl.ID, "longoff", "zombie"); err == nil {
 			in.Hits, in.Policies = h, pol
 		} else {
-			in.Notes = append(in.Notes, "读取运营分析策略结果失败："+err.Error())
+			in.Notes = append(in.Notes, "读取运营中心策略结果失败："+err.Error())
 		}
 		if u, err := m.Analytics.VMUsage(ctx, pl.ID); err == nil {
 			in.Usage = u

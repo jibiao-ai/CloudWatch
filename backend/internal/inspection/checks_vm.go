@@ -295,7 +295,7 @@ func maxInt(a, b int) int {
 func policyOff(in *Input, kind string) (bool, string) {
 	p, ok := in.Policies[kind]
 	if ok && !p.Enabled {
-		return true, "运营分析中的「" + p.Name + "」策略已停用，本项不参与判定。"
+		return true, "运营中心中的「" + p.Name + "」策略已停用，本项不参与判定。"
 	}
 	return false, ""
 }
@@ -325,7 +325,7 @@ func policyItem(in *Input, c Config, kind, label, std, advice string, cols []str
 		return Item{Status: NA, Value: "策略已停用", Detail: msg}
 	}
 	if in.Hits == nil {
-		return na("未能读取运营分析策略结果。")
+		return na("未能读取运营中心策略结果。")
 	}
 	h := in.Hits[kind]
 	p := in.Policies[kind]
@@ -347,12 +347,12 @@ func policyItem(in *Input, c Config, kind, label, std, advice string, cols []str
 }
 
 func checkLongOff(in *Input, c Config) Item {
-	return policyItem(in, c, "longoff", "长期关机云主机", "按运营分析「长期关机虚机」策略判定：已关机超过设定天数的云主机。",
+	return policyItem(in, c, "longoff", "长期关机云主机", "按运营中心「长期关机虚机」策略判定：已关机超过设定天数的云主机。",
 		"请与业务方确认后释放或归档，回收其占用的云硬盘与配额。", []string{"shutdownDays", "flavor"}, []string{"已关机天数", "规格"})
 }
 
 func checkZombie(in *Input, c Config) Item {
-	return policyItem(in, c, "zombie", "僵尸云主机", "按运营分析「僵尸型虚拟机」策略判定：运行中但长期几乎没有业务负载。",
+	return policyItem(in, c, "zombie", "僵尸云主机", "按运营中心「僵尸型虚拟机」策略判定：运行中但长期几乎没有业务负载。",
 		"请与业务方确认后关机观察或释放，回收计算资源。", []string{"writeAvg", "cpuAvg", "flavor"}, []string{"磁盘写速率均值(KiB/s)", "CPU 均值(%)", "规格"})
 }
 

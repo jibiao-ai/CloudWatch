@@ -3,8 +3,18 @@ import MonTable from './MonTable';
 import DataState from './DataState';
 import { PlatformCell, PctCell } from './cells';
 import { Tag, gbCell } from '../capacity/capUtil';
+import { xr, xs } from '../../utils/xlsxExport';
 
-/** PoolsTab —— 集群存储：首列后端名称，其余字段与资产管理「集群存储」一致，另含分配率；比率统一 1 位小数 */
+const EXPORT = {
+  name: '集群存储',
+  cols: [
+    { title: '后端名称', get: (r) => r.backendName || r.poolName || '' }, { title: '所属云平台', get: (r) => r._p?.name || '' }, { title: '控制台 IP', get: (r) => r._p?.consoleIp || '' },
+    { title: '总容量(GiB)', get: (r) => xr(r.totalGb, 2) }, { title: '剩余容量(GiB)', get: (r) => xr(r.freeGb, 2) }, { title: '已分配容量(GiB)', get: (r) => xr(r.allocatedGb, 2) }, { title: '精简置备总容量(GiB)', get: (r) => xr(r.provisionedGb, 2) },
+    { title: '存储分配率(%)', get: (r) => xr(r.allocPercent) }, { title: '存储使用率(%)', get: (r) => xr(r.usedPercent) }, { title: '供应商', get: (r) => xs(r.vendorText) }, { title: '后端状态', get: (r) => xs(r.statusText) },
+  ],
+};
+
+/** PoolsTab —— 集群存储：首列后端名称，其余字段与配置中心「集群存储」一致，另含分配率；比率统一 1 位小数 */
 export default function PoolsTab({ plat, allTotal, initialKeyword, q }) {
   const columns = useMemo(() => [
     { key: 'backendName', title: '后端名称', width: 190, sortable: true, render: (r) => <span className="font-medium break-all" title={r.name}>{r.backendName || r.poolName || '—'}</span> },
@@ -21,7 +31,7 @@ export default function PoolsTab({ plat, allTotal, initialKeyword, q }) {
   return (
     <DataState q={q}>
       {(d) => <MonTable columns={columns} rows={d.list} plat={plat} allTotal={allTotal} keyFn={(r) => `${r._pid}|${r.name}`} initialKeyword={initialKeyword} placeholder="搜索后端名称 / 存储池 / 供应商 / 云平台"
-        searchText={(r) => `${r.backendName} ${r.poolName} ${r.name} ${r.vendorText} ${r.protocolText} ${r._p?.name || ''} ${r._p?.consoleIp || ''}`} emptyTitle="暂无集群存储数据" initialSort={{ key: 'backendName', order: 'asc' }} />}
+        searchText={(r) => `${r.backendName} ${r.poolName} ${r.name} ${r.vendorText} ${r.protocolText} ${r._p?.name || ''} ${r._p?.consoleIp || ''}`} emptyTitle="暂无集群存储数据" exportSpec={EXPORT} initialSort={{ key: 'backendName', order: 'asc' }} />}
     </DataState>
   );
 }

@@ -1,8 +1,18 @@
 import React, { useMemo } from 'react';
 import MonTable from './MonTable';
 import { PlatformCell } from './cells';
+import { xs } from '../../utils/xlsxExport';
 
-/** StepsTab —— 采集明细：表头与「资产管理 · 采集明细」一致（所属云平台 / 接口 / 请求路径 / 结果 / 条数 / 耗时 / 错误信息）；可搜索 / 排序 / 分页 */
+const EXPORT = {
+  name: '采集明细',
+  cols: [
+    { title: '所属云平台', get: (s) => s._p?.name || '' }, { title: '控制台 IP', get: (s) => s._p?.consoleIp || '' }, { title: '接口', get: (s) => xs(s.label) },
+    { title: '请求路径', get: (s) => (s.path ? `GET ${s.path}` : '') }, { title: '结果', get: (s) => (s.ok ? '成功' : '失败') }, { title: '条数', get: (s) => s.count ?? 0 },
+    { title: '耗时(ms)', get: (s) => xs(s.durationMs) }, { title: '错误信息', get: (s) => xs(s.error) },
+  ],
+};
+
+/** StepsTab —— 采集明细：表头与「配置中心 · 采集明细」一致（所属云平台 / 接口 / 请求路径 / 结果 / 条数 / 耗时 / 错误信息）；可搜索 / 排序 / 分页 */
 export default function StepsTab({ rows, plat, allTotal, initialKeyword }) {
   const columns = useMemo(() => [
     { key: 'platform', title: '所属云平台', width: 190, sortable: true, sortBy: (s) => s._p?.name || '', render: (s) => <PlatformCell platform={s._p} /> },
@@ -13,5 +23,5 @@ export default function StepsTab({ rows, plat, allTotal, initialKeyword }) {
     { key: 'durationMs', title: '耗时', width: 90, sortable: true, align: 'right', render: (s) => <span className="tabular-nums text-[13px]">{s.durationMs} ms</span> },
     { key: 'error', title: '错误信息', width: 360, render: (s) => <span className="text-[13px] text-danger break-all">{s.error || ''}</span> },
   ], []);
-  return <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(s) => `${s._pid}|${s.key}`} initialKeyword={initialKeyword} placeholder="搜索平台 / 接口 / 错误信息" searchText={(s) => `${s._p?.name || ''} ${s._p?.consoleIp || ''} ${s.label} ${s.key} ${s.path || ''} ${s.error || ''} ${s.ok ? '成功' : '失败'}`} emptyTitle="尚未采集" />;
+  return <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(s) => `${s._pid}|${s.key}`} initialKeyword={initialKeyword} placeholder="搜索平台 / 接口 / 错误信息" searchText={(s) => `${s._p?.name || ''} ${s._p?.consoleIp || ''} ${s.label} ${s.key} ${s.path || ''} ${s.error || ''} ${s.ok ? '成功' : '失败'}`} emptyTitle="尚未采集" exportSpec={EXPORT} />;
 }

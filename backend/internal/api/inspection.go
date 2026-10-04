@@ -86,7 +86,7 @@ func (s *Server) inspectionRun(w http.ResponseWriter, r *http.Request, p *auth.P
 	if n := len(inspection.ParseIDs(in.ProviderIDs)); n > 0 {
 		scope = strconv.Itoa(n) + " 个云平台"
 	}
-	s.rec(r, p, "inspection", "run", "发起自动化巡检（"+scope+"）", "/inspection", in, err, t0)
+	s.rec(r, p, "inspection", "run", "发起自动巡检（"+scope+"）", "/inspection", in, err, t0)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (s *Server) inspectionExport(w http.ResponseWriter, r *http.Request, p *aut
 	if err != nil {
 		return err
 	}
-	name := "云平台自动化巡检报告_" + rep.FinishedAt.In(analytics.CST).Format("20060102_1504") + ".docx"
+	name := "云平台自动巡检报告_" + rep.FinishedAt.In(analytics.CST).Format("20060102_1504") + ".docx"
 	h := w.Header()
 	h.Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 	h.Set("Content-Disposition", `attachment; filename="inspection-report-`+strconv.FormatInt(id, 10)+`.docx"; filename*=UTF-8''`+url.PathEscape(name))

@@ -12,7 +12,7 @@ import (
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
 )
 
-// Engine 运营分析聚合：只读资产管理 / 监控中心 / 本包历史表的已落库数据。
+// Engine 运营中心聚合：只读配置中心 / 监控中心 / 本包历史表的已落库数据。
 type Engine struct {
 	St  *Store
 	Cap *capacity.Store
@@ -24,7 +24,7 @@ type plat struct {
 	capacity.Platform
 	vms, vols, hosts, pools, phys []capacity.Row
 	snap                          *monitor.Snapshot
-	meta                          *capacity.Meta    // 资产管理最近一次采集状态
+	meta                          *capacity.Meta    // 配置中心最近一次采集状态
 	clusters                      map[string]string // 计算节点名 → 集群
 }
 

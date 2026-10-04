@@ -66,7 +66,7 @@ func TestBuildDocx(t *testing.T) {
 			t.Fatalf("报告不应包含 %q", bad)
 		}
 	}
-	if !strings.Contains(s, "云平台自动化巡检报告") {
+	if !strings.Contains(s, "云平台自动巡检报告") {
 		t.Fatal("缺少封面标题")
 	}
 	if p := os.Getenv("DOCX_OUT"); p != "" {

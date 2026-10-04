@@ -11,7 +11,7 @@ const Bar = ({ v, label }) => (v == null ? <span className="text-fg-subtle">—<
 export default function BackendPanel({ list, loading }) {
   return (
     <Panel title="集群存储分配率 / 使用率（按存储后端）" actions={<Link to="/monitor?tab=pools" className="text-[13px] text-primary-text hover:underline">在监控中心查看集群存储明细</Link>}>
-      {loading ? <Skeleton.Block className="h-[120px]" /> : !list?.length ? <p className="text-[13px] text-fg-muted py-6 text-center">暂无集群存储数据，请先在资产管理中采集</p> : (
+      {loading ? <Skeleton.Block className="h-[120px]" /> : !list?.length ? <p className="text-[13px] text-fg-muted py-6 text-center">暂无集群存储数据，请先在配置中心中采集</p> : (
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>

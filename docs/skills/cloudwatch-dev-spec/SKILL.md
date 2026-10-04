@@ -1,6 +1,6 @@
 ---
 name: cloudwatch-dev-spec
-description: CloudWatch（私有云 / OpenStack 可观测与运营控制台）的开发规格库。凡是要在该项目或同类「React + Tailwind + Go 标准库 + MariaDB」管理控制台里新增页面、组件、接口、数据表、策略、导出、部署时使用；包含技术栈锁定、铁律（lint 自动阻断）、组件库用法、前后端约定、运营分析策略引擎、交付与远程验证流程。
+description: CloudWatch（私有云 / OpenStack 可观测与运营控制台）的开发规格库。凡是要在该项目或同类「React + Tailwind + Go 标准库 + MariaDB」管理控制台里新增页面、组件、接口、数据表、策略、导出、部署时使用；包含技术栈锁定、铁律（lint 自动阻断）、组件库用法、前后端约定、运营中心策略引擎、交付与远程验证流程。
 ---
 
 # CloudWatch 开发规格库（Skill）
@@ -67,7 +67,7 @@ hooks：`useAsync(fn, deps)`（loading/refreshing/error/reload）、`useListQuer
 ## 5. 分页与搜索约定
 
 - 列表默认 10 条/页（`[10,20,50]`），后端 `Paginate(rows, ListQuery)`；排序空值恒排最后。
-- 页头全局搜索（运营分析）：`AnalyticsShell` 在「刷新」右侧提供搜索框，关键字下发给当前页签：列表页签（优化建议 / 优化策略 / 总览平台表）直接过滤；图表页签（资源分析 / 云主机 / 磁盘）出现 `SearchHits` 卡片，匹配「云平台/计算节点/集群存储」，点击即作为筛选条件。切换页签自动清空。
+- 页头全局搜索（运营中心）：`AnalyticsShell` 在「刷新」右侧提供搜索框，关键字下发给当前页签：列表页签（优化建议 / 优化策略 / 总览平台表）直接过滤；图表页签（资源分析 / 云主机 / 磁盘）出现 `SearchHits` 卡片，匹配「云平台/计算节点/集群存储」，点击即作为筛选条件。切换页签自动清空。
 
 ## 6. 交付与验证流程（每一轮固定）
 
@@ -78,6 +78,6 @@ hooks：`useAsync(fn, deps)`（loading/refreshing/error/reload）、`useListQuer
 - `references/iron-rules.md` — 铁律逐条说明与违规/正确示例
 - `references/frontend-patterns.md` — 页面/筛选/表格/弹层/日期选择/全局搜索 的代码范式
 - `references/backend-patterns.md` — handler、审计、权限、迁移、导出、分页范式
-- `references/analytics-policy-engine.md` — 运营分析优化策略引擎（11 条内置 + 自定义）与「无数据」排查
+- `references/analytics-policy-engine.md` — 运营中心优化策略引擎（11 条内置 + 自定义）与「无数据」排查
 - `references/deploy-and-verify.md` — 打包部署、远程验证、常见故障
 - `references/checklist.md` — 提交前检查清单

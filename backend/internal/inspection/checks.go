@@ -118,7 +118,7 @@ func checkSvcCore(in *Input, c Config) Item {
 
 func checkNodeState(in *Input, c Config) Item {
 	if len(in.Phys) == 0 && len(in.Computes) == 0 {
-		return na("尚未采集到资产管理中的物理节点 / 计算节点数据。")
+		return na("尚未采集到配置中心中的物理节点 / 计算节点数据。")
 	}
 	it := Item{Status: OK, Standard: "物理节点就绪且在线、计算服务运行且已启用；离线 / 故障 / 宕机为异常，维护 / 禁用为预警。"}
 	var rows [][]string

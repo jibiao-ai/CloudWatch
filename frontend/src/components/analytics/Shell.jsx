@@ -12,7 +12,7 @@ import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime, fromNow } from '../../utils/format';
 
 /**
- * AnalyticsShell —— 运营分析各页面的统一外壳，结构与「资产管理」页一致：
+ * AnalyticsShell —— 运营中心各页面的统一外壳，结构与「配置中心」页一致：
  * 页头（标题 / 说明 / 刷新）→ 状态条（采集状态 · 已对接云平台 · 最近采集）→ 页签 → 页签面板。
  * 属性：title / description / tabs[{key,label,count|countKey}] 或 (总览数据) => tabs[] / tab / onTab / idPrefix / actions(页头附加按钮) /
  *       onRefresh(页面自身数据的刷新) / children(ov, tick, reloadOv, keyword, clearKeyword) —— ov 为总览数据，tick 每次点击刷新自增（子图表据此重新加载），reloadOv 重新拉取总览（忽略建议后刷新页签计数），
@@ -47,7 +47,7 @@ export default function AnalyticsShell({ title, description, tabs, tab, onTab, i
             <StatusDot status={!total || !last ? 'unknown' : okN === total ? 'online' : 'warning'} label={!total ? '暂无云平台' : !last ? '尚未采集' : okN === total ? '采集正常' : `${total - okN} 个平台采集异常`} />
             <span className="text-fg-muted">已对接云平台 {total} 个</span>
             <span className="text-fg-muted">最近采集：{last ? `${formatDateTime(last)}（${fromNow(last)}）` : '—'}</span>
-            <span className="text-fg-subtle">数据来源：资产管理与监控中心的采集快照</span>
+            <span className="text-fg-subtle">数据来源：配置中心与监控中心的采集快照</span>
           </div>
           {items && <Tabs items={items} value={tab} onChange={onTab} className="mb-4" idPrefix={idPrefix} />}
           <div id={`${idPrefix}-panel`} role="tabpanel" aria-labelledby={items ? `${idPrefix}-${tab}` : undefined} className="space-y-4">

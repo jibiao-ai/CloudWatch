@@ -7,11 +7,21 @@ import CustomSelect from '../CustomSelect';
 import StatCard from '../StatCard';
 import { SERVICE_CATEGORIES, serviceCategory, serviceName } from '../../utils/monitorUtil';
 import { formatDateTime } from '../../utils/format';
+import { xs } from '../../utils/xlsxExport';
 
 const STATUS = [{ value: '', label: '全部状态' }, { value: 'ok', label: '正常' }, { value: 'bad', label: '异常' }, { value: 'na', label: '未采集' }];
 const CATS = [{ value: '', label: '全部分类' }, ...SERVICE_CATEGORIES.map((c) => ({ value: c, label: c }))];
 const kind = (s) => (s.healthy == null ? 'na' : s.healthy ? 'ok' : 'bad');
 const RANK = { na: -1, ok: 0, bad: 1 };
+
+const KIND_TEXT = { ok: '正常', bad: '异常', na: '未采集' };
+const EXPORT = {
+  name: '服务状态',
+  cols: [
+    { title: '服务名称', get: (s) => s.label }, { title: '所属云平台', get: (s) => s._p?.name || '' }, { title: '控制台 IP', get: (s) => s._p?.consoleIp || '' }, { title: '分类', get: (s) => s.cat },
+    { title: '状态', get: (s) => KIND_TEXT[s.kind] }, { title: '服务指标', get: (s) => s.name }, { title: '指标时间', get: (s) => (s.at ? formatDateTime(s.at * 1000) : '') },
+  ],
+};
 
 /** ServicesTab —— 服务状态：仅展示对照表中的 35 项服务；友好命名 + 分类 + 指标名 + 状态（按各指标语义判定）+ 采集时间；可搜索 / 筛选 / 排序 / 分页 */
 export default function ServicesTab({ rows: src, plat, allTotal, initialKeyword }) {
@@ -35,7 +45,7 @@ export default function ServicesTab({ rows: src, plat, allTotal, initialKeyword 
         <StatCard icon={CheckCircle2} label="运行正常" value={cnt.ok} hint="按各指标语义判定为健康" tone="success" />
         <StatCard icon={AlertTriangle} label="运行异常" value={cnt.bad} hint="按各指标语义判定为不健康" tone={cnt.bad ? 'danger' : 'success'} />
       </div>
-      <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(s) => `${s._pid}|${s.name}`} initialKeyword={initialKeyword} placeholder="搜索服务名称 / 指标名 / 云平台" filterFn={filterFn} emptyTitle="暂无服务状态数据"
+      <MonTable columns={columns} rows={rows} plat={plat} allTotal={allTotal} keyFn={(s) => `${s._pid}|${s.name}`} initialKeyword={initialKeyword} placeholder="搜索服务名称 / 指标名 / 云平台" filterFn={filterFn} emptyTitle="暂无服务状态数据" exportSpec={EXPORT}
         searchText={(s) => `${s._p?.name || ''} ${s.label} ${s.name} ${s.cat}`} initialSort={{ key: 'kind', order: 'desc' }}
         filters={() => (
           <>

@@ -17,13 +17,13 @@ import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { formatDateTime, fromNow } from '../utils/format';
 
-/** CapacityPage —— 资产管理（总览 / 物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储 / 采集明细）：聚合全部已对接云平台，数据来自第 6 章 Nova / Cinder / Neutron 接口 */
+/** CapacityPage —— 配置中心（总览 / 物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 集群存储 / 采集明细）：聚合全部已对接云平台，数据来自第 6 章 Nova / Cinder / Neutron 接口 */
 export default function CapacityPage() {
   const toast = useToast();
   const canCollect = useCan('capacity:collect');
   const ov = useAsync(() => capacityApi.getOverview(), []);
   const [sp] = useSearchParams();
-  const [tab, setTab] = useState(['overview', 'steps', ...KINDS.map((k) => k.key)].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营分析等页面跳转到指定页签
+  const [tab, setTab] = useState(['overview', 'steps', ...KINDS.map((k) => k.key)].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营中心等页面跳转到指定页签
   const spKey = sp.toString();
   useEffect(() => { const t = sp.get('tab'); if (['overview', 'steps', ...KINDS.map((k) => k.key)].includes(t)) setTab(t); }, [spKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const prefill = { keyword: sp.get('keyword') || '', providerId: sp.get('providerId') || '', open: sp.get('open') || '' }; // 全局搜索 / 概览跳转
@@ -50,7 +50,7 @@ export default function CapacityPage() {
 
   return (
     <div className="bg-bg">
-      <PageHeader title="资产管理" description="汇聚全部已对接云平台的物理节点、计算节点、虚拟机、云硬盘、虚拟网卡与集群存储；对接 Coaster / Nova / Cinder / Neutron 接口，后台周期采集并落库"
+      <PageHeader title="配置中心" description="汇聚全部已对接云平台的物理节点、计算节点、虚拟机、云硬盘、虚拟网卡与集群存储；对接 Coaster / Nova / Cinder / Neutron 接口，后台周期采集并落库"
         actions={<>
           <LoadingButton icon={RefreshCw} loading={ov.refreshing} onClick={reload}>刷新</LoadingButton>
           {canCollect && <LoadingButton variant="primary" icon={Play} loading={busy} onClick={collect}>立即采集</LoadingButton>}

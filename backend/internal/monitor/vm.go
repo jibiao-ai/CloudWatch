@@ -213,7 +213,7 @@ var (
 	extFs    = []string{"filesystem.util", "fs.util", "disk.fs.util", "disk.usage.percent", "filesystem.usage.percent"} // 文件系统使用率 %
 )
 
-// ExtMetrics 扩展指标候选名（供运营分析历史回填使用）。
+// ExtMetrics 扩展指标候选名（供运营中心历史回填使用）。
 var ExtMetrics = map[string][]string{"ready": extReady, "swap": extSwap, "lat": extLat, "fs": extFs}
 
 // ResourceMetrics GET {gnocchi}/v1/resource/generic/{id} → 该资源上存在的指标名集合。

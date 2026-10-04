@@ -78,7 +78,7 @@ func avgPtr(sum float64, n int) *float64 {
 	return &v
 }
 
-// dashboardOverview GET /dashboard/overview：平台概览。聚合资产、监控、告警、运营分析；各板块按权限裁剪，无权限的板块不返回。
+// dashboardOverview GET /dashboard/overview：平台概览。聚合资产、监控、告警、运营中心；各板块按权限裁剪，无权限的板块不返回。
 func (s *Server) dashboardOverview(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	ctx := r.Context()
 	pg, err := s.Providers.Store.List(ctx, provider.Query{})

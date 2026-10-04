@@ -16,7 +16,7 @@ import (
 // countEvery 资源数量快照最小间隔（趋势图精度 = 小时级）。
 const countEvery = 30 * time.Minute
 
-// Sampler 后台采样：只读取资产管理 / 监控中心已落库的快照，不额外调用云平台接口。
+// Sampler 后台采样：只读取配置中心 / 监控中心已落库的快照，不额外调用云平台接口。
 //   - 资产快照更新 → 云主机状态跟踪（持续关机 / 运行时长）、资源数量快照、存储池使用率样本
 //   - 监控快照更新 → 云主机 CPU / 内存使用率按天累计（平均 / 最大）
 type Sampler struct {
@@ -70,12 +70,12 @@ func (m *Sampler) Tick(ctx context.Context) {
 
 	pg, err := m.Prov.Store.List(ctx, provider.Query{})
 	if err != nil {
-		log.Printf("运营分析采样：读取平台失败: %v", err)
+		log.Printf("运营中心采样：读取平台失败: %v", err)
 		return
 	}
 	for _, p := range pg.List {
 		if err := m.One(ctx, capacity.Platform{ID: p.ID, Name: p.Name, EnvType: p.EnvType, ConsoleIP: p.ConsoleIP}); err != nil {
-			log.Printf("运营分析采样：平台 %s 失败: %v", p.Name, err)
+			log.Printf("运营中心采样：平台 %s 失败: %v", p.Name, err)
 		}
 		m.maybeBackfill(ctx, p.ID, p.Name)
 	}

@@ -172,7 +172,7 @@ func cover(r *Report, b Brand, hasLogo bool, lw, lh int) string {
 	w := scale(1)
 	band := []trow{{height: 2400, cells: []cell{{fill: colNavy, vAlign: "center", paras: []para{
 		{align: "center", before: 240, after: 80, runs: []run{{text: scope, bold: true, color: "FFFFFF", size: 40}}},
-		{align: "center", after: 240, runs: []run{{text: "云平台自动化巡检报告", bold: true, color: "FFFFFF", size: 52}}},
+		{align: "center", after: 240, runs: []run{{text: "云平台自动巡检报告", bold: true, color: "FFFFFF", size: 52}}},
 	}}}}}
 	s.WriteString(table(w, band))
 	s.WriteString(spacer(500))
@@ -402,7 +402,7 @@ func recordChapter(no int, r *Report) string {
 		{"云主机 CPU / 内存偏高", fmt.Sprintf("CPU ≥ %g%%", t.VMCPUHigh), fmt.Sprintf("内存 ≥ %g%%", t.VMMemHigh)},
 	}
 	s.WriteString(titledTable("本次巡检采用的判定阈值", []string{"指标", "预警阈值", "异常阈值"}, rows, []int{44, 28, 28},
-		"阈值可在「自动化巡检 → 巡检设置」中调整；云主机 CPU / 内存偏高按「当前值或近 30 天平均值 ≥ 阈值」判定，不区分预警 / 异常。", -1))
+		"阈值可在「自动巡检 → 巡检设置」中调整；云主机 CPU / 内存偏高按「当前值或近 30 天平均值 ≥ 阈值」判定，不区分预警 / 异常。", -1))
 	s.WriteString(para{style: "Note", before: 200, runs: []run{{text: "本报告由系统自动生成，数据来源于云平台监控接口与资源接口，巡检过程为只读采集，不会对云平台做任何变更。"}}}.xml())
 	return s.String()
 }

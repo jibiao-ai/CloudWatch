@@ -562,7 +562,7 @@ func (e *Engine) IgnoreList(ctx context.Context, plats []capacity.Platform, kind
 	return out, nil
 }
 
-// Hits 指定策略当前命中的资源（不含「已忽略」），供自动化巡检引用；返回的策略信息中 Enabled=false 表示该策略已停用。
+// Hits 指定策略当前命中的资源（不含「已忽略」），供自动巡检引用；返回的策略信息中 Enabled=false 表示该策略已停用。
 // providerID 非空时只评估该平台。每行同 OptRows，并带 kind / policy / reason。
 func (e *Engine) Hits(ctx context.Context, plats []capacity.Platform, providerID string, kinds ...string) (map[string][]map[string]any, map[string]Policy, error) {
 	ps, err := e.load(ctx, plats, providerID)

@@ -308,7 +308,7 @@ func (e *Engine) HostRows(ctx context.Context, plats []capacity.Platform, provid
 	return rows, nil
 }
 
-// PoolRows 监控中心「集群存储」：某一云平台的存储后端（字段与资产管理「集群存储」一致 + 分配率），比率统一保留 1 位小数。
+// PoolRows 监控中心「集群存储」：某一云平台的存储后端（字段与配置中心「集群存储」一致 + 分配率），比率统一保留 1 位小数。
 func (e *Engine) PoolRows(ctx context.Context, plats []capacity.Platform, providerID string) ([]map[string]any, error) {
 	ps, err := e.load(ctx, plats, providerID)
 	if err != nil {

@@ -13,7 +13,7 @@ func (s *Server) topo() *topology.Builder {
 	return &topology.Builder{Capacity: s.Capacity.Store, Monitor: s.Monitor.Store}
 }
 
-// topologyOverview GET /topology/overview：全部平台的分层摘要（平台管理 + 资产管理 + 监控中心 + 告警中心）。
+// topologyOverview GET /topology/overview：全部平台的分层摘要（平台管理 + 配置中心 + 监控中心 + 告警中心）。
 func (s *Server) topologyOverview(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	pg, err := s.Providers.Store.List(r.Context(), provider.Query{SortKey: "name", SortOrder: "asc"})
 	if err != nil {

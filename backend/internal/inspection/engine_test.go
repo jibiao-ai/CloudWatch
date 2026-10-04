@@ -103,6 +103,33 @@ func TestScheduleDue(t *testing.T) {
 	if _, ok := scheduleDue(s, day.Add(2*time.Hour+5*time.Minute)); ok {
 		t.Fatal("未启用不应触发")
 	}
+
+	// 每月：10 月 5 日 / 31 日（当月最后一天）/ 2 月 31 日回退到 28 日
+	m := Schedule{Enabled: true, Mode: "monthly", Time: "02:00", Day: 5}
+	if _, ok := scheduleDue(m, day.Add(2*time.Hour+5*time.Minute)); !ok {
+		t.Fatal("每月 5 号应触发")
+	}
+	m.Day = 6
+	if _, ok := scheduleDue(m, day.Add(2*time.Hour+5*time.Minute)); ok {
+		t.Fatal("每月 6 号不应在 5 号触发")
+	}
+	m.Day = 31
+	feb := time.Date(2027, 2, 28, 2, 5, 0, 0, analytics.CST)
+	if _, ok := scheduleDue(m, feb); !ok {
+		t.Fatal("每月 31 号在 2 月应回退到 28 号触发")
+	}
+	if _, ok := scheduleDue(m, time.Date(2027, 2, 27, 2, 5, 0, 0, analytics.CST)); ok {
+		t.Fatal("2 月 27 号不应触发")
+	}
+	if _, ok := scheduleDue(m, time.Date(2026, 10, 30, 2, 5, 0, 0, analytics.CST)); ok {
+		t.Fatal("10 月 30 号不应触发（10 月有 31 号）")
+	}
+	c := DefaultConfig()
+	c.Schedule.Mode, c.Schedule.Day = "monthly", 99
+	c.Normalize()
+	if c.Schedule.Mode != "monthly" || c.Schedule.Day != 1 {
+		t.Fatal("monthly 校验/规整错误")
+	}
 }
 
 func TestChecks(t *testing.T) {

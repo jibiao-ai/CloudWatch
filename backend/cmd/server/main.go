@@ -69,10 +69,10 @@ func main() {
 	}
 	srv.Retention.Start(ctx)
 	pm.Start(ctx)             // 平台按「同步间隔」后台自动同步；重启时中断的任务置失败
-	cm.Start(ctx)             // 资产管理：物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
-	sm.Start(ctx)             // 运营分析：把资源数量 / 云主机使用率 / 状态历史按时间积累下来
+	cm.Start(ctx)             // 配置中心：物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池（间隔不低于 5 分钟）
+	sm.Start(ctx)             // 运营中心：把资源数量 / 云主机使用率 / 状态历史按时间积累下来
 	mm.Start(ctx)             // 性能指标采集 + 告警同步（间隔复用平台同步间隔）
-	srv.Inspection.Start(ctx) // 自动化巡检：定时巡检调度，重启时中断的任务置失败
+	srv.Inspection.Start(ctx) // 自动巡检：定时巡检调度，重启时中断的任务置失败
 	hm.Start(ctx)             // 启动即按库中配置同步 hosts / DNS / Docker，重启后自动恢复
 
 	hs := &http.Server{

@@ -25,10 +25,13 @@ const toParams = (q) => ({ keyword: q.keyword, overall: q.overall, trigger: q.tr
 const docName = (r) => {
   const d = new Date(r.finishedAt);
   const p = (n) => String(n).padStart(2, '0');
-  return `云平台自动化巡检报告_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.docx`;
+  return `云平台自动巡检报告_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.docx`;
 };
 
-/** InspectionPage —— 自动化巡检：历史报告列表 + 立即巡检 + 报告详情 + 导出 Word + 巡检设置 */
+/** 定时巡检频率文案：每天 / 每周/ 每月 N 日 */
+const scheduleText = (s) => `${s.mode === 'monthly' ? `每月 ${s.day || 1} 日` : s.mode === 'weekly' ? '每周' : '每天'} ${s.time}`;
+
+/** InspectionPage —— 自动巡检：历史报告列表 + 立即巡检 + 报告详情 + 导出 Word + 巡检设置 */
 export default function InspectionPage() {
   const toast = useToast();
   const canRun = useCan('inspection:run');
@@ -78,13 +81,13 @@ export default function InspectionPage() {
 
   return (
     <div className="bg-bg">
-      <PageHeader title="自动化巡检" description="对已对接的云平台只读巡检：服务状态、磁盘、集群容量、存储 IO、磁盘延迟、告警、云主机健康等，生成可追溯的报告并支持导出 Word" actions={<>
+      <PageHeader title="自动巡检" description="对已对接的云平台只读巡检：服务状态、磁盘、集群容量、存储 IO、磁盘延迟、告警、云主机健康等，生成可追溯的报告并支持导出 Word" actions={<>
         <button type="button" className="btn-default" onClick={list.reload}><RefreshCw size={15} className={list.refreshing ? 'animate-spin' : ''} /> 刷新</button>
         {canConfig && <button type="button" className="btn-default" onClick={() => setSetOpen(true)}><Settings2 size={15} /> 巡检设置</button>}
         {canRun && <button type="button" className="btn-primary" onClick={() => setRunOpen(true)}><PlayCircle size={15} /> 立即巡检</button>}
       </>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard icon={ClipboardCheck} tone="primary" label="历史报告" value={list.total} hint={cfg.data?.config.schedule.enabled ? `定时巡检：${cfg.data.config.schedule.mode === 'weekly' ? '每周' : '每天'} ${cfg.data.config.schedule.time}` : '定时巡检未启用'} />
+        <StatCard icon={ClipboardCheck} tone="primary" label="历史报告" value={list.total} hint={cfg.data?.config.schedule.enabled ? `定时巡检：${scheduleText(cfg.data.config.schedule)}` : '定时巡检未启用'} />
         <StatCard icon={latest?.overall === 'bad' ? AlertOctagon : latest?.overall === 'warn' ? AlertTriangle : CheckCircle2} tone={{ bad: 'danger', warn: 'warning', ok: 'success' }[latest?.overall] || 'info'} label="最近一次评估" value={latest ? ({ ok: '正常', warn: '预警', bad: '异常', na: '未采集' }[latest.overall]) : '-'} hint={latest && formatDateTime(latest.finishedAt)} />
         <StatCard icon={AlertOctagon} tone="danger" label="最近一次异常项" value={latest ? latest.counts.bad : '-'} />
         <StatCard icon={AlertTriangle} tone="warning" label="最近一次预警项" value={latest ? latest.counts.warn : '-'} />

@@ -1,4 +1,4 @@
-// Package topology 资源拓扑：把平台管理（平台）、资产管理（物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池）、
+// Package topology 资源拓扑：把平台管理（平台）、配置中心（物理节点 / 计算节点 / 虚拟机 / 云硬盘 / 虚拟网卡 / 存储池）、
 // 监控中心（CPU / 内存使用率）、告警中心（未恢复告警）的已落库数据聚合成分层的资源关系图。只读，不额外访问云平台接口。
 package topology
 
@@ -34,7 +34,7 @@ type Alerts struct {
 
 func (a Alerts) Total() int { return a.Critical + a.Warning + a.Info }
 
-// Ref 资产管理中对应的资源（用于打开资产详情）。
+// Ref 配置中心中对应的资源（用于打开资产详情）。
 type Ref struct {
 	Kind string `json:"kind"` // phys / nodes / vms / volumes / ports / pools
 	ID   string `json:"id"`
@@ -98,7 +98,7 @@ type Count struct {
 	Off      int `json:"off"`
 }
 
-// Usage 平台容量使用率（来自资产管理的计算节点 / 存储池）。
+// Usage 平台容量使用率（来自配置中心的计算节点 / 存储池）。
 type Usage struct {
 	VCPU    *float64 `json:"vcpu"`
 	Mem     *float64 `json:"mem"`

@@ -44,10 +44,10 @@ func (m *Sampler) maybeBackfill(ctx context.Context, id, name string) {
 		defer cancel()
 		n, err := m.Backfill(bctx, id, snap.VMs)
 		if err != nil {
-			log.Printf("运营分析历史回填：平台 %s 失败: %v", name, err)
+			log.Printf("运营中心历史回填：平台 %s 失败: %v", name, err)
 			return
 		}
-		log.Printf("运营分析历史回填：平台 %s 完成，回填 %d 条按天汇总", name, n)
+		log.Printf("运营中心历史回填：平台 %s 完成，回填 %d 条按天汇总", name, n)
 		_ = m.St.setCursor(context.Background(), id, "last_backfill_at", time.Now())
 	}()
 }

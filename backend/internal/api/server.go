@@ -139,13 +139,14 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/providers/{id}/impact", s.guard("provider:view", s.providerImpact))
 	mux.Handle("PUT /api/providers/{id}/write-switch", s.guard("provider:write_switch", s.providerWriteSwitch))
 	mux.Handle("POST /api/providers/{id}/sync", s.guard("provider:sync", s.providerSync))
-	// 资产管理（对接接口文档第 6 章）
+	// 配置中心（对接接口文档第 6 章）
 	mux.Handle("GET /api/capacity/overview", s.guard("capacity:view", s.capacityOverview))
 	mux.Handle("POST /api/capacity/collect", s.guard("capacity:collect", s.capacityCollect))
 	mux.Handle("GET /api/capacity/{kind}", s.guard("capacity:view", s.capacityList))
+	mux.Handle("GET /api/capacity/{kind}/export", s.guard("capacity:export", s.capacityExport))
 	mux.Handle("GET /api/capacity/{kind}/{providerId}/{id}", s.guard("capacity:view", s.capacityDetail))
-	// 资源拓扑（聚合 平台管理 / 资产管理 / 监控中心 / 告警中心 已落库数据）
-	// 自动化巡检
+	// 资源拓扑（聚合 平台管理 / 配置中心 / 监控中心 / 告警中心 已落库数据）
+	// 自动巡检
 	mux.Handle("GET /api/inspection/reports", s.guard("inspection:view", s.inspectionList))
 	mux.Handle("GET /api/inspection/reports/{id}", s.guard("inspection:view", s.inspectionGet))
 	mux.Handle("GET /api/inspection/reports/{id}/export", s.guard("inspection:export", s.inspectionExport))
@@ -181,6 +182,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/monitor/{id}/vm-usage", s.guard("monitor:view", s.monitorVMUsage))
 	mux.Handle("GET /api/monitor/{id}/trend", s.guard("monitor:view", s.monitorTrend))
 	mux.Handle("GET /api/monitor/{id}/vms/{vmId}/metrics", s.guard("monitor:view", s.monitorVMMetrics))
+	mux.Handle("POST /api/monitor/export-log", s.guard("monitor:export", s.monitorExportLog))
 	mux.Handle("POST /api/monitor/{id}/collect", s.guard("monitor:collect", s.monitorCollect))
 
 	// 告警中心
