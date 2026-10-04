@@ -2,7 +2,7 @@
 
 > 本文件由原 README 迁移而来，按轮次记录各模块的设计细节、接口、数据表与修复原因，供研发与运维追溯。项目介绍、功能总览与安装部署请见根目录 [README](../README.md)。
 
-<p align="center"><img src="logo.svg" width="72" alt="CloudWatch logo" /></p>
+<p align="center"><img src="logo.png" width="72" alt="CloudWatch logo" /></p>
 
 面向 SRE 与云平台运维人员的**多云 / 私有云统一运维控制台**：把多个 OpenStack（易捷行云 ES 等）平台纳管到同一界面，
 一眼看清 **平台 → 集群 → 节点 → 云主机 → 存储/网络** 全链路状态，并可一键回到原平台处理。

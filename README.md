@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.svg" width="84" alt="CloudWatch logo" /></p>
+<p align="center"><img src="docs/logo.png" width="96" height="96" alt="CloudWatch logo" /></p>
 
 <h1 align="center">CloudWatch · 私有云可观测平台</h1>
 
