@@ -76,6 +76,20 @@ func (s *Server) alertGet(w http.ResponseWriter, r *http.Request, _ *auth.Princi
 	return nil
 }
 
+// alertRelated GET /alerts/{id}/related：同一告警（同平台 + 同指纹）的其它触发 / 恢复记录。
+func (s *Server) alertRelated(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		return httpx.Err(400, "告警 ID 不合法")
+	}
+	list, err := s.Monitor.Store.Related(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, list)
+	return nil
+}
+
 // alertAck POST /alerts/ack {ids:[...]}：单条与批量共用。
 func (s *Server) alertAck(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	t0 := time.Now()

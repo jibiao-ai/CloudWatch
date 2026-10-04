@@ -213,7 +213,7 @@ func (s *Store) Stats(ctx context.Context, providerID string) (*AlertStats, erro
 	return st, rows.Err()
 }
 
-// Ack 确认告警（仅「告警中」且未确认的有效），返回实际确认的条数。
+// Ack 人工确认告警（已确认的忽略；已恢复的告警会被系统自动确认），返回实际确认的条数。
 func (s *Store) Ack(ctx context.Context, by string, ids []int64) (int64, error) {
 	if len(ids) == 0 {
 		return 0, httpx.Err(400, "请选择要确认的告警")
@@ -287,7 +287,53 @@ labels=VALUES(labels),annotations=VALUES(annotations),rule_id=VALUES(rule_id),st
 			return nil, err
 		}
 	}
+	if err := autoAckResolved(ctx, tx, providerID, now); err != nil {
+		return nil, err
+	}
 	return fresh, tx.Commit()
+}
+
+// AutoAckBy 系统自动确认时写入的确认人（区别于人工确认）。
+const AutoAckBy = "系统(自动恢复)"
+
+// autoAckResolved 状态联动：
+//  1. 已恢复 → 自动置为已确认（人工已确认的保留原确认人与时间）；
+//  2. 复发（同一行由已恢复回到告警中）→ 撤销「系统自动确认」，使其重新进入待确认；人工确认的不动。
+func autoAckResolved(ctx context.Context, tx *sql.Tx, providerID string, now time.Time) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE alert_events SET acked=1,acked_by=?,acked_at=COALESCE(resolved_at,?) WHERE provider_id=? AND status='resolved' AND acked=0`,
+		AutoAckBy, now, providerID); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `UPDATE alert_events SET acked=0,acked_by='',acked_at=NULL WHERE provider_id=? AND status='firing' AND acked=1 AND acked_by=?`,
+		providerID, AutoAckBy)
+	return err
+}
+
+// Related 关联记录：同一平台、同一指纹（标签哈希）的其它触发记录，即「同一个告警」的历次发生 / 恢复。
+// 按触发时间倒序，最多 50 条，不含自身。
+func (s *Store) Related(ctx context.Context, id int64) ([]*Alert, error) {
+	cur, err := s.GetAlert(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if cur.Fingerprint == "" {
+		return []*Alert{}, nil
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT `+alertCols+` FROM alert_events a LEFT JOIN providers p ON p.id=a.provider_id WHERE a.provider_id=? AND a.fingerprint=? AND a.id<>? ORDER BY a.fired_at DESC, a.id DESC LIMIT 50`,
+		cur.ProviderID, cur.Fingerprint, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []*Alert{}
+	for rows.Next() {
+		a, err := scanAlert(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
 }
 
 // PendingFiring 尚未推送的告警中记录（推送失败会留到下次重试）。

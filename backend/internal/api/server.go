@@ -192,6 +192,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/alerts/ack", s.guard("alert:ack", s.alertAck))
 	mux.Handle("POST /api/alerts/sync", s.guard("alert:sync", s.alertSync))
 	mux.Handle("GET /api/alerts/{id}", s.guard("alert:view", s.alertGet))
+	mux.Handle("GET /api/alerts/{id}/related", s.guard("alert:view", s.alertRelated))
 
 	mux.Handle("GET /api/tasks/{id}", s.guard("", s.taskGet))
 

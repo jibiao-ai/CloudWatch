@@ -289,6 +289,7 @@ export const alertApi = {
   getAlertList: (params) => get('/alerts', params),
   getAlertStats: (params) => get('/alerts/stats', params),
   getAlert: (id) => get(`/alerts/${id}`),
+  getAlertRelated: (id) => get(`/alerts/${id}/related`, undefined, { skipErrorToast: true }),
   ackAlerts: (ids) => post('/alerts/ack', { ids }),
   syncAlerts: (providerId) => post('/alerts/sync', providerId ? { providerId } : {}, { timeout: 120000 }),
   exportAlerts: (params, opt) => blob('/alerts/export', params, opt),
