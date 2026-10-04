@@ -170,6 +170,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/analytics/resolve", s.guard("analytics:view", s.analyticsResolve))
 	mux.Handle("GET /api/analytics/policies/{kind}/ignores", s.guard("analytics:view", s.analyticsPolicyIgnores))
 	mux.Handle("POST /api/analytics/policies", s.guard("analytics:policy_update", s.analyticsPolicyCreate))
+	mux.Handle("POST /api/analytics/policies/batch-delete", s.guard("analytics:policy_update", s.analyticsPolicyBatchDelete))
 	mux.Handle("PUT /api/analytics/policies/{kind}", s.guard("analytics:policy_update", s.analyticsPolicyUpdate))
 	mux.Handle("DELETE /api/analytics/policies/{kind}", s.guard("analytics:policy_update", s.analyticsPolicyDelete))
 	mux.Handle("GET /api/topology/overview", s.guard("topology:view", s.topologyOverview))

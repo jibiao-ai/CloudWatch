@@ -352,7 +352,7 @@ func checkLongOff(in *Input, c Config) Item {
 }
 
 func checkZombie(in *Input, c Config) Item {
-	return policyItem(in, c, "zombie", "僵尸云主机", "按运营中心「僵尸型虚拟机」策略判定：运行中但长期几乎没有业务负载。",
+	return policyItem(in, c, "zombie", "僵尸云主机", "按运营中心「僵尸型虚机」策略判定：运行中但长期几乎没有业务负载。",
 		"请与业务方确认后关机观察或释放，回收计算资源。", []string{"writeAvg", "cpuAvg", "flavor"}, []string{"磁盘写速率均值(KiB/s)", "CPU 均值(%)", "规格"})
 }
 

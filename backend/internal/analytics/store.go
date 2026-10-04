@@ -581,6 +581,41 @@ func (s *Store) DeletePolicy(ctx context.Context, kind string) error {
 	return err
 }
 
+// DeletePolicies 批量删除自定义策略：全部校验通过后在同一事务内删除；任一为内置或不存在则整体拒绝，返回删除数量。
+func (s *Store) DeletePolicies(ctx context.Context, kinds []string) (int, error) {
+	seen := map[string]bool{}
+	uniq := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		if k != "" && !seen[k] {
+			seen[k] = true
+			uniq = append(uniq, k)
+		}
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	for _, k := range uniq {
+		var b bool
+		if err := tx.QueryRowContext(ctx, `SELECT builtin FROM analytics_policies WHERE kind=?`, k).Scan(&b); err != nil {
+			return 0, err
+		}
+		if b {
+			return 0, ErrBuiltin
+		}
+	}
+	for _, k := range uniq {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM analytics_policies WHERE kind=?`, k); err != nil {
+			return 0, err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM analytics_ignores WHERE kind=?`, k); err != nil {
+			return 0, err
+		}
+	}
+	return len(uniq), tx.Commit()
+}
+
 // ---- 已忽略 ----
 
 // Ignore 一条已忽略记录：ResID 为资源 ID（云主机 ID / 计算节点名 / 存储池名 / 云硬盘 ID）。

@@ -41,7 +41,7 @@ export default function VMTab({ tick, keyword, onClearKeyword }) {
             <DonutPanel title="所属云平台分布" unit="台" loading={q.loading} data={d?.platforms} />
             <DonutPanel title="运行状态" unit="台" loading={q.loading} data={d?.status} colorOf={stateColor} />
           </div>
-          <TrendPanel title="云主机趋势" kind="vm" providerId={flt.providerId} suffix=" 台" refreshKey={tick} />
+          <TrendPanel title="虚拟机趋势" kind="vm" providerId={flt.providerId} suffix=" 台" refreshKey={tick} />
           <BandsPanel title="云主机按使用率分布" metrics={METRICS} deps={[params, tick]} load={(metric, dates) => analyticsApi.getVMBands({ ...params, metric, ...dates })} />
         </>
       )}

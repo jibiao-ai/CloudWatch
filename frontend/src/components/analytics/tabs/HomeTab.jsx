@@ -8,7 +8,7 @@ import { AllocPanel, UsePanel, TrendPanel } from '../Blocks';
 import { RES_GROUPS, RES_UNIT } from '../util';
 import { formatNumber } from '../../../utils/format';
 
-/** HomeTab —— 运营中心 · 总览：资源数量、分配率与使用率；云主机趋势 / 优化建议 / 各云平台资源汇总以横向轮播展示（每 60 秒自动切换） */
+/** HomeTab —— 运营中心 · 总览：资源数量、分配率与使用率；虚拟机趋势 / 优化建议 / 各云平台资源汇总以横向轮播展示（每 60 秒自动切换） */
 export default function HomeTab({ d, tick, onOpt, keyword }) {
   const t = d.totals;
   const okN = d.platforms.filter((p) => p.collectedAt && p.ok).length;
@@ -39,7 +39,7 @@ export default function HomeTab({ d, tick, onOpt, keyword }) {
     </Panel>
   );
   const slides = [
-    { key: 'trend', label: '云主机趋势', node: <TrendPanel title="云主机趋势" kind="vm" suffix=" 台" refreshKey={tick} /> },
+    { key: 'trend', label: '虚拟机趋势', node: <TrendPanel title="虚拟机趋势" kind="vm" suffix=" 台" refreshKey={tick} /> },
     { key: 'suggest', label: '优化建议', node: suggest },
     { key: 'platforms', label: '各云平台资源汇总', node: <PlatformTable platforms={d.platforms} keyword={keyword} /> },
   ];

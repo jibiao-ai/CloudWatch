@@ -414,6 +414,39 @@ func (s *Server) analyticsPolicyDelete(w http.ResponseWriter, r *http.Request, p
 	return nil
 }
 
+// analyticsPolicyBatchDelete POST /analytics/policies/batch-delete {kinds:[]}  仅自定义策略可删除，含内置策略时整体拒绝
+func (s *Server) analyticsPolicyBatchDelete(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
+	t0 := time.Now()
+	b, err := httpx.ReadBody(r, 64<<10)
+	if err != nil {
+		return err
+	}
+	var in struct {
+		Kinds []string `json:"kinds"`
+	}
+	if err := httpx.DecodeJSON(b, &in); err != nil {
+		return err
+	}
+	if len(in.Kinds) == 0 || len(in.Kinds) > 200 {
+		return httpx.Err(400, "请选择需要删除的策略（单次最多 200 条）")
+	}
+	n, err := s.Analytics.St.DeletePolicies(r.Context(), in.Kinds)
+	s.rec(r, p, "analytics", "policy_delete", "批量删除优化策略 "+strconv.Itoa(len(in.Kinds))+" 条", "/analytics?tab=policy", in, err, t0)
+	if err != nil {
+		return policyErr(err)
+	}
+	ps, err := s.plats(r)
+	if err != nil {
+		return err
+	}
+	out, err := s.Analytics.PolicyList(r.Context(), ps)
+	if err != nil {
+		return err
+	}
+	httpx.OK(w, map[string]any{"count": n, "list": out})
+	return nil
+}
+
 // analyticsResolve GET /analytics/resolve?resourceType=&keyword=  按名称 / ID 解析资源（忽略项添加）
 func (s *Server) analyticsResolve(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	ps, err := s.plats(r)

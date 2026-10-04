@@ -280,6 +280,8 @@ export const analyticsApi = {
   createPolicy: (data) => post('/analytics/policies', data),
   updatePolicy: (kind, data) => put(`/analytics/policies/${kind}`, data),
   deletePolicy: (kind) => del(`/analytics/policies/${kind}`),
+  /** 批量删除自定义策略（含内置策略时整体拒绝） */
+  batchDeletePolicies: (kinds) => post('/analytics/policies/batch-delete', { kinds }),
   getPolicyIgnores: (kind) => get(`/analytics/policies/${kind}/ignores`),
   /** 按名称 / ID 解析资源（忽略项添加） */
   resolveRes: (params) => get('/analytics/resolve', params, { skipErrorToast: true }),
