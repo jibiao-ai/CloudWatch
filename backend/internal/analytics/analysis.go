@@ -404,7 +404,7 @@ func (e *Engine) VMAnalysis(ctx context.Context, plats []capacity.Platform, flt 
 	return out, nil
 }
 
-// VMBands 云主机按使用率分布（每天落入各区间的云主机数）。
+// VMBands 虚拟机按使用率分布（每天落入各区间的云主机数）。
 func (e *Engine) VMBands(ctx context.Context, plats []capacity.Platform, flt Filter, mem bool, from, to time.Time) (*BandChart, error) {
 	ps, err := e.load(ctx, plats, flt.ProviderID)
 	if err != nil {

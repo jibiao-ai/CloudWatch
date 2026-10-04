@@ -67,7 +67,7 @@ export default function DashboardPage() {
         <>
           <KpiRow data={d} />
           {d.perms.capacity && <CapacityRow totals={d.totals} />}
-          <Carousel ariaLabel="平台概览分页" idPrefix="dash-slide" slides={slides} interval={30000} />
+          <Carousel ariaLabel="平台概览分页" idPrefix="dash-slide" slides={slides} interval={10000} />
         </>
       )}
     </div>

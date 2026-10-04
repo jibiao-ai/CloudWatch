@@ -19,7 +19,7 @@ const METRICS = [{ value: 'cpu', label: 'CPU使用率' }, { value: 'mem', label:
 const EMPTY = { providerId: '', host: '', pool: '' };
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
 
-/** BaseTab —— 运营中心 · 资源分析：计算节点 / 集群存储的分配率、使用率（含每套存储后端）；分布类图表以横向轮播展示（每 60 秒自动切换）；计算节点与集群存储的明细在「监控中心」 */
+/** BaseTab —— 运营中心 · 资源分析：计算节点 / 集群存储的分配率、使用率（含每套存储后端）；集群存储分配率 / 使用率、基础资源分布、计算节点上虚拟机分布、基础资源按使用率分布以横向轮播展示（每 10 秒自动切换）；计算节点与集群存储的明细在「监控中心」 */
 export default function BaseTab({ tick, keyword, onClearKeyword }) {
   const [flt, setFlt] = useState(EMPTY);
   const [dist, setDist] = useState('host');
@@ -55,12 +55,12 @@ export default function BaseTab({ tick, keyword, onClearKeyword }) {
             <AllocPanel rates={d?.rates} loading={q.loading} />
             <UsePanel rates={d?.rates} loading={q.loading} />
           </div>
-          <BackendPanel list={d?.backends} loading={q.loading} />
-          <Carousel ariaLabel="资源分析分页" idPrefix="base-slide" slides={[
+          <Carousel ariaLabel="资源分析分页" idPrefix="base-slide" interval={10000} slides={[
+            { key: 'backend', label: '集群存储分配率 / 使用率', node: <BackendPanel list={d?.backends} loading={q.loading} /> },
             { key: 'dist', label: '基础资源分布', node: (
               <DonutPanel title="基础资源分布" unit={dist === 'host' ? '台' : '个'} loading={q.loading} data={dist === 'host' ? d?.hostDist : d?.poolDist}
                 actions={<Seg label="分布对象" items={DIST} value={dist} onChange={setDist} />} />) },
-            { key: 'hostVms', label: '计算节点上云主机分布', node: <Panel title="计算节点上云主机分布"><HostVmChart data={d?.hostVms || []} /></Panel> },
+            { key: 'hostVms', label: '计算节点上虚拟机分布', node: <Panel title="计算节点上虚拟机分布"><HostVmChart data={d?.hostVms || []} /></Panel> },
             { key: 'bands', label: '基础资源按使用率分布', node: (
               <BandsPanel title="基础资源按使用率分布" metrics={METRICS} deps={[params, tick]} load={(metric, dates) => analyticsApi.getBaseBands({ ...params, metric, ...dates })} />) },
           ]} />

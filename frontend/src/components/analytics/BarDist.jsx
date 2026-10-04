@@ -4,7 +4,7 @@ import ChartTooltip from '../ChartTooltip';
 import EmptyState from '../EmptyState';
 import { useChartPalette } from '../../hooks/useChartPalette';
 
-/** BarDist —— 单系列柱状分布图（计算节点上云主机分布等）。data[{label,value}] / unit / height */
+/** BarDist —— 单系列柱状分布图（计算节点上虚拟机分布等）。data[{label,value}] / unit / height */
 export default function BarDist({ data = [], unit = '台', height = 220, name = '数量' }) {
   const pal = useChartPalette();
   if (!data.length) return <div style={{ height }}><EmptyState compact title="暂无数据" /></div>;

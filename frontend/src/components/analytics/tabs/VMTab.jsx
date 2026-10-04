@@ -4,6 +4,7 @@ import { FilterBar, Filter } from '../Panel';
 import { TrendPanel } from '../Blocks';
 import DonutPanel from '../DonutPanel';
 import BandsPanel from '../BandsPanel';
+import Carousel from '../../Carousel';
 import ErrorState from '../../ErrorState';
 import SearchHits, { withPlat } from '../SearchHits';
 import { optsOf, stateColor } from '../util';
@@ -14,7 +15,7 @@ import TabExport from '../TabExport';
 const METRICS = [{ value: 'cpu', label: 'CPU使用率' }, { value: 'mem', label: '内存使用率' }];
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v));
 
-/** VMTab —— 运营中心 · 虚拟机分析：所属云平台 / 状态分布、数量趋势、使用率分布；云主机资源明细（含 CPU / 内存最大使用率）在「监控中心 · 虚拟机」 */
+/** VMTab —— 运营中心 · 虚拟机分析：所属云平台 / 状态分布、数量趋势、使用率分布（虚拟机趋势 / 虚拟机按使用率分布以横向轮播展示，每 10 秒自动切换）；虚拟机资源明细（含 CPU / 内存最大使用率）在「监控中心 · 虚拟机」 */
 export default function VMTab({ tick, keyword, onClearKeyword }) {
   const [flt, setFlt] = useState({ providerId: '', host: '' });
   const params = useMemo(() => clean(flt), [flt]);
@@ -41,8 +42,11 @@ export default function VMTab({ tick, keyword, onClearKeyword }) {
             <DonutPanel title="所属云平台分布" unit="台" loading={q.loading} data={d?.platforms} />
             <DonutPanel title="运行状态" unit="台" loading={q.loading} data={d?.status} colorOf={stateColor} />
           </div>
-          <TrendPanel title="虚拟机趋势" kind="vm" providerId={flt.providerId} suffix=" 台" refreshKey={tick} />
-          <BandsPanel title="云主机按使用率分布" metrics={METRICS} deps={[params, tick]} load={(metric, dates) => analyticsApi.getVMBands({ ...params, metric, ...dates })} />
+          <Carousel ariaLabel="虚拟机分析分页" idPrefix="vm-slide" interval={10000} slides={[
+            { key: 'trend', label: '虚拟机趋势', node: <TrendPanel title="虚拟机趋势" kind="vm" providerId={flt.providerId} suffix=" 台" refreshKey={tick} /> },
+            { key: 'bands', label: '虚拟机按使用率分布', node: (
+              <BandsPanel title="虚拟机按使用率分布" metrics={METRICS} deps={[params, tick]} load={(metric, dates) => analyticsApi.getVMBands({ ...params, metric, ...dates })} />) },
+          ]} />
         </>
       )}
     </>
