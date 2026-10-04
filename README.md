@@ -113,6 +113,10 @@ docker compose logs cloudwatch-backend | grep admin
 - 「域名配置」需要后端挂载宿主机 `/etc/hosts` 与 `/var/run/docker.sock`（compose 已配置，不需要该功能可删除）。云平台域名解析依赖该能力，建议保留。
 - 公网部署请放行 `WEB_PORT`，并建议前置 HTTPS（反向代理 / 证书）。
 
+### 离线部署（无外网 / 无法构建）
+
+提供预编译 Docker 镜像包（`linux/amd64`，含后端 / 前端 / MariaDB），发布在 [Releases](https://github.com/jibiao-ai/CloudWatch/releases)，下载后 `docker load` 导入即可，一键脚本见 [`deploy/offline/README.md`](deploy/offline/README.md)。
+
 升级：拉取新代码后执行 `docker compose up -d --build cloudwatch-backend cloudwatch-web`，迁移自动应用。
 
 ## 本地开发
