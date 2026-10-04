@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const rows = (d?.platforms || []).filter((p) => !pid || p.id === pid);
 
   const slides = d ? [
-    d.perms.monitor && { key: 'trend', label: '资源使用率趋势', node: <TrendCard state={tr} range={range} onRange={setRange} /> },
+    { key: 'platforms', label: '各平台概况', node: <PlatformTable rows={rows} perms={d.perms} /> },
     d.perms.monitor && {
       key: 'top', label: 'CPU / 内存 TOP 5',
       node: (
@@ -40,6 +40,7 @@ export default function DashboardPage() {
         </div>
       ),
     },
+    d.perms.monitor && { key: 'trend', label: '资源使用率趋势', node: <TrendCard state={tr} range={range} onRange={setRange} /> },
     (d.perms.alert || d.perms.analytics) && {
       key: 'alerts', label: '告警与优化建议',
       node: (
@@ -49,7 +50,6 @@ export default function DashboardPage() {
         </div>
       ),
     },
-    { key: 'platforms', label: '各平台概况', node: <PlatformTable rows={rows} perms={d.perms} /> },
   ].filter(Boolean) : [];
 
   return (
@@ -67,7 +67,7 @@ export default function DashboardPage() {
         <>
           <KpiRow data={d} />
           {d.perms.capacity && <CapacityRow totals={d.totals} />}
-          <Carousel ariaLabel="平台概览分页" idPrefix="dash-slide" slides={slides} />
+          <Carousel ariaLabel="平台概览分页" idPrefix="dash-slide" slides={slides} interval={30000} />
         </>
       )}
     </div>
