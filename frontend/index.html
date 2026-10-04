@@ -12,6 +12,11 @@
           var t = localStorage.getItem('cw_theme');
           if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           document.documentElement.dataset.theme = t;
+          // 主色：用上次缓存的派生变量，在首屏绘制前同步写入，避免先闪默认红色
+          var bc = JSON.parse(localStorage.getItem('cw_brand_css') || 'null');
+          if (bc && bc.theme === t && bc.vars) {
+            for (var k in bc.vars) document.documentElement.style.setProperty(k, bc.vars[k]);
+          }
           // 标签页图标：用上次缓存的主色，避免首屏先闪默认红色
           var f = JSON.parse(localStorage.getItem('cw_fav') || 'null');
           if (f && f.rgb) {

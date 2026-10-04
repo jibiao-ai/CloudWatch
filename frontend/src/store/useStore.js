@@ -8,7 +8,7 @@
  */
 import { create } from 'zustand';
 import { tokenStorage } from '../utils/auth';
-import { applyTheme, applyBrandColor, setFaviconLogo, DEFAULT_PRIMARY } from '../utils/theme';
+import { applyTheme, applyBrandColor, setFaviconLogo, DEFAULT_PRIMARY, BRAND_KEY } from '../utils/theme';
 
 const THEME_KEY = 'cw_theme';
 const COLLAPSE_KEY = 'cw_sidebar_collapsed';
@@ -30,6 +30,11 @@ const readJSON = (k, d) => {
 };
 
 const DEFAULT_BRAND = { platformName: 'CloudWatch', subtitle: '私有云可观测平台', copyright: '© 2026 CloudWatch', primaryColor: DEFAULT_PRIMARY, logoUrl: '', loginBgUrl: '', captchaEnabled: false, pwdPolicy: {} };
+// 上次从服务端拿到的品牌配置（公开信息）：刷新时先用它渲染，避免先显示默认名称/红色再跳变
+const cachedBrand = () => {
+  const b = readJSON(BRAND_KEY, null);
+  return b && typeof b === 'object' ? { ...DEFAULT_BRAND, ...b } : DEFAULT_BRAND;
+};
 let toastSeq = 0;
 
 const initialModuleState = () => ({
@@ -78,11 +83,12 @@ export const useStore = create((set, get) => ({
   toggleTheme: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
 
   /* ---------------- brand（来自 /api/settings，运行时注入） ---------------- */
-  brand: DEFAULT_BRAND,
+  brand: cachedBrand(),
   setBrand: (patch) => {
     const brand = { ...get().brand, ...patch };
     if (patch.logoUrl !== undefined) setFaviconLogo(brand.logoUrl);
     applyBrandColor(brand.primaryColor, get().theme === 'dark');
+    try { localStorage.setItem(BRAND_KEY, JSON.stringify(brand)); } catch { /* ignore */ }
     set({ brand });
   },
   /** 仅预览主色（不写入 brand，用于设置页取色即时预览） */

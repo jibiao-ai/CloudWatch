@@ -64,8 +64,18 @@ export function applyBrandColor(hex, isDark) {
   root.setProperty('--c-primary-text', trip(text));
   const onPrimary = luminance(rgb) > 0.6 ? '20 20 24' : '255 255 255';
   root.setProperty('--c-on-primary', onPrimary);
+  // 缓存已派生好的主色变量：下次刷新时由 index.html 内联脚本在首屏绘制前同步写入，避免先闪默认红色
+  try {
+    localStorage.setItem(BRAND_CSS_KEY, JSON.stringify({
+      theme: isDark ? 'dark' : 'light',
+      vars: { '--c-primary': trip(rgb), '--c-primary-hover': trip(hover), '--c-primary-text': trip(text), '--c-on-primary': onPrimary },
+    }));
+  } catch { /* ignore */ }
   applyFavicon(rgb, onPrimary);
 }
+
+export const BRAND_CSS_KEY = 'cw_brand_css';
+export const BRAND_KEY = 'cw_brand';
 
 /* ---------------- 浏览器标签页图标（跟随主色） ---------------- */
 const FAV_KEY = 'cw_fav';

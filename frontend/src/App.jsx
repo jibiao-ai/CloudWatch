@@ -60,7 +60,11 @@ export default function App() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      settingsApi.getPublicSettings().then((s) => alive && setBrand({ platformName: s.platformName, subtitle: s.subtitle, copyright: s.copyright, primaryColor: s.primaryColor, logoUrl: s.logoUrl, loginBgUrl: s.loginBgUrl, captchaEnabled: !!s.captchaEnabled, pwdPolicy: pickPolicy(s) })).catch(() => {});
+      // 公开品牌配置（含主色）：首次访问无本地缓存时，等它返回（最多 1.5s）再离开启动骨架屏，避免先以默认红色渲染
+      const brandReady = settingsApi.getPublicSettings()
+        .then((s) => alive && setBrand({ platformName: s.platformName, subtitle: s.subtitle, copyright: s.copyright, primaryColor: s.primaryColor, logoUrl: s.logoUrl, loginBgUrl: s.loginBgUrl, captchaEnabled: !!s.captchaEnabled, pwdPolicy: pickPolicy(s) }))
+        .catch(() => {});
+      const brandWait = Promise.race([brandReady, new Promise((r) => setTimeout(r, 1500))]);
       if (tokenStorage.getAccess()) {
         try {
           const me = await authApi.getMe();
@@ -70,6 +74,7 @@ export default function App() {
           if (alive) setAuthReady(true);
         }
       } else if (alive) setAuthReady(true);
+      await brandWait;
       if (alive) setBooting(false);
     })();
     return () => { alive = false; };
