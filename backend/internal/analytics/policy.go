@@ -112,7 +112,8 @@ var Fields = []FieldDef{
 	pf("readyAvg", ResVM, "CPU就绪时间占比"),
 	{Key: "latAvg", Res: ResVM, Label: "磁盘平均读/写时延", Type: "ms", Unit: "ms", Ops: numOps},
 	pf("fsMax", ResVM, "文件系统使用率"),
-	{Key: "writeAvg", Res: ResVM, Label: "磁盘平均写I/O速率", Type: "rate", Unit: "KiB/s", Ops: numOps},
+	{Key: "writeAvg", Res: ResVM, Label: "磁盘平均写I/O速率(KiB/s)", Type: "rate", Unit: "KiB/s", Ops: numOps},
+	{Key: "writeMiB", Res: ResVM, Label: "磁盘平均写I/O速率(MiB/s)", Type: "mibps", Unit: "MiB/s", Ops: numOps}, // 与 writeAvg 同一指标，仅单位为 MiB/s
 	{Key: "shutdownDays", Res: ResVM, Label: "持续关机时长", Type: "days", Unit: "天", Ops: numOps},
 	{Key: "runningDays", Res: ResVM, Label: "持续运行时长", Type: "days", Unit: "天", Ops: numOps},
 	{Key: "status", Res: ResVM, Label: "电源状态", Type: "enum", Ops: []string{"="}, Options: []Opt{{"active", "运行中"}, {"shutoff", "关机"}, {"soft_deleted", "待回收"}, {"error", "异常"}}},
@@ -221,6 +222,8 @@ func (p *Policy) Validate() map[string]string {
 				max = 3650
 			case "rate":
 				max = 1048576
+			case "mibps":
+				max = 102400
 			case "ms":
 				max = 100000
 			case "count":
@@ -254,6 +257,15 @@ func toNum(v any) (float64, bool) {
 	return 0, false
 }
 
+// textLabel 条件文案里的指标名：去掉括号里的单位提示（单位已随取值展示）。
+func textLabel(fd *FieldDef) string {
+	l := fd.Label
+	if i := strings.Index(l, "("); i > 0 {
+		l = l[:i]
+	}
+	return l
+}
+
 func opText(op string) string {
 	return map[string]string{">=": "大于等于", ">": "大于", "<=": "小于等于", "<": "小于", "=": "等于"}[op]
 }
@@ -273,7 +285,7 @@ func condText(res string, c Cond) string {
 	} else if n, ok := toNum(c.Value); ok {
 		val = trimNum(n) + fd.Unit
 	}
-	return fmt.Sprintf("%s %s %s", fd.Label, opText(c.Op), val)
+	return fmt.Sprintf("%s %s %s", textLabel(fd), opText(c.Op), val)
 }
 
 // trimNum2 最多两位小数（写速率常小于 1，一位小数会显示成 0）。
@@ -345,17 +357,19 @@ type hit struct {
 func actualText(fd *FieldDef, v float64) string {
 	switch fd.Type {
 	case "percent":
-		return fmt.Sprintf("%s %.1f%%", fd.Label, v)
+		return fmt.Sprintf("%s %.1f%%", textLabel(fd), v)
 	case "rate":
-		return fmt.Sprintf("%s %sKiB/s", fd.Label, trimNum2(v))
+		return fmt.Sprintf("%s %sKiB/s", textLabel(fd), trimNum2(v))
+	case "mibps":
+		return fmt.Sprintf("%s %sMiB/s", textLabel(fd), trimNum2(v))
 	case "ms":
-		return fmt.Sprintf("%s %.1fms", fd.Label, v)
+		return fmt.Sprintf("%s %.1fms", textLabel(fd), v)
 	case "days":
-		return fmt.Sprintf("%s %s天", fd.Label, trimNum(v))
+		return fmt.Sprintf("%s %s天", textLabel(fd), trimNum(v))
 	case "count":
-		return fmt.Sprintf("%s %d台", fd.Label, int(v))
+		return fmt.Sprintf("%s %d台", textLabel(fd), int(v))
 	}
-	return fd.Label
+	return textLabel(fd)
 }
 
 func (p *Policy) condEval(c Cond, f Facts) hit {

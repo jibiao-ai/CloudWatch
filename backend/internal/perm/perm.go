@@ -80,12 +80,12 @@ var tree = []MenuGroup{
 	// 暂时隐藏：
 	// {"resource-mgmt", "统一资源管理", "Boxes", []MenuItem{planned("resource-mgmt-home", "资源纳管", "resource-mgmt", "resource:view", "Boxes")}},
 	// {"resource-view", "统一资源视图", "LayoutList", []MenuItem{planned("resource-view-home", "资源总览", "resource-view", "resource:view", "LayoutList")}},
-	{"inspection", "自动化巡检", "ClipboardCheck", []MenuItem{{Code: "inspection-home", Name: "巡检报告", Path: "/inspection", Permission: "inspection:view", Icon: "ClipboardCheck"}}},
 	{"monitor", "监控中心", "Activity", []MenuItem{{Code: "monitor-home", Name: "监控总览", Path: "/monitor", Permission: "monitor:view", Icon: "Activity"}}},
 	{"capacity", "资产管理", "Database", []MenuItem{{Code: "capacity-home", Name: "资产总览", Path: "/capacity", Permission: "capacity:view", Icon: "Database"}}},
 	{"alert", "告警中心", "BellRing", []MenuItem{{Code: "alert-home", Name: "告警列表", Path: "/alerts", Permission: "alert:view", Icon: "BellRing"}}},
 	{"topology", "资源拓扑", "Network", []MenuItem{{Code: "topology-home", Name: "全链路拓扑", Path: "/topology", Permission: "topology:view", Icon: "Network"}}},
 	{"analytics", "运营分析", "ChartPie", []MenuItem{{Code: "analytics-home", Name: "运营总览", Path: "/analytics", Permission: "analytics:view", Icon: "ChartPie"}}},
+	{"inspection", "自动化巡检", "ClipboardCheck", []MenuItem{{Code: "inspection-home", Name: "巡检报告", Path: "/inspection", Permission: "inspection:view", Icon: "ClipboardCheck"}}},
 	{"provider", "平台管理", "Server", []MenuItem{{Code: "provider-home", Name: "平台管理", Path: "/system/providers", Permission: "provider:view", Icon: "Server"}}},
 	{"user", "用户管理", "Users", []MenuItem{{Code: "user-home", Name: "用户管理", Path: "/system/users", Permission: "user:view", Icon: "Users"}}},
 	{"role", "角色管理", "ShieldCheck", []MenuItem{{Code: "role-home", Name: "角色管理", Path: "/system/roles", Permission: "role:view", Icon: "ShieldCheck"}}},

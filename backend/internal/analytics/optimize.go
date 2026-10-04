@@ -83,6 +83,10 @@ func vmFacts(r capacity.Row, st vmState, hasState bool, u *Usage, now time.Time)
 		f.set("memMax", u.MemMax, u.Days)
 		f.set("memMin", u.MemMin, u.Days)
 		f.set("writeAvg", u.WriteAvg, u.WriteDays)
+		if u.WriteAvg != nil {
+			mib := *u.WriteAvg / 1024
+			f.set("writeMiB", &mib, u.WriteDays)
+		}
 		f.set("readyAvg", u.ReadyAvg, u.ReadyDays)
 		f.set("latAvg", u.LatAvg, u.LatDays)
 		f.set("fsMax", u.FsMax, u.FsDays)

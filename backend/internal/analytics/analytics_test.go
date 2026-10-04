@@ -41,12 +41,14 @@ func TestVMBuiltinPolicies(t *testing.T) {
 			usageFacts("active", 30, map[string]float64{"cpuAvg": 10}), usageFacts("active", 30, map[string]float64{"cpuAvg": 15})},
 		{"内存过剩", builtin(ResVM, 30, Cond{Field: "memAvg", Op: "<", Value: 20.0}, active()),
 			usageFacts("active", 30, map[string]float64{"memAvg": 19.9}), usageFacts("shutoff", 30, map[string]float64{"memAvg": 5})},
-		{"vCPU紧张", builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: ">", Value: 80.0}, Cond{Field: "readyAvg", Op: ">", Value: 10.0, Join: "AND"}, active()),
-			usageFacts("active", 1, map[string]float64{"cpuAvg": 90, "readyAvg": 12}), usageFacts("active", 30, map[string]float64{"cpuAvg": 90, "readyAvg": 10})},
+		{"vCPU紧张", builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: ">", Value: 85.0}, active()),
+			usageFacts("active", 1, map[string]float64{"cpuAvg": 85.1}), usageFacts("active", 30, map[string]float64{"cpuAvg": 85})},
 		{"内存不足", builtin(ResVM, 30, Cond{Field: "memAvg", Op: ">", Value: 85.0}, active()),
 			usageFacts("active", 30, map[string]float64{"memAvg": 90}), usageFacts("shutoff", 30, map[string]float64{"memAvg": 90})},
 		{"IO压力", builtin(ResVM, 30, Cond{Field: "latAvg", Op: ">", Value: 20.0}, active()),
 			usageFacts("active", 30, map[string]float64{"latAvg": 25}), usageFacts("active", 30, map[string]float64{"latAvg": 20})},
+		{"IO压力-写速率", builtin(ResVM, 30, Cond{Field: "writeMiB", Op: ">", Value: 150.0}, active()),
+			usageFacts("active", 30, map[string]float64{"writeMiB": 150.5}), usageFacts("active", 30, map[string]float64{"writeMiB": 150})},
 		{"磁盘空间高风险", builtin(ResVM, 30, Cond{Field: "fsMax", Op: ">", Value: 90.0}, active()),
 			usageFacts("active", 30, map[string]float64{"fsMax": 95}), usageFacts("active", 30, map[string]float64{"fsMax": 90})},
 		{"僵尸", builtin(ResVM, 30, Cond{Field: "writeAvg", Op: "<", Value: 1.0}, active()),
@@ -170,6 +172,22 @@ func TestReasonText(t *testing.T) {
 	want := "针对过去30天的数据分析,vCPU平均使用率 大于 80% 且 CPU就绪时间占比 大于 10% 且 电源状态 等于 运行中,建议提高其 vCPU 配置"
 	if got := p.ReasonText(); got != want {
 		t.Fatalf("got %q\nwant %q", got, want)
+	}
+}
+
+func TestPolicyReasonNew(t *testing.T) {
+	a := builtin(ResVM, 30, Cond{Field: "cpuAvg", Op: ">", Value: 85.0}, active())
+	a.Advice = "建议增加其 vCPU 配置"
+	if got, want := a.ReasonText(), "针对过去30天的数据分析,vCPU平均使用率 大于 85% 且 电源状态 等于 运行中,建议增加其 vCPU 配置"; got != want {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+	b := builtin(ResVM, 30, Cond{Field: "writeMiB", Op: ">", Value: 150.0}, active())
+	b.Advice = "建议确认其读写是否合理"
+	if got, want := b.ReasonText(), "针对过去30天的数据分析,磁盘平均写I/O速率 大于 150MiB/s 且 电源状态 等于 运行中,建议确认其读写是否合理"; got != want {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+	if e := b.Validate(); len(e) != 0 {
+		t.Fatal(e)
 	}
 }
 

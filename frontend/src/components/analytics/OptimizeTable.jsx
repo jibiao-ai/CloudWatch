@@ -18,7 +18,7 @@ const VIEWS = [{ value: '0', label: '优化资源' }, { value: '1', label: '已�
 const pctCol = (key, title) => ({ key, title, width: 120, align: 'right', render: (r) => <span className="tabular-nums">{pctText(r[key])}</span> });
 const msCol = (key, title) => ({ key, title, width: 130, align: 'right', render: (r) => <span className="tabular-nums">{r[key] == null ? '-' : `${r[key]} ms`}</span> });
 const gbCol = (key, title) => ({ key, title, width: 110, align: 'right', render: (r) => <span className="tabular-nums">{r[key] == null ? '-' : formatBytes(r[key] * 1024 ** 3, 2)}</span> });
-const rateCol = (key, title) => ({ key, title, width: 150, align: 'right', render: (r) => <span className="tabular-nums">{r[key] == null ? '-' : `${r[key]} KiB/s`}</span> });
+const rateCol = (key, title) => ({ key, title, width: 150, align: 'right', render: (r) => <span className="tabular-nums">{r[key] == null ? '-' : (r[key] >= 1024 ? `${+(r[key] / 1024).toFixed(2)} MiB/s` : `${r[key]} KiB/s`)}</span> });
 const toParams = (q) => ({ kind: q.kind, side: q.side, ignored: q.ignored, keyword: q.keyword, providerId: q.providerId });
 const dash = <span className="text-fg-subtle">-</span>;
 
