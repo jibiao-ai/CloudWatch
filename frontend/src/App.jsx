@@ -28,7 +28,6 @@ const CapacityPage = lazy(() => import('./pages/CapacityPage'));
 const TopologyPage = lazy(() => import('./pages/TopologyPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const InspectionPage = lazy(() => import('./pages/InspectionPage'));
-const PlannedPage = lazy(() => import('./pages/PlannedPage'));
 
 /** 路由表：path + 权限码。菜单由后端权限树生成，这里的权限码用于路由守卫（无权限 → 403） */
 const GUARDED = [
@@ -46,8 +45,6 @@ const GUARDED = [
   ['/system/domain', DomainConfigPage, 'domain:view'],
   ['/system/settings', SettingsPage, 'settings:view'],
 ];
-const PLANNED = ['resource-mgmt', 'resource-view'];
-const PLANNED_PERM = { 'resource-mgmt': 'resource:view', 'resource-view': 'resource:view' };
 
 export default function App() {
   const navigate = useNavigate();
@@ -101,9 +98,6 @@ export default function App() {
             ))}
             {GUARDED.map(([path, Page, code]) => (
               <Route key={path} path={path} element={<RequirePermission code={code}><Page /></RequirePermission>} />
-            ))}
-            {PLANNED.map((k) => (
-              <Route key={k} path={`/planned/${k}`} element={<RequirePermission code={PLANNED_PERM[k]}><PlannedPage /></RequirePermission>} />
             ))}
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />

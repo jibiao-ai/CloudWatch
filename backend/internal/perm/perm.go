@@ -18,7 +18,8 @@ var Modules = []Module{
 	{"audit", "audit:view", []string{"audit:export", "audit:clean"}},
 	{"domain", "domain:view", []string{"domain:update", "domain:verify"}},
 	{"settings", "settings:view", []string{"settings:update"}},
-	{"resource", "resource:view", nil},
+	// 「统一资源管理 / 统一资源视图」暂时隐藏（尚无真实功能）；恢复时取消注释此行及下方 tree 中的两项。
+	// {"resource", "resource:view", nil},
 	{"inspection", "inspection:view", []string{"inspection:run", "inspection:export", "inspection:config", "inspection:delete"}},
 	{"monitor", "monitor:view", []string{"monitor:collect"}},
 	{"capacity", "capacity:view", []string{"capacity:collect"}},
@@ -76,8 +77,9 @@ func planned(code, name, group, perm, icon string) MenuItem {
 
 var tree = []MenuGroup{
 	{"overview", "平台概览", "LayoutDashboard", []MenuItem{{Code: "dashboard", Name: "平台概览", Path: "/dashboard", Permission: "dashboard:view", Icon: "Gauge"}}},
-	{"resource-mgmt", "统一资源管理", "Boxes", []MenuItem{planned("resource-mgmt-home", "资源纳管", "resource-mgmt", "resource:view", "Boxes")}},
-	{"resource-view", "统一资源视图", "LayoutList", []MenuItem{planned("resource-view-home", "资源总览", "resource-view", "resource:view", "LayoutList")}},
+	// 暂时隐藏：
+	// {"resource-mgmt", "统一资源管理", "Boxes", []MenuItem{planned("resource-mgmt-home", "资源纳管", "resource-mgmt", "resource:view", "Boxes")}},
+	// {"resource-view", "统一资源视图", "LayoutList", []MenuItem{planned("resource-view-home", "资源总览", "resource-view", "resource:view", "LayoutList")}},
 	{"inspection", "自动化巡检", "ClipboardCheck", []MenuItem{{Code: "inspection-home", Name: "巡检报告", Path: "/inspection", Permission: "inspection:view", Icon: "ClipboardCheck"}}},
 	{"monitor", "监控中心", "Activity", []MenuItem{{Code: "monitor-home", Name: "监控总览", Path: "/monitor", Permission: "monitor:view", Icon: "Activity"}}},
 	{"capacity", "资产管理", "Database", []MenuItem{{Code: "capacity-home", Name: "资产总览", Path: "/capacity", Permission: "capacity:view", Icon: "Database"}}},

@@ -4,8 +4,9 @@
  */
 const TREE = [
   { code: 'overview', name: '平台概览', icon: 'LayoutDashboard', children: [{ code: 'dashboard', name: '平台概览', path: '/dashboard', permission: 'dashboard:view', icon: 'Gauge' }] },
-  { code: 'resource-mgmt', name: '统一资源管理', icon: 'Boxes', children: [{ code: 'resource-mgmt-home', name: '资源纳管', path: '/planned/resource-mgmt', permission: 'resource:view', icon: 'Boxes', planned: true }] },
-  { code: 'resource-view', name: '统一资源视图', icon: 'LayoutList', children: [{ code: 'resource-view-home', name: '资源总览', path: '/planned/resource-view', permission: 'resource:view', icon: 'LayoutList', planned: true }] },
+  // 「统一资源管理 / 统一资源视图」暂时隐藏（尚无真实功能），恢复时取消注释：
+  //   { code: 'resource-mgmt', name: '统一资源管理', icon: 'Boxes', children: [{ code: 'resource-mgmt-home', name: '资源纳管', path: '/planned/resource-mgmt', permission: 'resource:view', icon: 'Boxes', planned: true }] },
+  //   { code: 'resource-view', name: '统一资源视图', icon: 'LayoutList', children: [{ code: 'resource-view-home', name: '资源总览', path: '/planned/resource-view', permission: 'resource:view', icon: 'LayoutList', planned: true }] },
   { code: 'inspection', name: '自动化巡检', icon: 'ClipboardCheck', children: [{ code: 'inspection-home', name: '巡检报告', path: '/inspection', permission: 'inspection:view', icon: 'ClipboardCheck' }] },
   { code: 'monitor', name: '监控中心', icon: 'Activity', children: [{ code: 'monitor-home', name: '监控总览', path: '/monitor', permission: 'monitor:view', icon: 'Activity' }] },
   { code: 'capacity', name: '资产管理', icon: 'Database', children: [{ code: 'capacity-home', name: '资产总览', path: '/capacity', permission: 'capacity:view', icon: 'Database' }] },
