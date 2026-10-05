@@ -24,8 +24,12 @@ function UsageCard({ icon: Icon, label, used, total, format }) {
       <div className="min-w-0 flex-1">
         <div className="text-xs text-fg-muted">{label}</div>
         <div className={`text-2xl font-semibold tabular-nums mt-0.5 leading-tight ${txt}`}>{pct.toFixed(1)}%</div>
-        <div className="mt-1.5"><CapacityBar barOnly used={used} total={total} label={label} /></div>
-        <div className="text-xs text-fg-subtle mt-1 truncate">已用 {format(used)} / 总量 {format(total)}</div>
+        <div className="mt-1.5"><CapacityBar barOnly compact used={used} total={total} format={format} label={label} /></div>
+        <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 mt-1.5 text-[11px] tabular-nums">
+          {[['已用', used], ['可用', Math.max(0, total - used)], ['总量', total]].map(([k, v]) => (
+            <div key={k} className="whitespace-nowrap"><div className="text-fg-subtle">{k}</div><div className="text-fg-muted">{format(v)}</div></div>
+          ))}
+        </div>
       </div>
     </div>
   );
