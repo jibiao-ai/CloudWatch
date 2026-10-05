@@ -4,6 +4,7 @@ import StatCard from '../StatCard';
 import CapacityBar from '../CapacityBar';
 import StatusDot from '../StatusDot';
 import DataTable from '../DataTable';
+import Carousel from '../Carousel';
 import SearchInput from '../SearchInput';
 import { useClientTable } from '../../hooks/useClientTable';
 import { formatNumber, formatDateTime, fromNow, formatBytes } from '../../utils/format';
@@ -11,6 +12,24 @@ import { gb, mb, Tag, numCell, PlatCell } from './capUtil';
 
 const KIND_LABEL = { phys: '物理节点', nodes: '计算节点', vms: '虚拟机', volumes: '云硬盘', ports: '虚拟网卡', pools: '集群存储' };
 const n0 = (v) => formatNumber(Math.round(v || 0));
+
+/** 使用率卡片：与 StatCard 同款布局（图标 + 标签 + 大号百分比），下方附进度条与已用 / 总量 */
+function UsageCard({ icon: Icon, label, used, total, format }) {
+  const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0;
+  const tone = pct >= 85 ? 'bg-danger-soft text-danger' : pct >= 70 ? 'bg-warning-soft text-warning' : 'bg-success-soft text-success';
+  const txt = pct >= 85 ? 'text-danger' : pct >= 70 ? 'text-warning' : 'text-fg';
+  return (
+    <div className="card p-4 flex items-start gap-3.5 hover:shadow-md transition-shadow">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${tone}`}>{Icon && <Icon size={20} />}</div>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs text-fg-muted">{label}</div>
+        <div className={`text-2xl font-semibold tabular-nums mt-0.5 leading-tight ${txt}`}>{pct.toFixed(1)}%</div>
+        <div className="mt-1.5"><CapacityBar barOnly used={used} total={total} label={label} /></div>
+        <div className="text-xs text-fg-subtle mt-1 truncate">已用 {format(used)} / 总量 {format(total)}</div>
+      </div>
+    </div>
+  );
+}
 
 /** 总览：全部平台资产 KPI + 容量条 + 状态分布 + 各平台汇总（搜索 / 排序 / 分页）；采集明细已独立为「采集明细」页签 */
 export default function OverviewTab({ ov, onJump }) {
@@ -43,29 +62,35 @@ export default function OverviewTab({ ov, onJump }) {
         <StatCard icon={Database} label="存储池" value={n0(t.pools)} hint={t.poolsDown ? `${n0(t.poolsDown)} 个异常` : '全部正常'} tone={t.poolsDown ? 'danger' : 'success'} />
         <StatCard icon={Cpu} label="vCPU 总容量（含超分）" value={n0(t.vcpusCap)} hint={`物理 ${n0(t.vcpus)}，已用 ${n0(t.vcpusUsed)}`} />
         <StatCard icon={MemoryStick} label="内存总容量（含超分）" value={mb(t.memMbCap)} hint={`物理 ${mb(t.memMb)}，已用 ${mb(t.memMbUsed)}`} />
+        <UsageCard icon={Cpu} label="vCPU 使用率" used={t.vcpusUsed} total={t.vcpusCap} format={n0} />
+        <UsageCard icon={MemoryStick} label="内存使用率" used={t.memMbUsed} total={t.memMbCap} format={mb} />
+        <UsageCard icon={HardDrive} label="存储使用率" used={t.poolTotalGb - t.poolFreeGb} total={t.poolTotalGb} format={gb} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="card p-4"><CapacityBar used={t.vcpusUsed} total={t.vcpusCap} format={n0} label="vCPU 使用率" /></div>
-        <div className="card p-4"><CapacityBar used={t.memMbUsed} total={t.memMbCap} format={mb} label="内存使用率" /></div>
-        <div className="card p-4"><CapacityBar used={t.poolTotalGb - t.poolFreeGb} total={t.poolTotalGb} format={gb} label="存储使用率" /></div>
-      </div>
-      <div className="card p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 text-[13px]">
-        {[['存储池总容量', t.poolTotalGb], ['剩余容量', t.poolFreeGb], ['已分配容量', t.poolAllocatedGb], ['精简置备总容量', t.poolProvisionedGb]].map(([k, v]) => <div key={k}><div className="text-xs text-fg-muted">{k}</div><div className="text-lg font-semibold text-fg tabular-nums">{gb(v)}</div></div>)}
-      </div>
-      {dist.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {dist.map(([kind, list]) => (
-            <section key={kind} className="card p-4">
-              <h3 className="text-sm font-semibold text-fg mb-2.5">{KIND_LABEL[kind]}状态分布</h3>
-              <div className="flex flex-wrap gap-2">{list.map((d) => <button key={d.label} type="button" className="inline-flex items-center gap-1.5" onClick={() => onJump(kind)}><Tag text={d.label} tone={d.tone} /><span className="tabular-nums text-sm text-fg">{formatNumber(d.count)}</span></button>)}</div>
-            </section>
-          ))}
-        </div>
-      )}
-      <DataTable columns={columns} rows={tbl.pageRows} rowKey="id" page={tbl.page} pageSize={tbl.pageSize} total={tbl.total} onPageChange={tbl.setPage} pageSizeOptions={[10, 20, 50, 100]}
-        sort={tbl.sort} onSortChange={tbl.setSort}
-        toolbar={<><h3 className="text-sm font-semibold text-fg mr-2">各云平台资产汇总</h3><SearchInput value={tbl.keyword} onChange={tbl.setKeyword} placeholder="搜索平台名称 / 控制台 IP" width={260} /></>}
-        empty={{ title: '暂无已对接的云平台', description: '请先在「平台管理」中新增并验证平台' }} />
+      <Carousel ariaLabel="容量与平台汇总分页" idPrefix="cap-ov-slide" interval={10000} slides={[
+        { key: 'cap', label: '容量与状态分布', node: (
+          <>
+            <div className="card p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 text-[13px]">
+              {[['存储池总容量', t.poolTotalGb], ['剩余容量', t.poolFreeGb], ['已分配容量', t.poolAllocatedGb], ['精简置备总容量', t.poolProvisionedGb]].map(([k, v]) => <div key={k}><div className="text-xs text-fg-muted">{k}</div><div className="text-lg font-semibold text-fg tabular-nums">{gb(v)}</div></div>)}
+            </div>
+            {dist.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {dist.map(([kind, list]) => (
+                  <section key={kind} className="card p-4">
+                    <h3 className="text-sm font-semibold text-fg mb-2.5">{KIND_LABEL[kind]}状态分布</h3>
+                    <div className="flex flex-wrap gap-2">{list.map((d) => <button key={d.label} type="button" className="inline-flex items-center gap-1.5" onClick={() => onJump(kind)}><Tag text={d.label} tone={d.tone} /><span className="tabular-nums text-sm text-fg">{formatNumber(d.count)}</span></button>)}</div>
+                  </section>
+                ))}
+              </div>
+            )}
+          </>
+        ) },
+        { key: 'plat', label: '各云平台资产汇总', node: (
+          <DataTable columns={columns} rows={tbl.pageRows} rowKey="id" page={tbl.page} pageSize={tbl.pageSize} total={tbl.total} onPageChange={tbl.setPage} pageSizeOptions={[10, 20, 50, 100]}
+            sort={tbl.sort} onSortChange={tbl.setSort}
+            toolbar={<><h3 className="text-sm font-semibold text-fg mr-2">各云平台资产汇总</h3><SearchInput value={tbl.keyword} onChange={tbl.setKeyword} placeholder="搜索平台名称 / 控制台 IP" width={260} /></>}
+            empty={{ title: '暂无已对接的云平台', description: '请先在「平台管理」中新增并验证平台' }} />
+        ) },
+      ]} />
     </div>
   );
 }
