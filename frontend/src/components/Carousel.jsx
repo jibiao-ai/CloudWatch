@@ -3,11 +3,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Tabs from './Tabs';
 
 /**
- * Carousel —— 横向轮播：slides[{key,label,node}]；按 interval（默认 60 秒）自动切换到下一页，
+ * Carousel —— 横向轮播：slides[{key,label,node}]；按 interval（默认 10 秒）自动切换到下一页，
  * 支持上一页 / 下一页按钮、点击标签与 ←/→ 键翻页；鼠标悬停或键盘聚焦在内容上时暂停，离开后重新计时。
  * 容器高度跟随当前页内容；非当前页 aria-hidden + inert，不会被 Tab 键聚焦。
  */
-export default function Carousel({ slides, interval = 60000, ariaLabel = '轮播', idPrefix = 'carousel', className = '' }) {
+export default function Carousel({ slides, interval = 10000, ariaLabel = '轮播', idPrefix = 'carousel', className = '' }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [epoch, setEpoch] = useState(0); // 暂停恢复后重新计时，进度条同步重启

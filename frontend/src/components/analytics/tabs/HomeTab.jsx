@@ -56,7 +56,7 @@ export default function HomeTab({ d, tick, onOpt, keyword }) {
         <AllocPanel rates={d.rates} />
         <UsePanel rates={d.rates} />
       </div>
-      <Carousel ariaLabel="总览分页" idPrefix="home-slide" slides={slides} />
+      <Carousel ariaLabel="总览分页" idPrefix="home-slide" interval={10000} slides={slides} />
     </>
   );
 }
