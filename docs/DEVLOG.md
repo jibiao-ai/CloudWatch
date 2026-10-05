@@ -553,3 +553,15 @@ npm run lint:rules          # 规则扫描（见下）
 - 镜像标签：`cloudwatch-backend:7.1` / `cloudwatch-web:7.1`（同时带 `latest`），`mariadb:10.11` 原样；仅 linux/amd64。前端按生产方式构建（`VITE_USE_MOCK=false`）。
 - `deploy/offline/` 的 README / install.sh / env.example / SHA256SUMS 同步为 7.1。
 - 验证：从 Release 重新下载校验 SHA256 → scp 到 160.202.46.139 → `docker load` → `CW_IMAGE_TAG=7.1` → `docker compose up -d`；迁移 0021 自动执行（`app_versions` 含 V7.1）；另用独立端口起一套全新实例验证可从零启动并登录。
+
+## 第54轮补充（资源拓扑重构：宿主机热力 + 问题优先 + 反向高亮）
+依据 `docs/topology-research/`（调研与原型）确认的 5 项决策实施：
+1. **异常口径**：「异常」只来自严重告警（critical）或资源故障（error / offline / down）；「警告」级告警、负载 ≥70%（含 ≥85% 偏高）、过渡态一律算「告警」；提示级告警不改变健康度。后端 `Count` 拆为 `danger / warning / abnormal / off`（`abnormal` 保留为两者之和，兼容旧前端）。物理节点 37/45 偏宽的问题随之收敛。所有数字带标签与状态堆叠条，不再出现「4537」式连读。
+2. **跨宿主机关系**：以「反向高亮」表达——点击存储池 / 网络，淡化无关虚拟机；另有「显示关系线」开关，仅对选中对象开启（SVG 贝塞尔叠加层，最多 80 条）。
+3. **多平台总览**：新增跨平台宿主机热力图（每格 = 1 台宿主机，异常优先，点击直达该宿主机），KPI 改为状态条，平台卡片带「未挂载云硬盘」摘要。
+4. **宿主机增长**：热力图宿主机总数 > 200（`GROUP_AT`）时，自动按「环境类型 → 云贯标（平台名）」分组并可折叠。
+5. **未挂载云硬盘**：后端按 `serverIds` 为空识别并给出 `orphan` 摘要（块数、容量、闲置 >30/>90 天、异常/告警）；平台页底部独立折叠分区，按闲置时长倒序、可筛选，并链接到配置中心云硬盘页签处理。
+- 后端：`topology/heat.go`（`hostCells`、`orphanOf`）、`OverviewItem.Hosts / Orphan`、`Graph.Orphan`、Node 增 `sizeGb / createdAt / orphan`；`go test ./internal/topology` 覆盖。
+- 前端：`components/topology/` 重写为 `PlatformView`（组合）+ `HostTiles / HubBand / VmCards / EgoGraph / RelationLines / ProblemPanel / OrphanSection / SidePanel / PlatformHeader / StatusUi / topoModel`，总览为 `Overview + OverviewHeat`；旧 `LayerView / NodeChip / AlertPanel / SelectionBar` 删除。
+- 下钻路径：总览 → 平台（宿主机热力）→ 宿主机（虚拟机卡片）→ 虚拟机（侧栏 + 1 跳关系图）；面包屑可回退。
+

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jibiao-ai/cloudwatch/internal/capacity"
 	"github.com/jibiao-ai/cloudwatch/internal/monitor"
@@ -210,7 +211,9 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 			n.Reasons = append(n.Reasons, "云硬盘状态："+first(s(r, "statusText"), st))
 		}
 		n.Sub = strings.Join(nz(gbText(fv(r, "sizeGb")), s(r, "volumeType")), " · ")
-		n.Attrs = [][2]string{{"UUID", id}, {"容量", gbText(fv(r, "sizeGb"))}, {"类型", s(r, "volumeType")}, {"启动盘", s(r, "bootable")}, {"挂载虚拟机", s(r, "serverNames")}, {"挂载点", s(r, "devices")}, {"存储后端", s(r, "backend")}}
+		n.SizeGB, n.CreatedAt = f(r, "sizeGb"), s(r, "createdAt")
+		n.Orphan = strings.TrimSpace(s(r, "serverIds")) == ""
+		n.Attrs = [][2]string{{"UUID", id}, {"容量", gbText(fv(r, "sizeGb"))}, {"类型", s(r, "volumeType")}, {"启动盘", s(r, "bootable")}, {"挂载虚拟机", s(r, "serverNames")}, {"挂载点", s(r, "devices")}, {"存储后端", s(r, "backend")}, {"创建时间", s(r, "createdAt")}}
 		x.add(n)
 		for _, sid := range strings.Split(s(r, "serverIds"), ",") {
 			if v, ok := vmByID[strings.TrimSpace(sid)]; ok {
@@ -274,9 +277,9 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		if n := x.get(nid); n != nil {
 			bump(&n.Alerts, a.Severity)
 			switch a.Severity {
-			case "critical":
+			case "critical": // 严重告警 → 异常
 				n.Health = worse(n.Health, HDanger)
-			default:
+			case "warning": // 警告 → 告警；提示级（info）不改变健康度
 				if rank(n.Health) < rank(HWarning) || n.Health == HOff {
 					n.Health = worse(n.Health, HWarning)
 				}
@@ -319,7 +322,12 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 	for _, n := range out.Nodes {
 		c := out.Counts[n.Type]
 		c.Total++
-		if n.Health == HDanger || n.Health == HWarning {
+		switch n.Health {
+		case HDanger:
+			c.Danger++
+			c.Abnormal++
+		case HWarning:
+			c.Warning++
 			c.Abnormal++
 		}
 		if n.Health == HOff {
@@ -328,6 +336,7 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		out.Counts[n.Type] = c
 	}
 	out.Usage = usageOf(hosts, pools)
+	out.Orphan = orphanOf(out.Nodes, time.Now())
 	out.Platform = platformOf(p, meta, snap, tot, out)
 	return out, nil
 }
@@ -402,7 +411,7 @@ func platformOf(p *provider.Provider, meta *capacity.Meta, snap *monitor.Snapsho
 	switch {
 	case meta.CollectedAt == nil && snap.CollectedAt == nil:
 		h = HUnknown
-	case p.Status == "error", tot.Critical > 0:
+	case p.Status == "error", tot.Critical > 0, gr.hasDanger():
 		h = HDanger
 	}
 	if h == HOK {
@@ -410,7 +419,7 @@ func platformOf(p *provider.Provider, meta *capacity.Meta, snap *monitor.Snapsho
 			h = HWarning
 		}
 		for _, c := range gr.Counts {
-			if c.Abnormal > 0 {
+			if c.Danger+c.Warning > 0 {
 				h = worse(h, HWarning)
 			}
 		}
@@ -427,7 +436,7 @@ func (b *Builder) Overview(ctx context.Context, list []*provider.Provider) ([]Ov
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, OverviewItem{Platform: gr.Platform, Counts: gr.Counts, Usage: gr.Usage, Alerts: gr.Total})
+		out = append(out, OverviewItem{Platform: gr.Platform, Counts: gr.Counts, Usage: gr.Usage, Alerts: gr.Total, Hosts: hostCells(gr), Orphan: gr.Orphan})
 	}
 	return out, nil
 }

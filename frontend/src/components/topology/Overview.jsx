@@ -1,17 +1,20 @@
 import React from 'react';
-import { BellRing, Cloud, Server, Monitor, TriangleAlert } from 'lucide-react';
-import StatCard from '../StatCard';
+import { BellRing, Cloud, HardDrive, Monitor, Server } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import EmptyState from '../EmptyState';
 import { ENV_TYPES, ENV_TAG } from '../../data/dict';
 import { fromNow } from '../../utils/format';
-import { TYPES, HEALTH, pctTone } from './topoUtil';
+import { HEALTH, pctTone, TYPES } from './topoUtil';
+import { KpiCard, StateBar, StateLine } from './StatusUi';
+import { stat } from './topoModel';
+import OverviewHeat from './OverviewHeat';
 
 const ORDER = ['phys', 'host', 'vm', 'volume', 'port', 'pool'];
 
 function Usage({ label, v }) {
   return (
     <div className="flex items-center gap-2 text-xs" title={v == null ? `${label}：暂无数据` : `${label} ${v.toFixed(1)}%`}>
-      <span className="w-14 text-fg-muted shrink-0">{label}</span>
+      <span className="w-12 text-fg-muted shrink-0">{label}</span>
       <span className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">{v != null && <span className={`block h-full ${pctTone(v)}`} style={{ width: `${Math.min(100, v)}%` }} />}</span>
       <span className="w-12 text-right tabular-nums text-fg">{v == null ? '—' : `${v.toFixed(1)}%`}</span>
     </div>
@@ -23,6 +26,7 @@ function PlatformCard({ item, onOpen }) {
   const h = HEALTH[p.health] || HEALTH.unknown;
   const alerts = item.alerts.critical + item.alerts.warning + item.alerts.info;
   const env = ENV_TYPES.find((e) => e.value === p.envType);
+  const o = item.orphan || {};
   return (
     <article className="card p-4 flex flex-col gap-3" data-platform={p.id}>
       <header className="flex items-start gap-2.5">
@@ -36,16 +40,16 @@ function PlatformCard({ item, onOpen }) {
         </div>
         <span className={h.tag}>{h.label}</span>
       </header>
-      <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+      <div className="grid grid-cols-3 gap-x-3 gap-y-2.5">
         {ORDER.map((t) => {
-          const c = item.counts[t] || { total: 0, abnormal: 0, off: 0 };
+          const s = stat(item.counts, t);
           const Icon = TYPES[t].icon;
           return (
-            <div key={t} className="min-w-0" title={`${TYPES[t].label}：共 ${c.total}，异常/告警 ${c.abnormal}，已停止 ${c.off}`}>
+            <div key={t} className="min-w-0" title={`${TYPES[t].label}：共 ${s.total}；异常 ${s.danger}，告警 ${s.warning}，停止 ${s.off}`}>
               <div className="flex items-center gap-1 text-[11px] text-fg-muted truncate"><Icon size={11} className="shrink-0" />{TYPES[t].label}</div>
-              <div className="text-base font-semibold text-fg tabular-nums leading-tight">{c.total}
-                {c.abnormal > 0 && <span className="ml-1 text-xs font-medium text-danger">{c.abnormal} 异常</span>}
-              </div>
+              <div className="text-base font-semibold text-fg tabular-nums leading-tight mb-1">{s.total}</div>
+              <StateBar s={s} />
+              <StateLine s={{ ...s, off: 0 }} okText="正常" className="mt-0.5" />
             </div>
           );
         })}
@@ -55,6 +59,12 @@ function PlatformCard({ item, onOpen }) {
         <Usage label="内存" v={item.usage.mem} />
         <Usage label="存储" v={item.usage.storage} />
       </div>
+      {o.count > 0 && (
+        <div className="flex items-center gap-1.5 text-xs text-fg-muted" title="未挂载到任何虚拟机的云硬盘">
+          <HardDrive size={12} className="shrink-0" />未挂载云硬盘 <b className="text-fg tabular-nums">{o.count}</b> 块（{Math.round(o.sizeGb)} GB）
+          {o.idle90 > 0 && <span className="text-warning">· 闲置超 90 天 {o.idle90}</span>}
+        </div>
+      )}
       <footer className="flex items-center justify-between gap-2 pt-2 border-t border-line text-xs text-fg-muted">
         <span className="inline-flex items-center gap-2 min-w-0">
           <span className="inline-flex items-center gap-1" title={p.assetAt ? `资产采集：${p.assetOk ? '成功' : '失败'}（${fromNow(p.assetAt)}）` : '资产尚未采集'}>
@@ -71,23 +81,39 @@ function PlatformCard({ item, onOpen }) {
   );
 }
 
-/** 第 0 层：全局总览（全部云平台 → 各层资源数量 / 健康度 / 使用率 / 告警） */
+/** 第 0 层：全局总览（跨平台热力图 + 全局 KPI + 各云平台卡片） */
 export default function Overview({ items, onOpen }) {
   if (!items.length) return <div className="card"><EmptyState title="暂无云平台" description="请先在「系统管理 → 平台管理」中对接云平台" /></div>;
-  const sum = (t, k) => items.reduce((a, i) => a + ((i.counts[t] || {})[k] || 0), 0);
-  const alerts = items.reduce((a, i) => a + i.alerts.critical + i.alerts.warning + i.alerts.info, 0);
+  const agg = (t) => items.reduce((a, i) => { const s = stat(i.counts, t); return { total: a.total + s.total, danger: a.danger + s.danger, warning: a.warning + s.warning, off: a.off + s.off, ok: a.ok + s.ok }; }, { total: 0, danger: 0, warning: 0, off: 0, ok: 0 });
+  const orphan = items.reduce((a, i) => ({ count: a.count + (i.orphan?.count || 0), sizeGb: a.sizeGb + (i.orphan?.sizeGb || 0), idle90: a.idle90 + (i.orphan?.idle90 || 0) }), { count: 0, sizeGb: 0, idle90: 0 });
   const critical = items.reduce((a, i) => a + i.alerts.critical, 0);
+  const alerts = items.reduce((a, i) => a + i.alerts.critical + i.alerts.warning + i.alerts.info, 0);
   const bad = items.filter((i) => i.platform.health === 'danger' || i.platform.health === 'warning').length;
-  const abn = ORDER.reduce((a, t) => a + sum(t, 'abnormal'), 0);
+  const platS = { total: items.length, danger: items.filter((i) => i.platform.health === 'danger').length, warning: items.filter((i) => i.platform.health === 'warning').length, off: 0 };
+  platS.ok = platS.total - platS.danger - platS.warning;
   return (
     <div className="space-y-4" id="topo-overview">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Cloud} label="云平台" value={items.length} hint={bad ? `${bad} 个平台需关注` : '全部平台健康'} tone={bad ? 'warning' : 'success'} />
-        <StatCard icon={Server} label="物理节点 / 计算节点" value={`${sum('phys', 'total')} / ${sum('host', 'total')}`} hint="配置中心" tone="primary" />
-        <StatCard icon={Monitor} label="虚拟机" value={sum('vm', 'total')} hint={`已停止 ${sum('vm', 'off')} 台`} tone="info" />
-        <StatCard icon={critical ? TriangleAlert : BellRing} label="未恢复告警" value={alerts} hint={abn ? `${abn} 个资源异常 / 告警` : critical ? `严重 ${critical} 条` : '告警中心'} tone={critical ? 'danger' : alerts ? 'warning' : 'success'} />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <KpiCard icon={Cloud} label="云平台" s={platS} unit="个" />
+        <KpiCard icon={Server} label="物理节点" s={agg('phys')} unit="个" />
+        <KpiCard icon={Server} label="计算节点" s={agg('host')} unit="个" />
+        <KpiCard icon={Monitor} label="虚拟机" s={agg('vm')} unit="台" />
+        <div className="card px-3 py-2.5 min-w-0">
+          <div className="flex items-center gap-1.5 text-xs text-fg-muted"><BellRing size={13} />未恢复告警</div>
+          <div className="text-2xl font-semibold text-fg tabular-nums leading-tight mt-0.5">{alerts}<span className="text-xs font-normal text-fg-subtle ml-1">条</span></div>
+          <div className={`text-xs mt-2 ${critical ? 'text-danger' : alerts ? 'text-warning' : 'text-success'}`}>{critical ? `严重 ${critical} 条` : alerts ? '无严重告警' : '无告警'}{bad ? ` · ${bad} 个平台需关注` : ''}</div>
+          <Link to="/alerts" className="text-xs text-primary-text mt-1 inline-block hover:underline">告警中心</Link>
+        </div>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
+      <OverviewHeat items={items} onOpen={onOpen} />
+      {orphan.count > 0 && (
+        <div className="card px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" id="topo-orphan-total">
+          <span className="inline-flex items-center gap-1.5 font-medium text-fg"><HardDrive size={15} />未挂载云硬盘治理</span>
+          <span className="text-fg-muted">全局共 <b className="text-fg tabular-nums">{orphan.count}</b> 块 / {Math.round(orphan.sizeGb)} GB 未挂载到虚拟机{orphan.idle90 > 0 && <>，其中闲置超 90 天 <b className="text-warning tabular-nums">{orphan.idle90}</b> 块</>}</span>
+          <span className="text-xs text-fg-subtle">进入各平台拓扑，在页面底部「未挂载云硬盘」分区治理</span>
+        </div>
+      )}
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>
         {items.map((it) => <PlatformCard key={it.platform.id} item={it} onOpen={onOpen} />)}
       </div>
     </div>

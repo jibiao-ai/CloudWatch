@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Crosshair, Waypoints } from 'lucide-react';
+import { ExternalLink, Crosshair } from 'lucide-react';
 import Drawer from '../Drawer';
 import { formatDateTime } from '../../utils/format';
 import { TYPES, HEALTH, SEVERITY, pctTone } from './topoUtil';
@@ -15,7 +15,7 @@ function Bar({ label, v }) {
 }
 
 /** 节点详情抽屉：健康度 / 原因 / 使用率 / 关联告警 / 上下游 / 属性；可跳转资产详情 */
-export default function NodeDrawer({ node, graph, idx, focusOnly, onToggleFocus, onPick, onAsset, onClose }) {
+export default function NodeDrawer({ node, graph, idx, onPick, onAsset, onClose }) {
   if (!node) return <Drawer open={false} />;
   const h = HEALTH[node.health] || HEALTH.unknown;
   const t = TYPES[node.type];
@@ -25,10 +25,7 @@ export default function NodeDrawer({ node, graph, idx, focusOnly, onToggleFocus,
   const group = (list) => Object.entries(list.reduce((m, n) => { (m[n.type] = m[n.type] || []).push(n); return m; }, {}));
   return (
     <Drawer open title={`${t?.label || '资源'}：${node.name}`} subtitle={graph.platform.name} width={520} onClose={onClose}
-      footer={<>
-        <button type="button" className="btn-default" onClick={onToggleFocus}><Waypoints size={15} />{focusOnly ? '显示全部资源' : '仅看关联链路'}</button>
-        {node.ref && <button type="button" className="btn-primary" onClick={() => onAsset(node)}><ExternalLink size={15} />查看资产详情</button>}
-      </>}>
+      footer={node.ref ? <button type="button" className="btn-primary" onClick={() => onAsset(node)}><ExternalLink size={15} />查看资产详情</button> : null}>
       <div className="space-y-5" id="topo-node-drawer">
         <div className="flex items-center gap-2 flex-wrap">
           <span className={h.tag}>{h.label}</span>
