@@ -565,3 +565,10 @@ npm run lint:rules          # 规则扫描（见下）
 - 前端：`components/topology/` 重写为 `PlatformView`（组合）+ `HostTiles / HubBand / VmCards / EgoGraph / RelationLines / ProblemPanel / OrphanSection / SidePanel / PlatformHeader / StatusUi / topoModel`，总览为 `Overview + OverviewHeat`；旧 `LayerView / NodeChip / AlertPanel / SelectionBar` 删除。
 - 下钻路径：总览 → 平台（宿主机热力）→ 宿主机（虚拟机卡片）→ 虚拟机（侧栏 + 1 跳关系图）；面包屑可回退。
 
+
+## 第55轮补充（Bug：虚拟机下钻看不到虚拟网卡）
+
+- 现象：线上「南京运维」node-1 的 oath-worker 实际有网卡，拓扑下钻显示「虚拟网卡（0）」。
+- 根因：容量采集只保留 `device_owner` 以 `compute:` 开头的 Neutron 端口；`compute:<可用区ID>`、`trunk:subport`、空 owner 等挂在虚拟机上的端口被丢弃（南京运维快照 479 个端口只存了 22 个）。
+- 修复：`capacity.keepPort`——端口 `device_id` 命中虚拟机、或 MAC 命中虚拟机 Nova 地址、或 owner 为 `compute:*` 即保留；`network:*` / `neutron:*`（浮动 IP、路由器接口/网关、DHCP 等）仍排除。入库快照的读取过滤同步放宽；拓扑 `nic` 边在 `deviceId` 对不上时按 MAC 回退关联。
+- 注意：旧快照中已被丢弃的端口不会自行恢复，需重新采集。

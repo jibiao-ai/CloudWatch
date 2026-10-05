@@ -148,6 +148,7 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 	}
 	// ---- 虚拟机 ----
 	vmByID := map[string]string{}
+	vmByMAC := map[string]string{}
 	for _, r := range vms {
 		id := s(r, "id")
 		n := Node{ID: "vm:" + id, Type: TVM, Name: first(s(r, "name"), id), Health: HOK, StatusText: s(r, "statusText"), Ref: &Ref{"vms", id}}
@@ -177,6 +178,11 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		n.Attrs = [][2]string{{"UUID", id}, {"IP", s(r, "ips")}, {"规格", first(s(r, "flavor"), "—")}, {"vCPU / 内存", spec}, {"所在节点", s(r, "node")}, {"项目", s(r, "projectName")}, {"CPU 使用率（监控）", pctPtr(n.CPU)}, {"内存使用率（监控）", pctPtr(n.Mem)}, {"创建时间", s(r, "createdAt")}}
 		x.add(n)
 		vmByID[id] = n.ID
+		for _, m := range strings.Split(s(r, "macs"), ",") { // 网卡 device_id 对不上时按 MAC 回退关联
+			if m = strings.ToLower(strings.TrimSpace(m)); m != "" {
+				vmByMAC[m] = n.ID
+			}
+		}
 		x.edge(hostByName[s(r, "node")], n.ID, "hosts")
 	}
 	// ---- 存储池 ----
@@ -260,7 +266,11 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		n.Sub = s(r, "ips")
 		n.Attrs = [][2]string{{"UUID", id}, {"IP 地址", s(r, "ips")}, {"MAC 地址", s(r, "mac")}, {"所属网络", s(r, "networkName")}, {"挂载虚拟机", s(r, "deviceName")}}
 		x.add(n)
-		x.edge(vmByID[s(r, "deviceId")], n.ID, "nic")
+		vm := vmByID[s(r, "deviceId")]
+		if vm == "" {
+			vm = vmByMAC[strings.ToLower(s(r, "mac"))]
+		}
+		x.edge(vm, n.ID, "nic")
 		if nid := first(s(r, "networkId"), s(r, "networkName")); nid != "" {
 			x.edge(n.ID, "net:"+nid, "net")
 		}

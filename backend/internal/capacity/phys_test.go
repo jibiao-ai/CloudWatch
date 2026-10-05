@@ -24,10 +24,31 @@ func TestPhysExcludesNova(t *testing.T) {
 	}
 }
 
-func TestPortFloatingAndNA(t *testing.T) {
-	for owner, want := range map[string]bool{"compute:nova": true, "compute:az1": true, "network:floatingip": false, "network:dhcp": false, "network:router_interface": false, "": false} {
-		if got := isComputePort(map[string]any{"device_owner": owner}); got != want {
-			t.Fatalf("owner %q: got %v want %v", owner, got, want)
+func TestKeepPort(t *testing.T) {
+	vms := newVMIndex([]map[string]any{{
+		"id": "vm-1",
+		"addresses": map[string]any{"net": []any{
+			map[string]any{"OS-EXT-IPS-MAC:mac_addr": "FA:16:3E:48:25:81", "OS-EXT-IPS:type": "fixed"},
+		}},
+	}})
+	cases := []struct {
+		name string
+		p    map[string]any
+		want bool
+	}{
+		{"compute:nova", map[string]any{"device_owner": "compute:nova"}, true},
+		{"compute:AZ-uuid", map[string]any{"device_owner": "compute:6a1c-uuid", "device_id": "vm-1"}, true},
+		{"empty owner, device_id is VM", map[string]any{"device_owner": "", "device_id": "vm-1"}, true},
+		{"trunk subport by MAC", map[string]any{"device_owner": "trunk:subport", "mac_address": "fa:16:3e:48:25:81"}, true},
+		{"floating ip", map[string]any{"device_owner": "network:floatingip", "device_id": "vm-1"}, false},
+		{"router interface", map[string]any{"device_owner": "network:router_interface"}, false},
+		{"router gateway", map[string]any{"device_owner": "network:router_gateway"}, false},
+		{"dhcp", map[string]any{"device_owner": "network:dhcp"}, false},
+		{"unattached", map[string]any{"device_owner": "", "device_id": "", "mac_address": "fa:16:3e:00:00:01"}, false},
+	}
+	for _, c := range cases {
+		if got := keepPort(c.p, vms); got != c.want {
+			t.Errorf("%s: got %v want %v", c.name, got, c.want)
 		}
 	}
 	r := portRow(map[string]any{"id": "p1", "status": "N/A"}, nil, nil, nil, false, false, &lookups{})

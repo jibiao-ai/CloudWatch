@@ -196,8 +196,8 @@ func (s *Store) load(ctx context.Context, p Platform) (*entry, error) {
 		if kind == "ports" { // 兼容已入库的旧快照：仅保留设备类型为云主机的网卡
 			rows = make([]Row, 0, len(all))
 			for _, r := range all {
-				if !isComputeOwner(toStr(r["deviceOwner"])) {
-					continue
+				if o := toStr(r["deviceOwner"]); isInfraOwner(o) || (!isComputeOwner(o) && toStr(r["deviceName"]) == "") {
+					continue // 基础设施端口，或既非云主机类型也未关联到虚拟机
 				}
 				if strings.EqualFold(toStr(r["status"]), "n/a") { // 旧快照中状态为 N/A 的统一显示「未知」
 					r["statusText"], r["statusTone"] = "未知", "default"

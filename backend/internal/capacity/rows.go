@@ -294,12 +294,56 @@ func volumeRow(v map[string]any, vmName map[string]string, lk *lookups) Row {
 
 // ---- 虚拟网卡：GET /v2.0/ports ----
 
-// isComputeOwner 设备类型（device_owner）为云主机（compute:*，如 compute:nova）。虚拟网卡仅保留该类型。
+// isComputeOwner 设备类型（device_owner）为云主机（compute:*，如 compute:nova、compute:<可用区>）。
 func isComputeOwner(owner string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(owner)), "compute:")
 }
 
-func isComputePort(p map[string]any) bool { return isComputeOwner(str(p, "device_owner")) }
+// isInfraOwner 基础设施端口（浮动 IP、路由器接口/网关、DHCP、负载均衡等，network:* / neutron:*），不属于虚拟机网卡。
+func isInfraOwner(owner string) bool {
+	o := strings.ToLower(strings.TrimSpace(owner))
+	return strings.HasPrefix(o, "network:") || strings.HasPrefix(o, "neutron:")
+}
+
+// vmIndex 采集到的虚拟机标识：ID 与 Nova 地址中的 MAC，用于判定端口是否属于某台虚拟机。
+type vmIndex struct{ ids, macs map[string]bool }
+
+func newVMIndex(servers []map[string]any) vmIndex {
+	x := vmIndex{ids: map[string]bool{}, macs: map[string]bool{}}
+	for _, s := range servers {
+		if id := str(s, "id"); id != "" {
+			x.ids[id] = true
+		}
+		for _, v := range obj(s, "addresses") {
+			l, _ := v.([]any)
+			for _, a := range l {
+				if m, ok := a.(map[string]any); ok {
+					if mac := strings.ToLower(str(m, "OS-EXT-IPS-MAC:mac_addr")); mac != "" {
+						x.macs[mac] = true
+					}
+				}
+			}
+		}
+	}
+	return x
+}
+
+// keepPort 虚拟网卡 = 属于某台虚拟机的 Neutron 端口：
+// 设备类型为 compute:*；或 device_id 是已知虚拟机；或 MAC 与虚拟机 Nova 地址一致（含 trunk:subport 等）。
+// 浮动 IP / 路由器 / DHCP 等基础设施端口一律排除。
+func keepPort(p map[string]any, vms vmIndex) bool {
+	owner := str(p, "device_owner")
+	if isInfraOwner(owner) {
+		return false
+	}
+	if isComputeOwner(owner) {
+		return true
+	}
+	if id := str(p, "device_id"); id != "" && vms.ids[id] {
+		return true
+	}
+	return vms.macs[strings.ToLower(str(p, "mac_address"))]
+}
 
 func portRow(p map[string]any, netName, subCIDR, vmName map[string]string, okNet, okSub bool, lk *lookups) Row {
 	r := Row{"id": str(p, "id"), "name": str(p, "name"), "raw": p}

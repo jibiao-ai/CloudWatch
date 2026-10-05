@@ -250,8 +250,9 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 	}
 	if okPort {
 		r.Ports = make([]Row, 0, len(port.items))
+		vms := newVMIndex(srv.items)
 		for _, p := range port.items {
-			if !isComputePort(p) { // 虚拟网卡只保留设备类型为云主机（compute:*）的端口
+			if !keepPort(p, vms) { // 虚拟网卡：属于虚拟机（compute:* / device_id 或 MAC 命中虚拟机）的端口，排除浮动IP、路由器等
 				continue
 			}
 			r.Ports = append(r.Ports, portRow(p, netName, subCIDR, vmName, okNet, okSub, lk))
