@@ -19,6 +19,7 @@ import { useCan } from '../hooks/useCan';
 import { useToast } from '../hooks/useToast';
 import { useStore } from '../store/useStore';
 import { pickPolicy } from '../utils/validators';
+import { deepClone } from '../utils/clone';
 
 const GROUPS = [
   { key: 'basic', title: '基础信息', desc: '平台名称、副标题与版权信息，显示于登录页与侧栏' },
@@ -58,7 +59,7 @@ export default function SettingsPage() {
   const orig = useRef(null);
   const committedColor = useRef(brandInStore.primaryColor);
 
-  useEffect(() => { if (data) { setF(structuredClone(data)); orig.current = structuredClone(data); committedColor.current = data.brand.primaryColor; } }, [data]);
+  useEffect(() => { if (data) { setF(deepClone(data)); orig.current = deepClone(data); committedColor.current = data.brand.primaryColor; } }, [data]);
   useEffect(() => { window.history.replaceState(null, '', `#${tab}`); }, [tab]);
   // 主色仅在「品牌信息」标签内预览：切走即还原已保存主色，切回恢复预览；离开页面时同样还原
   useEffect(() => {
@@ -75,8 +76,8 @@ export default function SettingsPage() {
 
   /** 只把已保存的分组写回本地，其它分组的未保存修改原样保留 */
   const commit = (g, res) => {
-    orig.current = { ...orig.current, [g]: structuredClone(res[g]) };
-    setF((s) => ({ ...s, [g]: structuredClone(res[g]) }));
+    orig.current = { ...orig.current, [g]: deepClone(res[g]) };
+    setF((s) => ({ ...s, [g]: deepClone(res[g]) }));
     if (g === 'basic') setBrand({ platformName: res.basic.platformName, subtitle: res.basic.subtitle, copyright: res.basic.copyright });
     if (g === 'security') setBrand({ captchaEnabled: !!res.security.captchaEnabled, pwdPolicy: pickPolicy(res.security) });
     if (g === 'brand') { committedColor.current = res.brand.primaryColor; setBrand({ ...res.brand }); }
@@ -108,7 +109,7 @@ export default function SettingsPage() {
       toast.success('已恢复默认', GROUPS.find((x) => x.key === reset).title); setReset(null);
     } catch (ex) { toast.error('恢复失败', ex.message); } finally { setSaving(''); }
   };
-  const revertBrand = () => { setF((s) => ({ ...s, brand: structuredClone(orig.current.brand) })); };
+  const revertBrand = () => { setF((s) => ({ ...s, brand: deepClone(orig.current.brand) })); };
 
   if (loading) return <div className="space-y-4"><Skeleton.Block className="h-8 w-40" /><Skeleton.Block className="h-9 w-full max-w-xl" /><Skeleton.Chart height={180} /></div>;
   if (error) return <div className="card"><ErrorState error={error} onRetry={reload} /></div>;

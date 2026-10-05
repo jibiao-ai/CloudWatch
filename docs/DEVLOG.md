@@ -576,3 +576,10 @@ npm run lint:rules          # 规则扫描（见下）
 ### 第55轮追加：Neutron 端口分页被截断
 - 北京生产 node-66 的 build-host-dont-delete 修复后仍无网卡。排查发现：该 Neutron 首次请求带 `limit=500` 时只返回末尾 392 条（响应仅有 `previous` 链接、无 `next`），翻页逻辑误判已取完；不带 limit 则返回全部 1701 条。
 - 处理：`getAll` 首页若只有 previous、没有 next，则去掉 limit 重新整取一次（对网络/子网/端口等所有 Neutron 列表生效）。
+
+## 第56轮补充（离线包 7.1：用户/角色 404 与系统配置白屏）
+- 现象（160.202.46.139 离线包）：`/system/users`、`/system/roles` 报「接口不存在：GET /api/users|roles」；`/system/settings` 白屏。
+- 根因 1：上一版离线包前端按 `VITE_USE_MOCK=false` 构建，但用户/角色模块后端尚未实现（由前端 mock 提供），请求全部直达后端 → 404。README/compose 约定的是 `hybrid`。本次按 `hybrid` 重新构建。
+- 根因 2：系统配置页用了 `structuredClone`（Chrome 98+ 才有），用户浏览器版本较旧 → 渲染时抛错、整页白屏。新增 `utils/clone.js: deepClone`，替换全部 3 处文件共 7 处用法；`vite.config.js` 增加 `build.target`（chrome80 / edge80 / firefox78 / safari13）转译 `||=` 等新语法。
+- 离线包 `CloudWatch-7.1-x86` 重新打包（含当前后端：虚拟网卡/Neutron 分页修复、资源拓扑重构），SHA256 见 `deploy/offline/SHA256SUMS`；已在 160.202.46.139 验证用户/角色/系统配置可用。
+- 经验：后端未覆盖的模块仍依赖 mock，离线包必须用 `hybrid` 构建；之后新增前端代码避免使用 Chrome 98 之前缺失的 API。

@@ -4,6 +4,7 @@ import CustomSelect from '../CustomSelect';
 import SecretInput from '../SecretInput';
 import LoadingButton from '../LoadingButton';
 import Modal from '../Modal';
+import { deepClone } from '../../utils/clone';
 import { validateChannel } from './AlertChannels';
 
 export const TYPES = [{ value: 'email', label: '邮件' }, { value: 'webhook', label: 'Webhook' }];
@@ -14,7 +15,7 @@ export const TYPES = [{ value: 'email', label: '邮件' }, { value: 'webhook', l
  * 父组件需用 key 区分每次打开，以重置草稿。
  */
 export default function ChannelModal({ channel, isNew, saving, serverErrors = {}, onCancel, onSubmit }) {
-  const [c, setC] = useState(() => structuredClone(channel));
+  const [c, setC] = useState(() => deepClone(channel));
   const [local, setLocal] = useState({});
   const er = { ...serverErrors, ...local };
   const set = (patch) => setC((s) => ({ ...s, ...patch }));

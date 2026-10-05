@@ -10,6 +10,7 @@ import LoadingButton from '../LoadingButton';
 import { inspectionApi } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import { WEEKDAYS, MONTH_DAYS } from './common';
+import { deepClone } from '../../utils/clone';
 
 /** [错误键, 名称, 预警字段, 异常字段, 单位, 说明] */
 const PAIRS = [
@@ -54,7 +55,7 @@ export default function SettingsModal({ open, onClose, catalog, groups, onSaved 
   useEffect(() => {
     if (!open) return;
     setTab('th'); setErrs({});
-    inspectionApi.getConfig().then((r) => { setCfg(structuredClone(r.config)); setDefaults(r.defaults); }).catch(() => {});
+    inspectionApi.getConfig().then((r) => { setCfg(deepClone(r.config)); setDefaults(r.defaults); }).catch(() => {});
   }, [open]);
 
   const th = (k, v) => setCfg((c) => ({ ...c, thresholds: { ...c.thresholds, [k]: v } }));

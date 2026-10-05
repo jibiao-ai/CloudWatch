@@ -8,6 +8,7 @@ export default defineConfig({
   server: { host: '0.0.0.0', port: 3000, allowedHosts: true, proxy },
   preview: { host: '0.0.0.0', port: 3000, allowedHosts: true, proxy },
   build: {
+    target: ['chrome80', 'edge80', 'firefox78', 'safari13'], // 兼容内网旧版浏览器（转译 ||= 等新语法）
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
