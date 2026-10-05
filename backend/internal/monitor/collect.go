@@ -199,7 +199,7 @@ func Collect(ctx context.Context, cn *provider.Conn) *Result {
 			return err
 		}
 		for _, m := range ms {
-			if !IsShownService(m.Name) { // 只保留对照表内的 35 个服务指标
+			if !IsShownService(m.Name) { // 只保留对照表内的 27 个服务指标
 				continue
 			}
 			sv := Service{Name: m.Name, Instances: len(m.Samples)}

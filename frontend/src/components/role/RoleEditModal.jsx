@@ -47,7 +47,7 @@ export default function RoleEditModal({ open, role, onClose, onSaved }) {
         footer={<><button type="button" className="btn-default" onClick={close}>{readOnly ? '关闭' : '取消'}</button>{!readOnly && <LoadingButton variant="primary" loading={busy} onClick={submit}>{editing ? '保存' : '创建'}</LoadingButton>}</>}>
         <div className="grid sm:grid-cols-3 gap-4 mb-4">
           <FormField label="角色名称" required error={err.name}><input className="field" value={f.name} disabled={readOnly} onChange={(e) => set('name', e.target.value)} /></FormField>
-          <FormField label="角色编码" required error={err.code} hint={editing ? '编码创建后不可修改' : undefined}><input className="field" value={f.code} disabled={readOnly || editing} onChange={(e) => set('code', e.target.value)} placeholder="如 prod_sre" /></FormField>
+          <FormField label="角色编码" required error={err.code} hint={editing ? '编码创建后不可修改' : undefined}><input className="field" value={f.code} disabled={readOnly || editing} onChange={(e) => set('code', e.target.value)} placeholder="如 ops_team" /></FormField>
           <FormField label="描述"><input className="field" value={f.description} disabled={readOnly} onChange={(e) => set('description', e.target.value)} /></FormField>
         </div>
         <Tabs value={tab} onChange={setTab} items={[{ key: 'func', label: '① 功能权限' }, { key: 'data', label: '② 数据权限', count: f.dataScopes.length || undefined }]} className="mb-4" />

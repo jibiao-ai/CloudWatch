@@ -37,9 +37,6 @@ func roles() []role {
 			perm.Filter(func(c string) bool { return no("role:", "user:", "settings:")(c) && c != "audit:clean" }), nil},
 		{"r3", "只读观察员", "viewer", "只读查看资源与监控数据", true, viewOnly, nil},
 		{"r4", "安全审计员", "auditor", "审计日志查看与导出", true, []string{"dashboard:view", "audit:view", "audit:export"}, nil},
-		{"r5", "生产 SRE（自定义）", "prod_sre", "仅可访问生产与灾备平台", false,
-			perm.Filter(no("role:", "user:", "settings:", "audit:clean")),
-			[]map[string]string{{"type": "provider", "value": "p1", "effect": "deny"}, {"type": "provider", "value": "p3", "effect": "deny"}}},
 	}
 }
 
@@ -52,22 +49,6 @@ func randomPassword() string {
 		b[i] = pwChars[n.Int64()]
 	}
 	return string(b) + "@7a" // 保证满足默认复杂度（大小写/数字/特殊字符）
-}
-
-type demoUser struct {
-	ID, Username, Name, Email, Dept, Source, Status string
-	Roles                                           []string
-	MustChange                                      bool
-}
-
-var demo = []demoUser{
-	{"u2", "zhangwei", "张伟", "zhangwei@cheryfs.cn", "基础架构组", "ldap", "active", []string{"r2"}, false},
-	{"u3", "lina", "李娜", "lina@cheryfs.cn", "基础架构组", "ldap", "active", []string{"r5"}, false},
-	{"u4", "wangfang", "王芳", "wangfang@cheryfs.cn", "运维中心", "local", "active", []string{"r3"}, false},
-	{"u5", "liuyang", "刘洋", "liuyang@cheryfs.cn", "信息安全部", "sso", "active", []string{"r4"}, false},
-	{"u6", "chenjie", "陈杰", "chenjie@cheryfs.cn", "运维中心", "local", "disabled", []string{"r2", "r3"}, false},
-	{"u7", "zhaolei", "赵磊", "zhaolei@cheryfs.cn", "运维中心", "local", "active", []string{"r3"}, false},
-	{"u8", "sunmei", "孙美", "sunmei@cheryfs.cn", "基础架构组", "local", "active", []string{"r2"}, true},
 }
 
 func Run(ctx context.Context, db *sql.DB, cfg *config.Config) error {
@@ -115,34 +96,5 @@ func Run(ctx context.Context, db *sql.DB, cfg *config.Config) error {
 			log.Printf("已创建初始管理员 admin（密码来自 CW_ADMIN_PASSWORD，首次登录需修改）")
 		}
 	}
-	if cfg.SeedDemo {
-		return seedDemo(ctx, db, cfg, now)
-	}
-	return nil
-}
-
-func seedDemo(ctx context.Context, db *sql.DB, cfg *config.Config, now time.Time) error {
-	pw := cfg.AdminPassword
-	if pw == "" {
-		pw = "CloudWatch@2026"
-	}
-	h, err := auth.HashPassword(pw)
-	if err != nil {
-		return err
-	}
-	for _, d := range demo {
-		res, err := db.ExecContext(ctx, `INSERT IGNORE INTO users(id,username,name,email,department,source,status,password_hash,must_change_password,password_changed_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-			d.ID, d.Username, d.Name, d.Email, d.Dept, d.Source, d.Status, h, d.MustChange, now, now)
-		if err != nil {
-			return err
-		}
-		if c, _ := res.RowsAffected(); c == 0 {
-			continue
-		}
-		for _, r := range d.Roles {
-			_, _ = db.ExecContext(ctx, `INSERT IGNORE INTO user_roles(user_id,role_id) VALUES(?,?)`, d.ID, r)
-		}
-	}
-	log.Printf("已写入演示账号（CW_SEED_DEMO=true，仅限开发/演示环境）")
 	return nil
 }

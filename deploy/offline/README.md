@@ -67,7 +67,7 @@ docker compose logs cloudwatch-backend | grep admin     # 取初始 admin 密码
 |---|---|
 | `WEB_PORT` | 对外端口，默认 80；被占用时改为如 `8080` |
 | `CW_ADMIN_PASSWORD` | 指定初始 admin 密码；留空则随机生成并打印一次 |
-| `CW_SEED_DEMO` | `true` 写入演示账号与演示数据（admin 密码 `CloudWatch@2026`），**仅用于 demo**；需在**首次启动前**设置，已初始化的库不会补写 |
+| `CW_SEED_DEMO` | `true` 时 admin 初始密码为 `CloudWatch@2026`（不再写入其他演示用户），**仅用于 demo**；需在**首次启动前**设置，已初始化的库不会补写 |
 | `DB_ROOT_PASSWORD` / `DB_PASSWORD` | 数据库密码 |
 | `CW_IMAGE_TAG` | 镜像标签，默认 `latest`，也可固定为 `7.1` |
 

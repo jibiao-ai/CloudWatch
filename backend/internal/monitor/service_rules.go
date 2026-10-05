@@ -9,7 +9,7 @@ package monitor
 //   - 无 __name__ 的聚合指标：计算类（compute / compute_management / compute_scheduler / block_storage /
 //     virtualization_management）为「异常个数」，0 = 正常（compute_state=3 与 Nova os-services 中
 //     1 个 down + 2 个 disabled 的 nova-compute 吻合）；控制面类（control_* / rabbitmq / log_collection /
-//     event_mesh / data_protection）为可用百分比，100 = 正常；time_synchronization / automation_center 为存活标识，≥ 1 = 正常
+//     event_mesh / data_protection；其中 data_protection 已不再采集）为可用百分比，100 = 正常；time_synchronization / automation_center 为存活标识，≥ 1 = 正常
 //
 // 判定口径按服务指标名集中维护在本文件；新增或调整口径只改这里。
 
@@ -22,12 +22,11 @@ const (
 	okPos                    // 值 > 0 才正常（在线个数）
 )
 
-// ServiceCodes 监控中心「服务状态」展示的 35 个服务指标（对照表），其余指标一律不展示。
+// ServiceCodes 监控中心「服务状态」展示的 27 个服务指标（对照表；已去除数据保护 / 块存储备份 / 高性能缓存 / 网络 dhcp / 网络负载均衡 / SDN 元数据 / 虚拟交换机网络 / vnc 权限管理 8 项），其余指标一律不展示。
 var serviceKinds = map[string]healthKind{
 	"service_authentication_api_state":                okOne,
 	"service_automation_center_state":                 okOne,
 	"service_block_storage_api_state":                 okOne,
-	"service_block_storage_backup_state":              okPos,
 	"service_block_storage_scheduler_state":           okPos,
 	"service_block_storage_state":                     okZero,
 	"service_cloud_automation_state":                  okOne,
@@ -39,11 +38,9 @@ var serviceKinds = map[string]healthKind{
 	"service_control_api_state":                       okPct,
 	"service_control_management_state":                okPct,
 	"service_control_scheduler_state":                 okPct,
-	"service_data_protection_state":                   okPct,
 	"service_database_state":                          okOne,
 	"service_event_mesh_state":                        okPct,
 	"service_high_performance_cache_management_state": okZero,
-	"service_high_performance_cache_state":            okZero,
 	"service_hostha_state":                            okOne,
 	"service_image_management_state":                  okOne,
 	"service_log_collection_state":                    okPct,
@@ -51,17 +48,12 @@ var serviceKinds = map[string]healthKind{
 	"service_monitoring_api_state":                    okOne,
 	"service_monitoring_storage_api_state":            okOne,
 	"service_network_api_state":                       okOne,
-	"service_network_dhcp_state":                      okOne,
-	"service_network_lb_state":                        okOne,
-	"service_network_metadata_state":                  okOne,
-	"service_network_virtual_switch_state":            okOne,
-	"service_network_vnc_state":                       okOne,
 	"service_rabbitmq_state":                          okPct,
 	"service_time_synchronization_state":              okOne,
 	"service_virtualization_management_state":         okZero,
 }
 
-// IsShownService 是否属于需要展示的 35 个服务指标。
+// IsShownService 是否属于需要展示的 27 个服务指标。
 func IsShownService(name string) bool { _, ok := serviceKinds[name]; return ok }
 
 func kindOf(name string) healthKind { return serviceKinds[name] } // 未登记 → okZero（文档口径）
@@ -102,7 +94,7 @@ func applyHealth(sv *Service) {
 	sv.Healthy = &h
 }
 
-// filterServices 只保留对照表内的 35 个服务指标，并补算健康状态（兼容已入库的旧快照）。
+// filterServices 只保留对照表内的 27 个服务指标，并补算健康状态（兼容已入库的旧快照）。
 func filterServices(in []Service) []Service {
 	out := make([]Service, 0, len(in))
 	for _, sv := range in {

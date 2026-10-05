@@ -583,3 +583,10 @@ npm run lint:rules          # 规则扫描（见下）
 - 根因 2：系统配置页用了 `structuredClone`（Chrome 98+ 才有），用户浏览器版本较旧 → 渲染时抛错、整页白屏。新增 `utils/clone.js: deepClone`，替换全部 3 处文件共 7 处用法；`vite.config.js` 增加 `build.target`（chrome80 / edge80 / firefox78 / safari13）转译 `||=` 等新语法。
 - 离线包 `CloudWatch-7.1-x86` 重新打包（含当前后端：虚拟网卡/Neutron 分页修复、资源拓扑重构），SHA256 见 `deploy/offline/SHA256SUMS`；已在 160.202.46.139 验证用户/角色/系统配置可用。
 - 经验：后端未覆盖的模块仍依赖 mock，离线包必须用 `hybrid` 构建；之后新增前端代码避免使用 Chrome 98 之前缺失的 API。
+
+## 第57轮补充（监控服务裁剪 + 去除内置假用户/角色）
+1. 监控中心「服务状态」：从采集（`IsShownService`）、读取过滤（`filterServices`，兼容旧快照）、巡检名称表、前端名称字典中移除 8 个服务：数据保护、块存储备份、高性能缓存、网络 dhcp、网络负载均衡、SDN 元数据、虚拟交换机网络、vnc 权限管理（需求中「块存储备份服务」重复列出）。「高性能缓存管理服务」不在清单内，保留。展示的服务指标由 35 个变为 27 个。
+2. 用户管理：前端 mock 种子只保留 admin；后端 `bootstrap` 删除演示用户（zhangwei 等 7 个）及 `seedDemo`，`CW_SEED_DEMO=true` 只影响 admin 初始密码。
+3. 角色管理：删除「生产 SRE（自定义）」（r5）——mock 种子与后端 `bootstrap` 均移除。
+4. 新增迁移 `0022_remove_demo_users_roles.sql`：按固定 ID + 用户名/编码清理已入库的演示用户、会话、用户角色关联及 r5 角色（不影响管理员自建的用户/角色）。
+5. 说明：用户管理、角色管理页面目前走前端 mock（后端未实现 `/api/users|roles`），因此页面内容取决于前端种子；离线包需重新构建才会生效。

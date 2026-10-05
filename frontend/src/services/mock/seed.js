@@ -35,22 +35,14 @@ export const seedRoles = [
   { id: 'r2', name: '云平台运维', code: 'cloud_ops', description: '平台管理、资源、巡检、监控、告警的日常运维', builtin: true, permissions: ALL.filter((c) => !c.startsWith('role:') && !c.startsWith('user:') && !c.startsWith('settings:') && c !== 'audit:clean'), dataScopes: [] },
   { id: 'r3', name: '只读观察员', code: 'viewer', description: '只读查看资源与监控数据', builtin: true, permissions: viewOnly, dataScopes: [] },
   { id: 'r4', name: '安全审计员', code: 'auditor', description: '审计日志查看与导出', builtin: true, permissions: ['dashboard:view', 'audit:view', 'audit:export'], dataScopes: [] },
-  { id: 'r5', name: '生产 SRE（自定义）', code: 'prod_sre', description: '仅可访问生产与灾备平台', builtin: false, permissions: ALL.filter((c) => !c.startsWith('role:') && !c.startsWith('user:') && !c.startsWith('settings:') && !c.startsWith('audit:clean')), dataScopes: [{ type: 'provider', value: 'p1', effect: 'deny' }, { type: 'provider', value: 'p3', effect: 'deny' }] },
 ];
 
 const u = (o) => ({ source: 'local', status: 'active', phone: '', failCount: 0, lockedUntil: null, mustChangePassword: false, createdAt: ago(60 * 24 * 200), ...o });
 export const seedUsers = [
   u({ id: 'u1', username: 'admin', name: '系统管理员', email: 'admin@cloudwatch.local', department: '云平台部', roleIds: ['r1'], lastLoginAt: ago(20) }),
-  u({ id: 'u2', username: 'zhangwei', name: '张伟', email: 'zhangwei@cheryfs.cn', phone: '13800000001', department: '基础架构组', roleIds: ['r2'], lastLoginAt: ago(95), source: 'ldap' }),
-  u({ id: 'u3', username: 'lina', name: '李娜', email: 'lina@cheryfs.cn', phone: '13800000002', department: '基础架构组', roleIds: ['r5'], lastLoginAt: ago(60 * 5), source: 'ldap' }),
-  u({ id: 'u4', username: 'wangfang', name: '王芳', email: 'wangfang@cheryfs.cn', department: '运维中心', roleIds: ['r3'], lastLoginAt: ago(60 * 30) }),
-  u({ id: 'u5', username: 'liuyang', name: '刘洋', email: 'liuyang@cheryfs.cn', department: '信息安全部', roleIds: ['r4'], lastLoginAt: ago(60 * 48), source: 'sso' }),
-  u({ id: 'u6', username: 'chenjie', name: '陈杰', email: 'chenjie@cheryfs.cn', department: '运维中心', roleIds: ['r2', 'r3'], status: 'disabled', lastLoginAt: ago(60 * 24 * 40) }),
-  u({ id: 'u7', username: 'zhaolei', name: '赵磊', email: 'zhaolei@cheryfs.cn', department: '运维中心', roleIds: ['r3'], status: 'locked', failCount: 5, lockedUntil: new Date(Date.now() + 11 * 60000).toISOString(), lastLoginAt: ago(60 * 3) }),
-  u({ id: 'u8', username: 'sunmei', name: '孙美', email: 'sunmei@cheryfs.cn', department: '基础架构组', roleIds: ['r2'], mustChangePassword: true }),
 ];
 // 演示账号密码（仅 mock 使用，非真实环境凭据）
-export const MOCK_PASSWORDS = { admin: 'CloudWatch@2026', zhangwei: 'CloudWatch@2026', lina: 'CloudWatch@2026', wangfang: 'CloudWatch@2026', liuyang: 'CloudWatch@2026', chenjie: 'CloudWatch@2026', zhaolei: 'CloudWatch@2026', sunmei: 'CloudWatch@2026' };
+export const MOCK_PASSWORDS = { admin: 'CloudWatch@2026' };
 
 export const seedSettings = {
   basic: { platformName: 'CloudWatch', subtitle: '私有云可观测平台', copyright: '© 2026 CloudWatch', supportEmail: 'ops@cloudwatch.local' },
@@ -65,7 +57,7 @@ export const seedSettings = {
 
 /** 审计日志（确定性生成） */
 export function genAudit() {
-  const users = seedUsers.slice(0, 5);
+  const users = seedUsers.slice(0, 1);
   const combos = [
     ['auth', 'login', '用户登录'], ['auth', 'logout', '用户退出'], ['provider', 'verify', '验证连接'], ['provider', 'update', '修改平台'], ['provider', 'create', '新增平台'],
     ['user', 'create', '新增用户'], ['user', 'reset_password', '重置密码'], ['role', 'update', '修改角色权限'], ['domain', 'update', '保存域名配置'], ['settings', 'update', '修改系统配置'], ['audit', 'export', '导出审计日志'], ['provider', 'delete', '删除平台'],
@@ -84,7 +76,7 @@ export function genAudit() {
       ip: ips[i % ips.length],
       module,
       action,
-      target: module === 'provider' ? seedProviders[i % 4].name : module === 'user' ? seedUsers[(i + 2) % 8].username : label,
+      target: module === 'provider' ? seedProviders[i % 4].name : module === 'user' ? seedUsers[0].username : label,
       targetId: module === 'provider' ? seedProviders[i % 4].id : undefined,
       targetLink: module === 'provider' ? '/system/providers' : module === 'user' ? '/system/users' : undefined,
       result: failure ? 'failure' : 'success',

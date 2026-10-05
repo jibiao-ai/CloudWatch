@@ -147,7 +147,7 @@ npm run lint:rules            # 规范扫描（见「开发规范」）
 
 `VITE_USE_MOCK`：`false` 全部走真实后端；`true` 纯前端演示、无需后端；`hybrid` 为混合模式（仅用于开发过渡）。
 
-演示账号（仅 `CW_SEED_DEMO=true` 时写入，**生产请勿开启**），密码 `CloudWatch@2026`：`admin`（超管）· `zhangwei`（云平台运维）· `wangfang`（只读观察员）· `liuyang`（安全审计员）。
+内置账号仅 `admin`（超级管理员）。`CW_SEED_DEMO=true` 仅让 admin 使用演示密码 `CloudWatch@2026`（**生产请勿开启**），不再写入任何其他演示用户。
 
 ## 配置说明
 
@@ -159,7 +159,7 @@ npm run lint:rules            # 规范扫描（见「开发规范」）
 | `CW_DB_DSN` | 数据库 DSN，如 `cloudwatch:pwd@tcp(db:3306)/cloudwatch` |
 | `CW_SECRET_KEY` | 密钥加密主密钥；缺省时自动生成并存入数据库 |
 | `CW_ADMIN_PASSWORD` | 初始 admin 密码；缺省随机生成，首次启动日志打印一次，且首次登录强制改密 |
-| `CW_SEED_DEMO` | `true` 写入演示账号与数据，生产保持 `false` |
+| `CW_SEED_DEMO` | `true` 时 admin 使用演示密码，生产保持 `false` |
 
 Compose 变量见 [`deploy/env.example`](deploy/env.example)：`DB_ROOT_PASSWORD`、`DB_PASSWORD`、`CW_ADMIN_PASSWORD`、`CW_SECRET_KEY`、`WEB_PORT`。
 
@@ -168,7 +168,7 @@ Compose 变量见 [`deploy/env.example`](deploy/env.example)：`DB_ROOT_PASSWORD
 ## 权限与角色
 
 - 菜单与按钮由权限码驱动，如 `monitor:view`、`monitor:export`、`capacity:export`、`alert:ack`、`analytics:ignore`、`analytics:policy_update`、`inspection:run`、`provider:*`、`user:delete` 等；超级管理员为 `*`。
-- 内置角色：超级管理员、云平台运维、只读观察员、安全审计员，另预置「生产 SRE」示例角色（仅可访问生产与灾备平台）；可在「角色管理」新建自定义角色，并配置**平台级数据权限**（允许 / 拒绝指定云平台）。
+- 内置角色：超级管理员、云平台运维、只读观察员、安全审计员；可在「角色管理」新建自定义角色，并配置**平台级数据权限**（允许 / 拒绝指定云平台）。
 - 新增权限码时，迁移脚本会给内置角色补授；已有自定义角色需手工勾选。
 
 ## 项目结构

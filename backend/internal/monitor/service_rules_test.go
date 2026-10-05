@@ -7,7 +7,7 @@ import (
 
 func f(v float64) *float64 { return &v }
 
-func TestOnly35ServicesShown(t *testing.T) {
+func TestOnly27ServicesShown(t *testing.T) {
 	n := 0
 	for name := range serviceKinds {
 		if !IsShownService(name) {
@@ -15,8 +15,16 @@ func TestOnly35ServicesShown(t *testing.T) {
 		}
 		n++
 	}
-	if n != 35 {
-		t.Fatalf("want 35 services, got %d", n)
+	if n != 27 {
+		t.Fatalf("want 27 services, got %d", n)
+	}
+	for _, k := range []string{"service_data_protection_state", "service_block_storage_backup_state", "service_high_performance_cache_state", "service_network_dhcp_state", "service_network_lb_state", "service_network_metadata_state", "service_network_virtual_switch_state", "service_network_vnc_state"} {
+		if IsShownService(k) {
+			t.Fatalf("%s must no longer be collected/shown", k)
+		}
+	}
+	if !IsShownService("service_high_performance_cache_management_state") {
+		t.Fatal("cache management service stays")
 	}
 	if IsShownService("service_unknown_extra_state") {
 		t.Fatal("extra metric must be hidden")
@@ -35,8 +43,8 @@ func TestServiceHealthKinds(t *testing.T) {
 		{"service_compute_state", 3, false},
 		{"service_control_api_state", 100, true},
 		{"service_control_api_state", 66.7, false},
-		{"service_block_storage_backup_state", 2, true},
-		{"service_block_storage_backup_state", 0, false},
+		{"service_block_storage_scheduler_state", 2, true},
+		{"service_block_storage_scheduler_state", 0, false},
 	}
 	for _, c := range cases {
 		sv := Service{Name: c.name, State: f(c.v)}
