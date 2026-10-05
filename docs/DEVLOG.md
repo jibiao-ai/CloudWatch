@@ -572,3 +572,7 @@ npm run lint:rules          # 规则扫描（见下）
 - 根因：容量采集只保留 `device_owner` 以 `compute:` 开头的 Neutron 端口；`compute:<可用区ID>`、`trunk:subport`、空 owner 等挂在虚拟机上的端口被丢弃（南京运维快照 479 个端口只存了 22 个）。
 - 修复：`capacity.keepPort`——端口 `device_id` 命中虚拟机、或 MAC 命中虚拟机 Nova 地址、或 owner 为 `compute:*` 即保留；`network:*` / `neutron:*`（浮动 IP、路由器接口/网关、DHCP 等）仍排除。入库快照的读取过滤同步放宽；拓扑 `nic` 边在 `deviceId` 对不上时按 MAC 回退关联。
 - 注意：旧快照中已被丢弃的端口不会自行恢复，需重新采集。
+
+### 第55轮追加：Neutron 端口分页被截断
+- 北京生产 node-66 的 build-host-dont-delete 修复后仍无网卡。排查发现：该 Neutron 首次请求带 `limit=500` 时只返回末尾 392 条（响应仅有 `previous` 链接、无 `next`），翻页逻辑误判已取完；不带 limit 则返回全部 1701 条。
+- 处理：`getAll` 首页若只有 previous、没有 next，则去掉 limit 重新整取一次（对网络/子网/端口等所有 Neutron 列表生效）。

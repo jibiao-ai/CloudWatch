@@ -72,3 +72,10 @@ func TestNovaKeys(t *testing.T) {
 		t.Error("ShortName")
 	}
 }
+
+func TestHasLink(t *testing.T) {
+	raw := []byte(`[{"rel":"previous","href":"x"}]`)
+	if !hasLink(raw, "previous") || hasLink(raw, "next") || hasLink(nil, "next") {
+		t.Fatal("hasLink")
+	}
+}

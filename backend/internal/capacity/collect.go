@@ -41,6 +41,20 @@ type fetched struct {
 }
 
 // getAll 用 limit + marker 翻页（不跟随响应里的 next 链接：其主机名常为集群内部域名，CloudWatch 无法访问）。
+// hasLink 分页链接（xxx_links）中是否含指定 rel。
+func hasLink(raw json.RawMessage, rel string) bool {
+	var links []struct{ Rel, Href string }
+	if json.Unmarshal(raw, &links) != nil {
+		return false
+	}
+	for _, l := range links {
+		if l.Rel == rel {
+			return true
+		}
+	}
+	return false
+}
+
 func getAll(ctx context.Context, cn *provider.Conn, base, key string, extra url.Values) ([]map[string]any, error) {
 	var out []map[string]any
 	marker, last := "", ""
@@ -61,6 +75,16 @@ func getAll(ctx context.Context, cn *provider.Conn, base, key string, extra url.
 		if err := cn.GetJSON(ctx, base+sep+q.Encode(), &doc); err != nil {
 			return out, err
 		}
+		whole := false
+		if marker == "" && hasLink(doc[key+"_links"], "previous") && !hasLink(doc[key+"_links"], "next") {
+			// 部分 Neutron 在首次请求带 limit 时只返回末尾一页（仅给出 previous 链接，没有 next），
+			// 按 limit 翻页会漏掉大部分数据：改为不带 limit 一次取全。
+			q.Del("limit")
+			whole, doc = true, nil
+			if err := cn.GetJSON(ctx, base+sep+q.Encode(), &doc); err != nil {
+				return out, err
+			}
+		}
 		var page []map[string]any
 		if raw, ok := doc[key]; ok {
 			if err := json.Unmarshal(raw, &page); err != nil {
@@ -70,16 +94,8 @@ func getAll(ctx context.Context, cn *provider.Conn, base, key string, extra url.
 			return out, fmt.Errorf("响应中没有 %s 字段", key)
 		}
 		out = append(out, page...)
-		var links []struct{ Rel, Href string }
-		hasNext := false
-		if json.Unmarshal(doc[key+"_links"], &links) == nil {
-			for _, l := range links {
-				if l.Rel == "next" {
-					hasNext = true
-				}
-			}
-		}
-		if len(page) == 0 || (!hasNext && len(page) < pageSize) {
+		hasNext := hasLink(doc[key+"_links"], "next")
+		if whole || len(page) == 0 || (!hasNext && len(page) < pageSize) {
 			break
 		}
 		id := toStr(page[len(page)-1]["id"])
