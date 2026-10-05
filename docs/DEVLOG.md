@@ -547,3 +547,9 @@ npm run lint:rules          # 规则扫描（见下）
   - 接口：`GET /api/settings/versions`（权限 `settings:view`），返回 `{current, items[]}`，按发布时间倒序。
   - 前端：`components/settings/VersionSection.jsx`（当前版本卡片 + 版本说明 + 历史版本列表）；`Panel` 新增 `readOnly` 属性。
   - **后续发布新版本**：新增一条迁移，`INSERT INTO app_versions(version,title,released_at,notes)`，说明用换行分条；无需改代码。
+
+## 第53轮补充（离线包 CloudWatch-7.1-x86）
+- 离线镜像包更名并重新打包为 **CloudWatch-7.1-x86**（对应系统版本 V7.1）：Release `CloudWatch-7.1-x86`（附件 `CloudWatch-7.1-x86.tar.gz` + `SHA256SUMS`），旧 Release `CloudWatch-2.0-x86` 与其 tag 已删除。
+- 镜像标签：`cloudwatch-backend:7.1` / `cloudwatch-web:7.1`（同时带 `latest`），`mariadb:10.11` 原样；仅 linux/amd64。前端按生产方式构建（`VITE_USE_MOCK=false`）。
+- `deploy/offline/` 的 README / install.sh / env.example / SHA256SUMS 同步为 7.1。
+- 验证：从 Release 重新下载校验 SHA256 → scp 到 160.202.46.139 → `docker load` → `CW_IMAGE_TAG=7.1` → `docker compose up -d`；迁移 0021 自动执行（`app_versions` 含 V7.1）；另用独立端口起一套全新实例验证可从零启动并登录。
