@@ -596,3 +596,4 @@ npm run lint:rules          # 规则扫描（见下）
 
 - 从 `serviceKinds` 白名单、巡检 `serviceNames`、前端 `SERVICE_NAMES` 中移除 `service_high_performance_cache_management_state`；采集与读取旧快照时均不再展示。
 - 服务状态由 27 个减为 26 个，测试 `TestOnly26ServicesShown` 同步更新。
+- 离线包 CloudWatch-7.1-x86 已删除旧 Release 后重新发布（含 26 个服务），SHA256 见 `deploy/offline/SHA256SUMS`。
