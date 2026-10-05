@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # CloudWatch 离线安装脚本：导入镜像 -> 生成 .env -> 启动
-# 用法：./install.sh [镜像包路径，默认 ./CloudWatch-2.0-x86.tar.gz]
+# 用法：./install.sh [镜像包路径，默认 ./CloudWatch-7.1-x86.tar.gz]
 set -euo pipefail
 cd "$(dirname "$0")"
-PKG="${1:-./CloudWatch-2.0-x86.tar.gz}"
+PKG="${1:-./CloudWatch-7.1-x86.tar.gz}"
 
 command -v docker >/dev/null || { echo "未检测到 docker，请先安装 Docker（离线安装见 README）"; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "未检测到 docker compose 插件（需要 Compose v2）"; exit 1; }

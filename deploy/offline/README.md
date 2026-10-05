@@ -2,12 +2,12 @@
 
 适用于**不能联网拉取镜像 / 不能在目标机编译**的环境：在能联网的机器下载镜像包，拷贝到目标机，导入后一键启动。
 
-- 镜像包：`CloudWatch-2.0-x86.tar.gz`（约 127 MB，`linux/amd64`），内含 3 个镜像
+- 镜像包：`CloudWatch-7.1-x86.tar.gz`（约 127 MB，`linux/amd64`），内含 3 个镜像
   - `cloudwatch-backend`（Go 后端，alpine 基础镜像，静态编译）
   - `cloudwatch-web`（nginx + 前端静态文件，已含 `/api` 反代配置）
   - `mariadb:10.11`（数据库，官方镜像原样打包）
 - 因超过 GitHub 仓库单文件 100 MB 限制，镜像包发布在 **GitHub Release**（不在 git 历史中）：
-  <https://github.com/jibiao-ai/CloudWatch/releases/tag/CloudWatch-2.0-x86>
+  <https://github.com/jibiao-ai/CloudWatch/releases/tag/CloudWatch-7.1-x86>
 - 对应源码提交：`c294317`。仅支持 x86_64 / amd64；ARM 服务器需另行构建。
 
 ## 一、准备（在能联网的机器上）
@@ -16,7 +16,7 @@
 
 | 文件 | 来源 |
 |---|---|
-| `CloudWatch-2.0-x86.tar.gz` | Release 附件 |
+| `CloudWatch-7.1-x86.tar.gz` | Release 附件 |
 | `SHA256SUMS` | Release 附件（校验用） |
 | `docker-compose.yml` `env.example` `install.sh` | 仓库 `deploy/offline/` 目录 |
 
@@ -24,11 +24,11 @@
 # 示例：命令行下载
 BASE=https://github.com/jibiao-ai/CloudWatch
 mkdir cloudwatch-offline && cd cloudwatch-offline
-curl -LO $BASE/releases/download/CloudWatch-2.0-x86/CloudWatch-2.0-x86.tar.gz
-curl -LO $BASE/releases/download/CloudWatch-2.0-x86/SHA256SUMS
+curl -LO $BASE/releases/download/CloudWatch-7.1-x86/CloudWatch-7.1-x86.tar.gz
+curl -LO $BASE/releases/download/CloudWatch-7.1-x86/SHA256SUMS
 for f in docker-compose.yml env.example install.sh; do curl -LO https://raw.githubusercontent.com/jibiao-ai/CloudWatch/main/deploy/offline/$f; done
 chmod +x install.sh
-sha256sum -c SHA256SUMS      # 应输出 CloudWatch-2.0-x86.tar.gz: OK
+sha256sum -c SHA256SUMS      # 应输出 CloudWatch-7.1-x86.tar.gz: OK
 ```
 
 ## 二、上传到目标机
@@ -55,7 +55,7 @@ cd /opt/cloudwatch-offline
 ### 手动安装（等价步骤）
 
 ```bash
-docker load -i CloudWatch-2.0-x86.tar.gz
+docker load -i CloudWatch-7.1-x86.tar.gz
 cp env.example .env && vi .env          # 至少修改 DB_ROOT_PASSWORD / DB_PASSWORD
 docker compose up -d
 docker compose logs cloudwatch-backend | grep admin     # 取初始 admin 密码
@@ -69,7 +69,7 @@ docker compose logs cloudwatch-backend | grep admin     # 取初始 admin 密码
 | `CW_ADMIN_PASSWORD` | 指定初始 admin 密码；留空则随机生成并打印一次 |
 | `CW_SEED_DEMO` | `true` 写入演示账号与演示数据（admin 密码 `CloudWatch@2026`），**仅用于 demo**；需在**首次启动前**设置，已初始化的库不会补写 |
 | `DB_ROOT_PASSWORD` / `DB_PASSWORD` | 数据库密码 |
-| `CW_IMAGE_TAG` | 镜像标签，默认 `latest`，也可固定为 `2.0` |
+| `CW_IMAGE_TAG` | 镜像标签，默认 `latest`，也可固定为 `7.1` |
 
 修改 `.env` 后执行 `docker compose up -d` 生效。
 
@@ -99,7 +99,7 @@ docker compose down -v                    # 停止并删除数据库数据（不
 
 ```bash
 docker compose build
-docker save cloudwatch-cloudwatch-backend cloudwatch-cloudwatch-web mariadb:10.11 | gzip > CloudWatch-2.0-x86.tar.gz
+docker save cloudwatch-cloudwatch-backend cloudwatch-cloudwatch-web mariadb:10.11 | gzip > CloudWatch-7.1-x86.tar.gz
 ```
 
 （此时镜像名为 compose 默认的 `cloudwatch-cloudwatch-*`，需在离线 compose 中相应调整 `image:`。）
