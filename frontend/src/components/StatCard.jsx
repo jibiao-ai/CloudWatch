@@ -9,7 +9,7 @@ export default function StatCard({ icon: Icon, label, value, hint, tone = 'prima
       <div className="min-w-0">
         <div className="text-xs text-fg-muted">{label}</div>
         <div className="text-2xl font-semibold text-fg tabular-nums mt-0.5 leading-tight">{value}</div>
-        {hint && <div className="text-xs text-fg-subtle mt-1 truncate">{hint}</div>}
+        {hint && <div className="text-xs text-fg-subtle mt-1 leading-snug break-words">{hint}</div>}
       </div>
     </div>
   );
