@@ -562,6 +562,7 @@ on('post', '/settings/reset', ({ body, ctx }) => {
   return safeSettings();
 }, { need: 'settings:update' });
 on('post', '/settings/logo', ({ body }) => ({ url: body.dataUrl }), { need: 'settings:update' });
+on('get', '/settings/versions', () => ({ current: '7.1', items: [{ version: '7.1', title: '私有云可观测平台 7.1', releasedAt: '2026-10-05', notes: '系统配置新增「版本信息」。', current: true }] }), { need: 'settings:view' });
 on('post', '/settings/alert-channels/test', async ({ body }) => {
   await sleep(800);
   if (body.type === 'email' && !body.config?.host) fail(400, 'SMTP 服务器未配置');

@@ -11,7 +11,7 @@ export default function PlatformTable({ platforms, keyword = '' }) {
     { key: 'name', title: '所属云平台', width: 200, sortable: true, render: (p) => <PlatCell platform={p} /> },
     { key: 'state', title: '采集状态', width: 120, sortable: true, sortBy: (p) => (p.collectedAt ? (p.ok ? 2 : 1) : 0), render: (p) => <StatusDot status={p.collectedAt ? (p.ok ? 'online' : 'warning') : 'unknown'} label={p.collectedAt ? (p.ok ? '正常' : '部分失败') : '未采集'} /> },
     { key: 'collectedAt', title: '最近采集', width: 160, sortable: true, render: (p) => <span className="text-[13px] tabular-nums" title={p.collectedAt ? fromNow(p.collectedAt) : ''}>{p.collectedAt ? formatDateTime(p.collectedAt) : '—'}</span> },
-    { key: 'vms', title: '云主机', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.vms) },
+    { key: 'vms', title: '虚拟机', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.vms) },
     { key: 'disks', title: '磁盘', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.disks) },
     { key: 'hosts', title: '计算节点', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.hosts) },
     { key: 'pools', title: '集群存储', width: 90, sortable: true, align: 'right', render: (p) => numCell(p.pools) },

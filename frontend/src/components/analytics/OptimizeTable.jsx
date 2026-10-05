@@ -53,7 +53,7 @@ function metricCols(resType, rows) {
   return out;
 }
 
-/** 汇总视图（未选具体策略）的列：虚拟机侧沿用云主机列；物理侧是物理机 / 集群存储 / 云硬盘混合，统一为「资源类型 + 地址」 */
+/** 汇总视图（未选具体策略）的列：虚拟机侧沿用虚拟机列；物理侧是物理机 / 集群存储 / 云硬盘混合，统一为「资源类型 + 地址」 */
 function sideCols(side) {
   if (side !== 'phys') return resCols('vm');
   return [

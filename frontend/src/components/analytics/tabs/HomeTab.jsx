@@ -47,7 +47,7 @@ export default function HomeTab({ d, tick, onOpt, keyword }) {
     <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatCard icon={Layers} label="已对接云平台" value={formatNumber(t.platforms)} hint={`${okN} 个采集正常`} />
-        <StatCard icon={MonitorCog} tone="success" label="云主机" value={formatNumber(t.vms)} />
+        <StatCard icon={MonitorCog} tone="success" label="虚拟机" value={formatNumber(t.vms)} />
         <StatCard icon={HardDrive} tone="warning" label="磁盘" value={formatNumber(t.disks)} />
         <StatCard icon={Server} tone="info" label="计算节点" value={formatNumber(t.hosts)} />
         <StatCard icon={Database} tone="info" label="集群存储" value={formatNumber(t.pools)} />

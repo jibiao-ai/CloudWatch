@@ -112,6 +112,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PUT /api/settings", s.guard("settings:update", s.putSettings))
 	mux.Handle("POST /api/settings/reset", s.guard("settings:update", s.resetSettings))
 	mux.Handle("POST /api/settings/alert-channels/test", s.guard("settings:update", s.testChannel))
+	mux.Handle("GET /api/settings/versions", s.guard("settings:view", s.versions))
 
 	// 审计日志
 	mux.Handle("GET /api/audit-logs", s.guard("audit:view", s.auditList))

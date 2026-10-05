@@ -11,6 +11,7 @@ import BrandSection from '../components/settings/BrandSection';
 import SecuritySection from '../components/settings/SecuritySection';
 import RetentionSection from '../components/settings/RetentionSection';
 import AlertChannels from '../components/settings/AlertChannels';
+import VersionSection from '../components/settings/VersionSection';
 import { validateGroup, channelErrors } from '../components/settings/validate';
 import { settingsApi } from '../services/api';
 import { useAsync } from '../hooks/useAsync';
@@ -25,6 +26,7 @@ const GROUPS = [
   { key: 'security', title: '安全策略', desc: '密码复杂度、会话与验证码、登录锁定；保存后由登录 / 改密 / 会话逻辑真实执行' },
   { key: 'retention', title: '数据保留', desc: '各类数据的保留天数；后端每小时按此清理过期数据' },
   { key: 'alertChannels', title: '告警渠道', desc: '邮件 / Webhook 通知渠道；可发送真实测试消息，密钥加密存库且不再回显' },
+  { key: 'version', title: '版本信息', desc: '当前系统版本与历史版本更新说明（只读）', readOnly: true },
 ];
 const TAB_ID = 'settings-tab';
 const RESET_IMPACT = {
@@ -34,7 +36,7 @@ const RESET_IMPACT = {
 };
 
 /**
- * SettingsPage —— 系统配置：横向分组标签（基础信息 / 品牌信息 / 安全策略 / 数据保留 / 告警渠道），一次只显示一个分组；
+ * SettingsPage —— 系统配置：横向分组标签（基础信息 / 品牌信息 / 安全策略 / 数据保留 / 告警渠道 / 版本信息），一次只显示一个分组；
  * 底部「上一项 / 下一项」翻页；告警渠道列表自带分页。各分组独立保存到后端数据库；
  * 切换分组不丢失未保存修改（标签上以圆点提示）；校验以后端为准，字段级错误回填到对应输入。
  */
@@ -65,7 +67,7 @@ export default function SettingsPage() {
   }, [tab, f?.brand.primaryColor]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { useStore.getState().setBrand({ primaryColor: committedColor.current }); }, []);
 
-  const dirty = (g) => !!f && JSON.stringify(f[g]) !== JSON.stringify(orig.current[g]);
+  const dirty = (g) => !!f && !!f[g] && JSON.stringify(f[g]) !== JSON.stringify(orig.current[g]);
   const patch = (g) => (p) => setF((s) => ({ ...s, [g]: { ...s[g], ...p } }));
   const chErrs = useMemo(() => channelErrors(errs), [errs]);
   const items = GROUPS.map((g) => ({ key: g.key, label: g.title, dot: dirty(g.key), count: g.key === 'alertChannels' && f ? f.alertChannels.length : undefined }));
@@ -120,15 +122,16 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full">
-      <PageHeader title="系统配置" description="基础信息 / 品牌信息 / 安全策略 / 数据保留 / 告警渠道。所有参数均在此页面设置并保存到数据库，无需改动后台配置文件" />
+      <PageHeader title="系统配置" description="基础信息 / 品牌信息 / 安全策略 / 数据保留 / 告警渠道 / 版本信息。所有参数均在此页面设置并保存到数据库，无需改动后台配置文件" />
       <Tabs idPrefix={TAB_ID} items={items} value={tab} onChange={goTab} className="mb-4" />
       <Panel tabId={`${TAB_ID}-panel`} meta={meta} index={idx} total={GROUPS.length} prev={GROUPS[idx - 1]} next={GROUPS[idx + 1]} onGo={goTab}
-        canUpdate={canUpdate} dirty={dirty(tab)} saving={saving === tab} onReset={() => setReset(tab)} onSave={() => save(tab)} onRevert={tab === 'brand' ? revertBrand : undefined} banner={banner}
+        canUpdate={canUpdate} readOnly={meta.readOnly} dirty={dirty(tab)} saving={saving === tab} onReset={() => setReset(tab)} onSave={() => save(tab)} onRevert={tab === 'brand' ? revertBrand : undefined} banner={banner}
         afterReset={tab === 'alertChannels' && <button type="button" className="btn-default btn-sm" onClick={() => setAddSignal((n) => n + 1)}><Plus size={14} />新增渠道</button>}>
         {tab === 'basic' && <BasicSection {...common} />}
         {tab === 'brand' && <BrandSection value={f.brand} disabled={!canUpdate} onChange={patch('brand')} onPreviewColor={(c) => useStore.getState().previewPrimary(c)} />}
         {tab === 'security' && <SecuritySection {...common} />}
         {tab === 'retention' && <RetentionSection {...common} />}
+        {tab === 'version' && <VersionSection />}
         {tab === 'alertChannels' && <AlertChannels value={f.alertChannels} disabled={!canUpdate} errors={chErrs} addSignal={addSignal} onPersist={(v) => save('alertChannels', v)} onChange={(v) => setF((s) => ({ ...s, alertChannels: v }))} />}
       </Panel>
       <ConfirmModal open={!!reset} danger title={`恢复「${GROUPS.find((x) => x.key === reset)?.title || ''}」为默认值？`} description="该分组当前的配置将被覆盖为系统默认值，并立即写入数据库。"

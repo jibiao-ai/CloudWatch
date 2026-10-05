@@ -207,6 +207,8 @@ export const settingsApi = {
   resetSettings: (group) => post('/settings/reset', { group }),
   uploadLogo: (payload) => post('/settings/logo', payload),
   testAlertChannel: (channel) => post('/settings/alert-channels/test', channel),
+  /** 版本信息：{ current, items:[{version,title,releasedAt,notes,current}] }，按发布时间倒序 */
+  getVersions: () => get('/settings/versions'),
 };
 
 /* ============================ 任务 / 概览 ============================ */

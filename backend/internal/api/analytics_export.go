@@ -54,7 +54,7 @@ func (s *Server) analyticsExportSheets(w http.ResponseWriter, r *http.Request, p
 		}
 		t := ov.Totals
 		sheets = append(sheets, xSheet{Name: "资源数量", Head: []string{"指标", "数量"}, Rows: [][]any{
-			{"已对接云平台", t["platforms"]}, {"云主机", t["vms"]}, {"磁盘", t["disks"]}, {"计算节点", t["hosts"]}, {"集群存储", t["pools"]}}})
+			{"已对接云平台", t["platforms"]}, {"虚拟机", t["vms"]}, {"磁盘", t["disks"]}, {"计算节点", t["hosts"]}, {"集群存储", t["pools"]}}})
 		sheets = append(sheets, ratesSheet("分配率与使用率", ov.Rates))
 		plat := make([][]any, 0, len(ov.Platforms))
 		for _, x := range ov.Platforms {
@@ -94,7 +94,7 @@ func (s *Server) analyticsExportSheets(w http.ResponseWriter, r *http.Request, p
 		for _, x := range b.HostVMs {
 			hv = append(hv, []any{x.Host, x.Running, x.Stopped, x.Running + x.Stopped})
 		}
-		sheets = append(sheets, xSheet{Name: "计算节点云主机分布", Head: []string{"计算节点", "运行中", "已关机/其他", "合计"}, Rows: hv})
+		sheets = append(sheets, xSheet{Name: "计算节点虚拟机分布", Head: []string{"计算节点", "运行中", "已关机/其他", "合计"}, Rows: hv})
 	case "vm":
 		title = "虚拟机分析"
 		v, err := s.Analytics.VMAnalysis(ctx, ps, anFilter(r))
