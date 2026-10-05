@@ -22,7 +22,7 @@ const (
 	okPos                    // 值 > 0 才正常（在线个数）
 )
 
-// ServiceCodes 监控中心「服务状态」展示的 27 个服务指标（对照表；已去除数据保护 / 块存储备份 / 高性能缓存 / 网络 dhcp / 网络负载均衡 / SDN 元数据 / 虚拟交换机网络 / vnc 权限管理 8 项），其余指标一律不展示。
+// ServiceCodes 监控中心「服务状态」展示的 26 个服务指标（对照表；已去除数据保护 / 块存储备份 / 高性能缓存 / 高性能缓存管理 / 网络 dhcp / 网络负载均衡 / SDN 元数据 / 虚拟交换机网络 / vnc 权限管理 9 项），其余指标一律不展示。
 var serviceKinds = map[string]healthKind{
 	"service_authentication_api_state":                okOne,
 	"service_automation_center_state":                 okOne,
@@ -40,7 +40,6 @@ var serviceKinds = map[string]healthKind{
 	"service_control_scheduler_state":                 okPct,
 	"service_database_state":                          okOne,
 	"service_event_mesh_state":                        okPct,
-	"service_high_performance_cache_management_state": okZero,
 	"service_hostha_state":                            okOne,
 	"service_image_management_state":                  okOne,
 	"service_log_collection_state":                    okPct,
@@ -53,7 +52,7 @@ var serviceKinds = map[string]healthKind{
 	"service_virtualization_management_state":         okZero,
 }
 
-// IsShownService 是否属于需要展示的 27 个服务指标。
+// IsShownService 是否属于需要展示的 26 个服务指标。
 func IsShownService(name string) bool { _, ok := serviceKinds[name]; return ok }
 
 func kindOf(name string) healthKind { return serviceKinds[name] } // 未登记 → okZero（文档口径）
@@ -94,7 +93,7 @@ func applyHealth(sv *Service) {
 	sv.Healthy = &h
 }
 
-// filterServices 只保留对照表内的 27 个服务指标，并补算健康状态（兼容已入库的旧快照）。
+// filterServices 只保留对照表内的 26 个服务指标，并补算健康状态（兼容已入库的旧快照）。
 func filterServices(in []Service) []Service {
 	out := make([]Service, 0, len(in))
 	for _, sv := range in {

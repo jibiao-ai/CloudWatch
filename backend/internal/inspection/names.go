@@ -20,7 +20,6 @@ var serviceNames = map[string]string{
 	"service_control_scheduler_state":                 "控制调度服务",
 	"service_database_state":                          "数据库服务",
 	"service_event_mesh_state":                        "事件网格服务",
-	"service_high_performance_cache_management_state": "高性能缓存管理服务",
 	"service_hostha_state":                            "主机高可用服务",
 	"service_image_management_state":                  "镜像管理api服务",
 	"service_log_collection_state":                    "日志收集服务",

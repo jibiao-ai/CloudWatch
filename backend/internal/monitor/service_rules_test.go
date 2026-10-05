@@ -7,7 +7,7 @@ import (
 
 func f(v float64) *float64 { return &v }
 
-func TestOnly27ServicesShown(t *testing.T) {
+func TestOnly26ServicesShown(t *testing.T) {
 	n := 0
 	for name := range serviceKinds {
 		if !IsShownService(name) {
@@ -15,16 +15,13 @@ func TestOnly27ServicesShown(t *testing.T) {
 		}
 		n++
 	}
-	if n != 27 {
-		t.Fatalf("want 27 services, got %d", n)
+	if n != 26 {
+		t.Fatalf("want 26 services, got %d", n)
 	}
-	for _, k := range []string{"service_data_protection_state", "service_block_storage_backup_state", "service_high_performance_cache_state", "service_network_dhcp_state", "service_network_lb_state", "service_network_metadata_state", "service_network_virtual_switch_state", "service_network_vnc_state"} {
+	for _, k := range []string{"service_data_protection_state", "service_block_storage_backup_state", "service_high_performance_cache_state", "service_network_dhcp_state", "service_network_lb_state", "service_network_metadata_state", "service_network_virtual_switch_state", "service_network_vnc_state", "service_high_performance_cache_management_state"} {
 		if IsShownService(k) {
 			t.Fatalf("%s must no longer be collected/shown", k)
 		}
-	}
-	if !IsShownService("service_high_performance_cache_management_state") {
-		t.Fatal("cache management service stays")
 	}
 	if IsShownService("service_unknown_extra_state") {
 		t.Fatal("extra metric must be hidden")
