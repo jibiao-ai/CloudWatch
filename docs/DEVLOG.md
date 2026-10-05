@@ -590,3 +590,4 @@ npm run lint:rules          # 规则扫描（见下）
 3. 角色管理：删除「生产 SRE（自定义）」（r5）——mock 种子与后端 `bootstrap` 均移除。
 4. 新增迁移 `0022_remove_demo_users_roles.sql`：按固定 ID + 用户名/编码清理已入库的演示用户、会话、用户角色关联及 r5 角色（不影响管理员自建的用户/角色）。
 5. 说明：用户管理、角色管理页面目前走前端 mock（后端未实现 `/api/users|roles`），因此页面内容取决于前端种子；离线包需重新构建才会生效。
+- 离线包 CloudWatch-7.1-x86 已按本轮改动重新打包，SHA256 见 `deploy/offline/SHA256SUMS`；已在 160.202.46.139 验证用户仅 admin、角色无「生产 SRE」。
