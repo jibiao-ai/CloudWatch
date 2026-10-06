@@ -111,7 +111,9 @@ http.interceptors.response.use(
       throw new ApiError('登录已过期，请重新登录', { status: 401 });
     }
     const err = toApiError(error);
-    if (err.status === 403 && !cfg.skipAuthRedirect && !cfg.silent403) {
+    // 强制改密状态下后端对其它接口返回 40301（data.mustChangePassword）：页面已在改密页，不再弹「无权限」
+    const mustChange = !!res?.data?.data?.mustChangePassword;
+    if (err.status === 403 && !cfg.skipAuthRedirect && !cfg.silent403 && !mustChange) {
       useStore.getState().pushToast({ type: 'warning', title: '无权限执行该操作', description: err.message });
     } else if (err.status >= 500 && !cfg.skipErrorToast) {
       useStore.getState().pushToast({ type: 'error', title: '服务异常', description: err.message });

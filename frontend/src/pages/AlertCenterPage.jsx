@@ -8,7 +8,7 @@ import CustomSelect from '../components/CustomSelect';
 import ExportButton from '../components/ExportButton';
 import Drawer from '../components/Drawer';
 import StatCard from '../components/StatCard';
-import { alertApi } from '../services/api';
+import { alertApi, providerApi } from '../services/api';
 import { useListQuery } from '../hooks/useListQuery';
 import { useAsync } from '../hooks/useAsync';
 import { useCan } from '../hooks/useCan';
@@ -33,7 +33,12 @@ export default function AlertCenterPage() {
   const [sp] = useSearchParams();
   const list = useListQuery('alerts', (q) => alertApi.getAlertList({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 10, keyword: '', providerId: '', severity: '', status: '', type: '', acked: '', sort: { key: 'firedAt', order: 'desc' } }, { keyword: sp.get('keyword'), providerId: sp.get('providerId') });
   const { query, setQuery } = list;
-  const stats = useAsync(() => alertApi.getAlertStats(), []);
+  // 所属平台筛选：选项取自平台管理（已落库），统计卡片随所选平台联动
+  const [providers, setProviders] = useState([]);
+  useEffect(() => { providerApi.getProviderList({ page: 1, pageSize: 200 }).then((r) => setProviders(r?.list || [])).catch(() => {}); }, []);
+  const providerOpts = providers.map((p) => ({ value: p.id, label: p.name }));
+  const providerName = (id) => providers.find((p) => p.id === id)?.name || id;
+  const stats = useAsync(() => alertApi.getAlertStats(query.providerId ? { providerId: query.providerId } : undefined), [query.providerId]);
   const [detail, setDetail] = useState(null);
   const openId = sp.get('open');
   useEffect(() => { // 全局搜索 / 概览跳转：?open=告警ID 直接打开详情
@@ -104,12 +109,13 @@ export default function AlertCenterPage() {
         selectionBar={<button type="button" className="btn-default btn-sm" disabled={busy} onClick={() => ack(selected)}><CheckCheck size={14} /> 批量确认（{selected.length}）</button>}
         toolbar={<>
         <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="关键字（名称 / 节点 / IP）" width={240} />
+        <div className="w-[160px]"><CustomSelect size="sm" clearable placeholder="所属平台" aria-label="所属平台" value={query.providerId} onChange={(providerId) => setQuery({ providerId })} options={providerOpts} /></div>
         <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="级别" aria-label="级别" value={query.severity} onChange={(severity) => setQuery({ severity })} options={SEV} /></div>
         <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="状态" aria-label="状态" value={query.status} onChange={(status) => setQuery({ status })} options={STATUS} /></div>
         <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="类型" aria-label="类型" value={query.type} onChange={(type) => setQuery({ type })} options={TYPE} /></div>
         <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="确认" aria-label="确认" value={query.acked} onChange={(acked) => setQuery({ acked })} options={ACKED} /></div>
         </>}
-        extra={canExport && <ExportButton fn={alertApi.exportAlerts} params={toParams(query)} title="告警列表" filters={{ 关键字: query.keyword, 级别: lab(SEV, query.severity), 状态: lab(STATUS, query.status) }} />}
+        extra={canExport && <ExportButton fn={alertApi.exportAlerts} params={toParams(query)} title="告警列表" filters={{ 关键字: query.keyword, 平台: query.providerId ? providerName(query.providerId) : '', 级别: lab(SEV, query.severity), 状态: lab(STATUS, query.status) }} />}
         empty={{ title: '暂无告警', description: '云平台当前没有符合条件的告警' }} />
       </div>
       <Drawer open={!!detail} title={detail?.name || '告警详情'} subtitle={detail && `${lab(SEV, detail.severity)} · ${lab(STATUS, detail.status)}`} width={600} anchor={drawerAnchor} onClose={() => setDetail(null)}

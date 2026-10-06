@@ -168,7 +168,7 @@ Compose 变量见 [`deploy/env.example`](deploy/env.example)：`DB_ROOT_PASSWORD
 ## 权限与角色
 
 - 菜单与按钮由权限码驱动，如 `monitor:view`、`monitor:export`、`capacity:export`、`alert:ack`、`analytics:ignore`、`analytics:policy_update`、`inspection:run`、`provider:*`、`user:delete` 等；超级管理员为 `*`。
-- 内置角色：超级管理员、云平台运维、只读观察员、安全审计员；可在「角色管理」新建自定义角色，并配置**平台级数据权限**（允许 / 拒绝指定云平台）。
+- 内置角色：超级管理员、云平台运维、只读观察员、安全审计员；可在「角色管理」新建自定义角色（用户 / 角色均已落库，新建用户用一次性初始密码登录并强制改密），并配置**平台级数据权限**（允许 / 拒绝指定云平台）。
 - 新增权限码时，迁移脚本会给内置角色补授；已有自定义角色需手工勾选。
 
 ## 项目结构

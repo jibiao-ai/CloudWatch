@@ -114,6 +114,25 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/settings/alert-channels/test", s.guard("settings:update", s.testChannel))
 	mux.Handle("GET /api/settings/versions", s.guard("settings:view", s.versions))
 
+	// 用户管理 / 角色管理（落库；/users/status、/users/export 等静态路径优先于 {id}）
+	mux.Handle("GET /api/users", s.guard("user:view", s.userList))
+	mux.Handle("GET /api/users/export", s.guard("user:export", s.userExport))
+	mux.Handle("POST /api/users", s.guard("user:create", s.userCreate))
+	mux.Handle("PUT /api/users/status", s.guard("user:toggle", s.userSetStatus))
+	mux.Handle("POST /api/users/batch-delete", s.guard("user:delete", s.userDelete(true)))
+	mux.Handle("PUT /api/users/{id}", s.guard("user:update", s.userUpdate))
+	mux.Handle("DELETE /api/users/{id}", s.guard("user:delete", s.userDelete(false)))
+	mux.Handle("POST /api/users/{id}/unlock", s.guard("user:unlock", s.userUnlock))
+	mux.Handle("POST /api/users/{id}/reset-password", s.guard("user:reset_password", s.userResetPassword))
+	mux.Handle("GET /api/roles", s.guard("role:view", s.roleList))
+	mux.Handle("GET /api/roles/scope-tree", s.guard("role:view", s.roleScopeTree))
+	mux.Handle("POST /api/roles", s.guard("role:create", s.roleCreate))
+	mux.Handle("GET /api/roles/{id}", s.guard("role:view", s.roleGet))
+	mux.Handle("GET /api/roles/{id}/users", s.guard("role:view", s.roleUsers))
+	mux.Handle("POST /api/roles/{id}/copy", s.guard("role:create", s.roleCopy))
+	mux.Handle("PUT /api/roles/{id}", s.guard("role:update", s.roleUpdate))
+	mux.Handle("DELETE /api/roles/{id}", s.guard("role:delete", s.roleDelete))
+
 	// 审计日志
 	mux.Handle("GET /api/audit-logs", s.guard("audit:view", s.auditList))
 	mux.Handle("GET /api/audit-logs/export", s.guard("audit:export", s.auditExport))
