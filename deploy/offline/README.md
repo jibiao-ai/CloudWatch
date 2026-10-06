@@ -8,7 +8,7 @@
   - `mariadb:10.11`（数据库，官方镜像原样打包）
 - 因超过 GitHub 仓库单文件 100 MB 限制，镜像包发布在 **GitHub Release**（不在 git 历史中）：
   <https://github.com/jibiao-ai/CloudWatch/releases/tag/CloudWatch-7.1-x86>
-- 对应源码提交：`c294317`。仅支持 x86_64 / amd64；ARM 服务器需另行构建。
+- 对应源码提交：Release 标签 `CloudWatch-7.1-x86` 所指向的提交。仅支持 x86_64 / amd64；ARM 服务器需另行构建。
 
 ## 一、准备（在能联网的机器上）
 
