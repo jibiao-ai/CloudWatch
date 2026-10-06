@@ -11,6 +11,14 @@ export const RANGE_ITEMS = [{ value: '7d', label: '近7天' }, { value: '30d', l
 export const SPAN = { '7d': 7, '30d': 30, '180d': 180, '365d': 365 };
 /** 把后端 Opt2 列表按所属云平台过滤并转为 CustomSelect 选项 */
 export const optsOf = (list = [], pid, cluster) => list.filter((o) => (!pid || o.providerId === pid) && (!cluster || o.cluster === cluster)).map((o) => ({ value: o.value, label: o.label }));
+/** 容量展示：后端以 G 为单位，页面统一换算为 TB（÷1024，保留 2 位小数） */
+export const gbToTb = (v) => Math.round(((Number(v) || 0) / 1024) * 100) / 100;
+/** TB 展示文本：千分位 + 最多 2 位小数；有容量但不足 0.01 TB 时显示 <0.01 */
+export const fmtTb = (gb) => {
+  const g = Number(gb) || 0;
+  if (g > 0 && g < 5.12) return '<0.01';
+  return gbToTb(g).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
 export const pctText = (v) => (v == null ? '-' : `${v}%`);
 /** 运行状态环形图配色：运行中 = 成功色，已停止 = 弱化色，异常 = 危险色，其他 = 警告色 */
 export const stateColor = (d, pal) => ({ 运行中: pal.ok, 已停止: pal.series[4], 异常: pal.bad }[d.label] || pal.warn);

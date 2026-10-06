@@ -597,3 +597,9 @@ npm run lint:rules          # 规则扫描（见下）
 - 从 `serviceKinds` 白名单、巡检 `serviceNames`、前端 `SERVICE_NAMES` 中移除 `service_high_performance_cache_management_state`；采集与读取旧快照时均不再展示。
 - 服务状态由 27 个减为 26 个，测试 `TestOnly26ServicesShown` 同步更新。
 - 离线包 CloudWatch-7.1-x86 已删除旧 Release 后重新发布（含 26 个服务），SHA256 见 `deploy/offline/SHA256SUMS`。
+
+## 第59轮：运营分析 · 磁盘分析容量单位改为 TB
+
+- 统计单位「容量(G)」改为「容量(TB)」：环形图总数/图例、磁盘趋势（Y 轴/提示）均按 TB（GiB÷1024）展示，千分位 + 最多 2 位小数，不足 0.01 TB 显示 `<0.01`。
+- 后端接口仍以 GiB 返回（保持趋势快照口径不变），换算在前端 `analytics/util.js`（`gbToTb` / `fmtTb`）；Excel 导出同步改为 TB（`distSheetTB`）。
+- Donut / DonutPanel 新增可选 `format`，TrendArea 新增 `decimals`。

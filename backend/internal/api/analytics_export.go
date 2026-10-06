@@ -35,6 +35,15 @@ func distSheet(name, label, unit string, d []analytics.Dist) xSheet {
 	return xSheet{Name: name, Head: []string{label, "数量(" + unit + ")"}, Rows: rows}
 }
 
+// distSheetTB 容量分布（后端以 GiB 计）→ TB（÷1024，保留 2 位小数）。
+func distSheetTB(name, label string, d []analytics.Dist) xSheet {
+	rows := make([][]any, 0, len(d))
+	for _, x := range d {
+		rows = append(rows, []any{x.Label, xround(float64(x.Value)/1024, 2)})
+	}
+	return xSheet{Name: name, Head: []string{label, "容量(TB)"}, Rows: rows}
+}
+
 // analyticsExportSheets GET /analytics/export/{kind}  kind: home | base | vm | disk | policy
 // 运营中心各页签的统计数据导出为多工作表 Excel；筛选条件与页面一致（providerId / host / pool / unit）。
 func (s *Server) analyticsExportSheets(w http.ResponseWriter, r *http.Request, p *auth.Principal, kind string, t0 time.Time) error {
@@ -109,11 +118,11 @@ func (s *Server) analyticsExportSheets(w http.ResponseWriter, r *http.Request, p
 		if err != nil {
 			return err
 		}
-		u := "块"
-		if unit == "gb" {
-			u = "GiB"
+		if unit == "gb" { // 容量统一以 TB 导出（GiB ÷ 1024，保留 2 位小数）
+			sheets = append(sheets, distSheetTB("所属云平台分布", "所属云平台", d.Platforms), distSheetTB("挂载状态", "挂载状态", d.Mount), distSheetTB("磁盘类型", "磁盘类型", d.Types))
+		} else {
+			sheets = append(sheets, distSheet("所属云平台分布", "所属云平台", "块", d.Platforms), distSheet("挂载状态", "挂载状态", "块", d.Mount), distSheet("磁盘类型", "磁盘类型", "块", d.Types))
 		}
-		sheets = append(sheets, distSheet("所属云平台分布", "所属云平台", u, d.Platforms), distSheet("挂载状态", "挂载状态", u, d.Mount), distSheet("磁盘类型", "磁盘类型", u, d.Types))
 	case "policy":
 		title = "优化策略"
 		pl, err := s.Analytics.PolicyList(ctx, ps)

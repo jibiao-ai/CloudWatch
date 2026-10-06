@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Panel, { Seg } from './Panel';
 import Gauge from './Gauge';
 import WaterCircle from './WaterCircle';
@@ -7,7 +7,7 @@ import Skeleton from '../Skeleton';
 import ErrorState from '../ErrorState';
 import { analyticsApi } from '../../services/api';
 import { useAsync } from '../../hooks/useAsync';
-import { RANGE_ITEMS, SPAN } from './util';
+import { RANGE_ITEMS, SPAN, gbToTb } from './util';
 
 /** AllocPanel —— 基础资源分配率（三个仪表盘） */
 export function AllocPanel({ rates, loading }) {
@@ -43,10 +43,12 @@ export function UsePanel({ rates, loading }) {
 export function TrendPanel({ title, kind, providerId = '', unit = '', suffix = '', refreshKey = 0 }) {
   const [rng, setRng] = useState('7d');
   const tr = useAsync(() => analyticsApi.getTrend({ kind, range: rng, providerId, unit }), [kind, rng, providerId, unit, refreshKey]);
+  const isGb = unit === 'gb'; // 容量趋势：后端以 G 为单位，展示换算为 TB
+  const series = useMemo(() => (isGb ? (tr.data || []).map((s) => ({ ...s, points: s.points.map((p) => ({ ...p, v: gbToTb(p.v) })) })) : (tr.data || [])), [tr.data, isGb]);
   return (
     <Panel title={title} actions={<Seg label="时间范围" items={RANGE_ITEMS} value={rng} onChange={setRng} />}>
       {tr.loading ? <Skeleton.Block className="h-[220px]" /> : tr.error ? <ErrorState error={tr.error} onRetry={tr.reload} />
-        : <TrendArea series={tr.data || []} unit={suffix} spanMs={SPAN[rng] * 86400e3} />}
+        : <TrendArea series={series} unit={suffix} spanMs={SPAN[rng] * 86400e3} decimals={isGb} />}
     </Panel>
   );
 }

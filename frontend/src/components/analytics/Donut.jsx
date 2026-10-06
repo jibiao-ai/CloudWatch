@@ -4,9 +4,9 @@ import { useChartPalette } from '../../hooks/useChartPalette';
 
 /**
  * Donut —— 环形分布图：中心显示总数，右侧图例（名称 + 数量）。
- * 属性：data[{label,value}] / unit(总数单位文案，如 "台"、"块") / colors(label→palette 下标，可选) / emptyText
+ * 属性：data[{label,value}] / format(数值格式化，可选) / unit(总数单位文案，如 "台"、"块") / colors(label→palette 下标，可选) / emptyText
  */
-export default function Donut({ data = [], unit = '台', colorOf, emptyText = '暂无数据' }) {
+export default function Donut({ data = [], unit = '台', colorOf, emptyText = '暂无数据', format = (v) => v }) {
   const pal = useChartPalette();
   const total = data.reduce((s, d) => s + d.value, 0);
   const color = (d, i) => (colorOf ? colorOf(d, pal) : pal.series[i % pal.series.length]);
@@ -22,7 +22,7 @@ export default function Donut({ data = [], unit = '台', colorOf, emptyText = '�
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[11px] text-fg-muted">总数（{unit}）</span>
-          <span className="text-xl font-semibold text-fg tabular-nums leading-tight">{total}</span>
+          <span className="text-xl font-semibold text-fg tabular-nums leading-tight">{format(total)}</span>
         </div>
       </div>
       <ul className="flex-1 min-w-0 space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
@@ -31,7 +31,7 @@ export default function Donut({ data = [], unit = '台', colorOf, emptyText = '�
           <li key={d.label} className="flex items-center gap-2 text-[13px]">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color(d, i) }} />
             <span className="truncate text-fg-muted flex-1" title={d.label}>{d.label}</span>
-            <span className="tabular-nums text-fg">{d.value}</span>
+            <span className="tabular-nums text-fg">{format(d.value)}</span>
           </li>
         ))}
       </ul>

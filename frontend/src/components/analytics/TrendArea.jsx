@@ -9,7 +9,7 @@ import { formatDateTime, pad } from '../../utils/format';
  * TrendArea —— 数量趋势（每个所属云平台各一条线）。series: [{providerId,name,points:[{t,v}]}]
  * 不同账号的时间桶对齐，按 t 合并为宽表。
  */
-export default function TrendArea({ series = [], unit = '', height = 220, spanMs }) {
+export default function TrendArea({ series = [], unit = '', height = 220, spanMs, decimals = false }) {
   const pal = useChartPalette();
   const uid = useId().replace(/[^\w]/g, '');
   const { rows, keys } = useMemo(() => {
@@ -39,8 +39,8 @@ export default function TrendArea({ series = [], unit = '', height = 220, spanMs
           </defs>
           <CartesianGrid stroke={pal.grid} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="t" type="number" scale="time" domain={['dataMin', 'dataMax']} tickFormatter={tick} stroke={pal.axis} tick={{ fill: pal.axis, fontSize: 11 }} tickLine={false} axisLine={{ stroke: pal.grid }} minTickGap={50} />
-          <YAxis stroke={pal.axis} tick={{ fill: pal.axis, fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} width={48} domain={[0, 'auto']} />
-          <RTooltip cursor={{ stroke: pal.axis, strokeDasharray: '4 4' }} content={<ChartTooltip labelFormatter={(t) => formatDateTime(t, false)} valueFormatter={(v) => `${v}${unit}`} />} />
+          <YAxis stroke={pal.axis} tick={{ fill: pal.axis, fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={decimals} width={decimals ? 56 : 48} domain={[0, 'auto']} />
+          <RTooltip cursor={{ stroke: pal.axis, strokeDasharray: '4 4' }} content={<ChartTooltip labelFormatter={(t) => formatDateTime(t, false)} valueFormatter={(v) => `${decimals ? Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) : v}${unit}`} />} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
           {keys.map((k, i) => {
             const c = pal.series[i % pal.series.length];

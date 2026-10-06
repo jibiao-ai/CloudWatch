@@ -5,12 +5,12 @@ import { TrendPanel } from '../Blocks';
 import DonutPanel from '../DonutPanel';
 import ErrorState from '../../ErrorState';
 import SearchHits from '../SearchHits';
-import { mountColor } from '../util';
+import { mountColor, fmtTb } from '../util';
 import { analyticsApi } from '../../../services/api';
 import { useAsync } from '../../../hooks/useAsync';
 import TabExport from '../TabExport';
 
-const UNITS = [{ value: 'count', label: '数量(块)' }, { value: 'gb', label: '容量(G)' }];
+const UNITS = [{ value: 'count', label: '数量(块)' }, { value: 'gb', label: '容量(TB)' }];
 
 /** DiskTab —— 运营中心 · 磁盘分析：所属云平台 / 挂载状态 / 磁盘类型分布（按数量或容量）、数量趋势；磁盘明细在「配置中心 · 云硬盘」 */
 export default function DiskTab({ tick, keyword, onClearKeyword }) {
@@ -19,7 +19,8 @@ export default function DiskTab({ tick, keyword, onClearKeyword }) {
   const params = useMemo(() => ({ providerId: pid, unit }), [pid, unit]);
   const q = useAsync(() => analyticsApi.getDisk(params), [pid, unit, tick]);
   const d = q.data;
-  const u = unit === 'gb' ? 'G' : '块';
+  const u = unit === 'gb' ? 'TB' : '块';
+  const fmt = unit === 'gb' ? fmtTb : undefined;
   const plats = (d?.platforms_opt || []).map((a) => ({ value: a.value, label: a.label }));
   return (
     <>
@@ -33,11 +34,11 @@ export default function DiskTab({ tick, keyword, onClearKeyword }) {
       {q.error ? <div className="card"><ErrorState error={q.error} onRetry={q.reload} /></div> : (
         <>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <DonutPanel title="所属云平台分布" unit={u} loading={q.loading} data={d?.platforms} />
-            <DonutPanel title="挂载状态" unit={u} loading={q.loading} data={d?.mount} colorOf={mountColor} />
-            <DonutPanel title="磁盘类型" unit={u} loading={q.loading} data={d?.types} />
+            <DonutPanel title="所属云平台分布" unit={u} format={fmt} loading={q.loading} data={d?.platforms} />
+            <DonutPanel title="挂载状态" unit={u} format={fmt} loading={q.loading} data={d?.mount} colorOf={mountColor} />
+            <DonutPanel title="磁盘类型" unit={u} format={fmt} loading={q.loading} data={d?.types} />
           </div>
-          <TrendPanel title="磁盘趋势" kind="disk" providerId={pid} unit={unit} suffix={unit === 'gb' ? ' G' : ' 块'} refreshKey={tick} />
+          <TrendPanel title="磁盘趋势" kind="disk" providerId={pid} unit={unit} suffix={unit === 'gb' ? ' TB' : ' 块'} refreshKey={tick} />
         </>
       )}
     </>
