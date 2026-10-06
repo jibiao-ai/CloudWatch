@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"sort"
 	"strings"
 )
@@ -37,13 +38,26 @@ func (c *Client) getJSON(ctx context.Context, hc *http.Client, tok, url string, 
 	return json.Unmarshal(raw, out)
 }
 
+// sameOrigin 把翻页链接 next 的协议/主机/端口替换为首次请求（first）的，保留 path 与 query。
+// 原因：Cinder/Nova 用自己看到的服务地址生成 next 链接，K8s 部署时常为集群内部域名
+// （如 cinder-api.openstack.svc.cluster.local），CloudWatch 容器内无法解析。
+func sameOrigin(first, next string) string {
+	f, err1 := neturl.Parse(first)
+	n, err2 := neturl.Parse(next)
+	if err1 != nil || err2 != nil || f.Host == "" {
+		return next
+	}
+	n.Scheme, n.Host = f.Scheme, f.Host
+	return n.String()
+}
+
 // countAll 统计列表资源总数：按 <key>_links 的 rel=next 翻页（最多 50 页）。
 func (c *Client) countAll(ctx context.Context, hc *http.Client, tok, first, key string) (int, error) {
 	total, url := 0, first
 	for page := 0; page < 50 && url != ""; page++ {
 		var doc pageDoc
 		if err := c.getJSON(ctx, hc, tok, url, &doc); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("%s（请求地址 %s）", err, url)
 		}
 		var items []json.RawMessage
 		_ = json.Unmarshal(doc[key], &items)
@@ -53,7 +67,7 @@ func (c *Client) countAll(ctx context.Context, hc *http.Client, tok, first, key 
 		if json.Unmarshal(doc[key+"_links"], &links) == nil {
 			for _, l := range links {
 				if l.Rel == "next" {
-					url = l.Href
+					url = sameOrigin(first, l.Href)
 				}
 			}
 		}
