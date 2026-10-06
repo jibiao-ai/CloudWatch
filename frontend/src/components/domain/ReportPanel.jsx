@@ -2,9 +2,9 @@ import React from 'react';
 import { formatDateTime } from '../../utils/format';
 import { STATUS_TAG, TRIGGER_TEXT } from './hosts';
 
-const CHANNELS = [{ key: 'local', label: '本机 hosts' }, { key: 'dns', label: '内置 DNS' }, { key: 'docker', label: 'Docker 容器' }];
+const CHANNELS = [{ key: 'local', label: '本机 hosts' }];
 
-/** ReportPanel —— 最近一次同步结果：三个通道的状态、原因与逐容器注入结果 */
+/** ReportPanel —— 最近一次同步结果：本机 hosts 的同步状态与原因 */
 export default function ReportPanel({ report }) {
   return (
     <section className="card p-5" aria-label="最近一次同步结果">

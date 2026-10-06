@@ -8,9 +8,9 @@ import { copyText } from '../../utils/download';
 import { formatDateTime } from '../../utils/format';
 import { linesOf } from './hosts';
 
-const CHECKS = [{ key: 'local', label: '本机 hosts' }, { key: 'dns', label: '内置 DNS' }, { key: 'docker', label: 'Docker 容器' }, { key: 'connect', label: '控制台连通性' }];
+const CHECKS = [{ key: 'local', label: '本机 hosts' }, { key: 'connect', label: '控制台连通性' }];
 
-/** MappingCard —— 一条域名映射：生成的 hosts 记录、启停、复制、逐项校验（本机 hosts / DNS / Docker / 连通性）、编辑、删除 */
+/** MappingCard —— 一条域名映射：生成的 hosts 记录、启停、复制、逐项校验（本机 hosts / 连通性）、编辑、删除 */
 export default function MappingCard({ m, canUpdate, canVerify, toggling, onToggle, onEdit, onDelete }) {
   const toast = useToast();
   const [verifying, setVerifying] = useState(false);
@@ -48,7 +48,7 @@ export default function MappingCard({ m, canUpdate, canVerify, toggling, onToggl
       <p className="mt-2 text-xs text-fg-muted">{m.remark ? `${m.remark} · ` : ''}最后修改 {formatDateTime(m.updatedAt)}{m.updatedBy ? ` · ${m.updatedBy}` : ''}</p>
       {(verifying || result) && (
         <ul className="mt-3 rounded-lg border border-line divide-y divide-line" aria-live="polite">
-          {(result?.items || CHECKS).map((it) => {
+          {(result?.items || CHECKS).filter((it) => it.key !== 'dns' && it.key !== 'docker').map((it) => {
             const skipped = !verifying && it.skipped;
             const Icon = verifying ? Loader2 : skipped ? MinusCircle : it.ok ? CircleCheck : CircleX;
             const color = verifying ? 'text-fg-subtle animate-spin' : skipped ? 'text-fg-subtle' : it.ok ? 'text-success' : 'text-danger';

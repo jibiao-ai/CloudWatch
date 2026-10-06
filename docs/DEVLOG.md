@@ -633,3 +633,15 @@ npm run lint:rules          # 规则扫描（见下）
 - curl 全流程：创建用户 → 初始密码登录 → 被拦截（须改密）→ 改密 → 新密码登录；重复用户名、禁用自己、删除自己、内置角色改删、角色 CRUD、批量删除、导出均符合预期。
 - Playwright：界面新增用户 → 读取一次性初始密码 → 用该账号登录 → 跳转改密页 → 改密 → 进入系统（菜单按角色权限裁剪）→ 新密码再次登录；告警中心选择平台后列表 55 → 5 条，统计卡片联动。
 - 离线包 CloudWatch-7.1-x86 已删除旧 Release 后重新发布（含用户/角色落库、告警中心平台筛选），SHA256 见 `deploy/offline/SHA256SUMS`；生产 110.42.103.186 与 demo 160.202.46.139 均已更新并通过自测。
+
+## 第62轮：云硬盘超过 1000 块同步失败修复；域名配置隐藏内置 DNS / Docker 注入
+
+**问题：客户私网同步报「Cinder 云硬盘统计失败：lookup cinder-api.openstack.svc.cluster.local …」**
+- 根因：Keystone catalog 的 Cinder 地址正确（`cinder.<根域名>`），但客户环境云硬盘 1077 块，超过同步请求的 `limit=1000`，Cinder 返回 `volumes_links` 的 `next` 链接；该链接主机名由 Cinder 自己生成，K8s 部署下为集群内部域名 `cinder-api.openstack.svc.cluster.local`，CloudWatch 容器无法解析。云硬盘不足 1000 块时不会触发，所以其它环境正常。
+- 修复：`provider/sync.go` 翻页时把 `next` 链接的协议 / 主机 / 端口改写为首次请求（catalog 地址）的，仅保留 path 与 query（`sameOrigin`）；失败时错误信息带上请求地址，便于现场定位。容量采集（`capacity/collect.go`）早已使用 `limit + marker` 翻页、不跟随 next 链接，不受影响。
+- 单测：`provider/sync_test.go` 模拟 Cinder 返回集群内部域名的 next 链接，验证可翻页完成（3 条）。
+- 现场排查方法：用 Token 请求 `.../volumes?all_tenants=1&limit=1000`，查看响应 `volumes_links` 的 href 是否含 `.svc.cluster.local`，且卷数是否 > 1000。
+
+**域名配置：隐藏「内置 DNS 服务」「Docker 容器注入」**
+- 「同步方式」页签仅保留「本机 hosts 文件」；「最近一次同步」「映射校验」「失败提示」「页面说明与删除确认」中涉及 DNS / Docker 的内容一并隐藏。后端能力与接口保持不变，保存时沿用服务端原值。
+- 自测：Playwright 校验同步方式、同步报告页均不再出现 DNS / Docker，无页面报错；前端 build、lint:rules 通过。

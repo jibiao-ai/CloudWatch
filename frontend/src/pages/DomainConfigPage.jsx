@@ -25,9 +25,9 @@ const TABS = ['mappings', 'sync', 'report'];
 const PAGE_SIZE = 10; // 映射超过 10 条时分页
 
 /** 报告中有失败通道时给出可读提示 */
-const failedText = (rep) => ['local', 'dns', 'docker'].filter((k) => rep?.[k]?.status === 'failed').map((k) => `${{ local: '本机 hosts', dns: '内置 DNS', docker: 'Docker' }[k]}：${rep[k].message}`).join('；');
+const failedText = (rep) => ['local'].filter((k) => rep?.[k]?.status === 'failed').map((k) => `${{ local: '本机 hosts' }[k]}：${rep[k].message}`).join('；');
 
-/** DomainConfigPage —— 域名配置：录入「控制台 IP + 根域名」自动生成 hosts 记录，并同步到本机 hosts / 内置 DNS / Docker 容器 */
+/** DomainConfigPage —— 域名配置：录入「控制台 IP + 根域名」自动生成 hosts 记录，并同步到本机 hosts */
 export default function DomainConfigPage() {
   const toast = useToast();
   const canUpdate = useCan('domain:update');
@@ -38,7 +38,7 @@ export default function DomainConfigPage() {
   const [errs, setErrs] = useState({});
   const [saving, setSaving] = useState(false);
   const [syncSaving, setSyncSaving] = useState(false);
-  const [syncErrs, setSyncErrs] = useState({});
+  const [, setSyncErrs] = useState({});
   const [applying, setApplying] = useState(false);
   const [toggling, setToggling] = useState(null);
   const [del, setDel] = useState(null);
@@ -117,7 +117,7 @@ export default function DomainConfigPage() {
 
   return (
     <div>
-      <PageHeader title="域名配置" description="录入云平台控制台 IP 与根域名，自动生成 keystone / nova / neutron / cinder / glance / gnocchi 等组件的 hosts 记录，并同步到本机 /etc/hosts 与所有 Docker 容器"
+      <PageHeader title="域名配置" description="录入云平台控制台 IP 与根域名，自动生成 keystone / nova / neutron / cinder / glance / gnocchi 等组件的 hosts 记录，并同步到本机 /etc/hosts"
         actions={<>
           {state && tab === 'mappings' && <button type="button" className="btn-default" onClick={copyAll}><Copy size={15} /> 复制全部 hosts</button>}
           {canUpdate && <LoadingButton icon={RefreshCw} loading={applying} onClick={apply}>立即同步</LoadingButton>}
@@ -136,14 +136,14 @@ export default function DomainConfigPage() {
               ))}
               {total > PAGE_SIZE && <div className="card"><Pagination page={page} pageSize={pg.pageSize} total={total} pageSizeOptions={[10, 20, 50]} onChange={setPg} /></div>}
             </div>
-            <div hidden={tab !== 'sync'}><SyncPanel sync={state.sync} dnsAddr={state.dnsAddr} canUpdate={canUpdate} errors={syncErrs} saving={syncSaving} onSave={saveSync} onDirty={onSyncDirty} /></div>
+            <div hidden={tab !== 'sync'}><SyncPanel sync={state.sync} canUpdate={canUpdate} saving={syncSaving} onSave={saveSync} onDirty={onSyncDirty} /></div>
             <div hidden={tab !== 'report'}><ReportPanel report={state.report} /></div>
           </div>
           <TabPager items={items} value={tab} onChange={setTab} />
         </div>
       )}
       <MappingModal open={modal.open} initial={modal.item} errors={errs} saving={saving} onSubmit={submit} onClose={() => setModal({ open: false, item: null })} />
-      <ConfirmModal open={!!del} danger title="删除该域名映射？" targets={[del ? `${del.name}（${del.rootDomain}）` : '']} impactList={['对应的 hosts 记录会从本机 hosts、内置 DNS 和已注入的容器中移除', '依赖这些域名访问云平台的服务将无法解析']} confirmText="确认删除" loading={deleting} onCancel={() => setDel(null)} onConfirm={remove} />
+      <ConfirmModal open={!!del} danger title="删除该域名映射？" targets={[del ? `${del.name}（${del.rootDomain}）` : '']} impactList={['对应的 hosts 记录会从本机 hosts 中移除', '依赖这些域名访问云平台的服务将无法解析']} confirmText="确认删除" loading={deleting} onCancel={() => setDel(null)} onConfirm={remove} />
     </div>
   );
 }
