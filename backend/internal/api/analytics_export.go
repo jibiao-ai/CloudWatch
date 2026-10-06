@@ -112,16 +112,16 @@ func (s *Server) analyticsExportSheets(w http.ResponseWriter, r *http.Request, p
 		}
 		sheets = append(sheets, distSheet("所属云平台分布", "所属云平台", "台", v.Platforms), distSheet("运行状态", "状态", "台", v.Status))
 	case "disk":
-		title = "磁盘分析"
+		title = "云硬盘分析"
 		unit := r.URL.Query().Get("unit")
 		d, err := s.Analytics.DiskAnalysis(ctx, ps, r.URL.Query().Get("providerId"), unit)
 		if err != nil {
 			return err
 		}
 		if unit == "gb" { // 容量统一以 TB 导出（GiB ÷ 1024，保留 2 位小数）
-			sheets = append(sheets, distSheetTB("所属云平台分布", "所属云平台", d.Platforms), distSheetTB("挂载状态", "挂载状态", d.Mount), distSheetTB("磁盘类型", "磁盘类型", d.Types))
+			sheets = append(sheets, distSheetTB("所属云平台分布", "所属云平台", d.Platforms), distSheetTB("挂载状态", "挂载状态", d.Mount), distSheetTB("云硬盘类型", "云硬盘类型", d.Types))
 		} else {
-			sheets = append(sheets, distSheet("所属云平台分布", "所属云平台", "块", d.Platforms), distSheet("挂载状态", "挂载状态", "块", d.Mount), distSheet("磁盘类型", "磁盘类型", "块", d.Types))
+			sheets = append(sheets, distSheet("所属云平台分布", "所属云平台", "块", d.Platforms), distSheet("挂载状态", "挂载状态", "块", d.Mount), distSheet("云硬盘类型", "云硬盘类型", "块", d.Types))
 		}
 	case "policy":
 		title = "优化策略"

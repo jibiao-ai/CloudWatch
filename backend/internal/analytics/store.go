@@ -555,7 +555,6 @@ func (s *Store) CreatePolicy(ctx context.Context, p Policy, by string) (string, 
 var (
 	ErrTooMany = errors.New("自定义策略数量已达上限")
 	ErrDupName = errors.New("策略名称已存在")
-	ErrBuiltin = errors.New("内置策略不可删除")
 )
 
 // NameTaken 名称是否被其他策略占用。
@@ -565,14 +564,11 @@ func (s *Store) NameTaken(ctx context.Context, name, exceptKind string) bool {
 	return n > 0
 }
 
-// DeletePolicy 删除自定义策略及其忽略项。
+// DeletePolicy 删除一条策略（内置 / 自定义均可）及其忽略项；策略不存在返回 sql.ErrNoRows。
 func (s *Store) DeletePolicy(ctx context.Context, kind string) error {
 	var b bool
 	if err := s.db.QueryRowContext(ctx, `SELECT builtin FROM analytics_policies WHERE kind=?`, kind).Scan(&b); err != nil {
 		return err
-	}
-	if b {
-		return ErrBuiltin
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM analytics_policies WHERE kind=?`, kind); err != nil {
 		return err
@@ -581,7 +577,7 @@ func (s *Store) DeletePolicy(ctx context.Context, kind string) error {
 	return err
 }
 
-// DeletePolicies 批量删除自定义策略：全部校验通过后在同一事务内删除；任一为内置或不存在则整体拒绝，返回删除数量。
+// DeletePolicies 批量删除策略（内置 / 自定义均可）：全部存在才在同一事务内删除；任一不存在则整体拒绝，返回删除数量。
 func (s *Store) DeletePolicies(ctx context.Context, kinds []string) (int, error) {
 	seen := map[string]bool{}
 	uniq := make([]string, 0, len(kinds))
@@ -600,9 +596,6 @@ func (s *Store) DeletePolicies(ctx context.Context, kinds []string) (int, error)
 		var b bool
 		if err := tx.QueryRowContext(ctx, `SELECT builtin FROM analytics_policies WHERE kind=?`, k).Scan(&b); err != nil {
 			return 0, err
-		}
-		if b {
-			return 0, ErrBuiltin
 		}
 	}
 	for _, k := range uniq {

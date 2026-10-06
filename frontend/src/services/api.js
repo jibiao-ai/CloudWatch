@@ -282,7 +282,7 @@ export const analyticsApi = {
   createPolicy: (data) => post('/analytics/policies', data),
   updatePolicy: (kind, data) => put(`/analytics/policies/${kind}`, data),
   deletePolicy: (kind) => del(`/analytics/policies/${kind}`),
-  /** 批量删除自定义策略（含内置策略时整体拒绝） */
+  /** 批量删除策略（内置 / 自定义均可） */
   batchDeletePolicies: (kinds) => post('/analytics/policies/batch-delete', { kinds }),
   getPolicyIgnores: (kind) => get(`/analytics/policies/${kind}/ignores`),
   /** 按名称 / ID 解析资源（忽略项添加） */

@@ -12,7 +12,7 @@ import { formatDateTime } from '../../../utils/format';
 import { RES_LABEL } from '../util';
 import TabExport from '../TabExport';
 
-/** PolicyTab —— 运营中心 · 优化策略：内置 11 条（虚拟机侧 7 / 物理侧 4）可调阈值，另可新建自定义策略；自定义策略支持勾选后批量删除（内置策略不可勾选）（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
+/** PolicyTab —— 运营中心 · 优化策略：内置 11 条（虚拟机侧 7 / 物理侧 4）可调阈值，另可新建自定义策略；内置与自定义策略均可单个删除或勾选后批量删除（名称 / 资源类型 / 范围 / 筛选条件 / 指标），保存后立即影响优化建议；openKind 指定时自动打开该策略的编辑框 */
 export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword = '' }) {
   const canEdit = useCan('analytics:policy_update');
   const toast = useToast();
@@ -55,14 +55,14 @@ export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword =
     ...(canEdit ? [{ key: 'op', title: '操作', width: 100, sticky: 'right', render: (p) => (
       <span className="inline-flex">
         <button type="button" className="btn-ghost btn-icon" aria-label={`编辑${p.name}`} onClick={() => setModal({ open: true, policy: p })}><Pencil size={15} /></button>
-        {!p.builtin && <button type="button" className="btn-ghost btn-icon" aria-label={`删除${p.name}`} onClick={() => setDel(p)}><Trash2 size={15} /></button>}
+        <button type="button" className="btn-ghost btn-icon" aria-label={`删除${p.name}`} onClick={() => setDel(p)}><Trash2 size={15} /></button>
       </span>
     ) }] : []),
   ];
   return (
     <>
       <DataTable columns={columns} rows={list} rowKey="kind" loading={q.loading} refreshing={q.refreshing} error={q.error} onRetry={q.reload}
-        selectable={canEdit} selected={sel} onSelectedChange={setSel} isRowSelectable={(p) => !p.builtin}
+        selectable={canEdit} selected={sel} onSelectedChange={setSel}
         selectionBar={<button type="button" className="btn-default btn-sm text-danger" onClick={() => setBatchDel(true)}><Trash2 size={14} /> 批量删除（{sel.length}）</button>}
         page={page} pageSize={pg.pageSize} total={matched.length} onPageChange={(p) => setPg((x) => ({ ...x, ...p }))} empty={kw ? { title: '没有匹配的策略', description: '请调整全局搜索关键字' } : { title: '暂无策略' }}
         toolbar={<h3 className="text-sm font-semibold text-fg">优化策略</h3>}
@@ -71,8 +71,8 @@ export default function PolicyTab({ tick, openKind, onOpened, onSaved, keyword =
           {canEdit && <button type="button" className="btn-primary" onClick={() => setModal({ open: true, policy: null })}><Plus size={15} /> 创建优化策略</button>}
         </>} />
       <PolicyModal open={modal.open} policy={modal.policy} meta={q.data || {}} onClose={close} onSaved={() => { close(); q.reload(); onSaved?.(); }} onIgnored={onSaved} />
-      <ConfirmModal open={!!del} danger title="删除优化策略" description={`确认删除策略「${del?.name || ''}」？`} impactList={['该策略的优化建议与忽略项将一并清除', '内置策略不可删除']} confirmText="删除" loading={busy} onConfirm={doDelete} onCancel={() => setDel(null)} />
-      <ConfirmModal open={batchDel} danger title="批量删除优化策略" description={`确认删除选中的 ${selPolicies.length} 条策略？`} targets={selPolicies.map((p) => p.name)} impactList={['这些策略的优化建议与忽略项将一并清除', '内置策略不可删除，因此不可勾选']} confirmText="批量删除" loading={busy} onConfirm={doBatchDelete} onCancel={() => setBatchDel(false)} />
+      <ConfirmModal open={!!del} danger title="删除优化策略" description={`确认删除策略「${del?.name || ''}」？`} impactList={del?.builtin ? ['该策略的优化建议与忽略项将一并清除', '这是内置策略，删除后不会自动恢复，可通过「创建优化策略」按需重建', '引用该策略的自动巡检项将不再参与判定'] : ['该策略的优化建议与忽略项将一并清除']} confirmText="删除" loading={busy} onConfirm={doDelete} onCancel={() => setDel(null)} />
+      <ConfirmModal open={batchDel} danger title="批量删除优化策略" description={`确认删除选中的 ${selPolicies.length} 条策略？`} targets={selPolicies.map((p) => p.name)} impactList={['这些策略的优化建议与忽略项将一并清除', ...(selPolicies.some((p) => p.builtin) ? ['选中项含内置策略，删除后不会自动恢复，可通过「创建优化策略」按需重建', '引用被删策略的自动巡检项将不再参与判定'] : [])]} confirmText="批量删除" loading={busy} onConfirm={doBatchDelete} onCancel={() => setBatchDel(false)} />
     </>
   );
 }

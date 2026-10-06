@@ -431,9 +431,9 @@ func (e *Engine) VMBands(ctx context.Context, plats []capacity.Platform, flt Fil
 	return out, nil
 }
 
-// ---------- 磁盘分析 ----------
+// ---------- 云硬盘分析 ----------
 
-// DiskAnalysis 磁盘分析页（unit=gb 时数值为容量 GB，否则为块数）。
+// DiskAnalysis 云硬盘分析页（unit=gb 时数值为容量 GB，否则为块数）。
 type DiskAnalysis struct {
 	Platforms []Dist `json:"platforms"`
 	Mount     []Dist `json:"mount"`

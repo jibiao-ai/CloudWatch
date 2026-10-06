@@ -293,7 +293,7 @@ func policyErr(err error) error {
 		return httpx.Err(404, "策略不存在")
 	case errors.Is(err, analytics.ErrDupName):
 		return httpx.Err(409, err.Error())
-	case errors.Is(err, analytics.ErrTooMany), errors.Is(err, analytics.ErrBuiltin):
+	case errors.Is(err, analytics.ErrTooMany):
 		return httpx.Err(400, err.Error())
 	}
 	return err
@@ -389,7 +389,7 @@ func (s *Server) analyticsPolicyUpdate(w http.ResponseWriter, r *http.Request, p
 	return nil
 }
 
-// analyticsPolicyDelete DELETE /analytics/policies/{kind}  仅自定义策略可删除
+// analyticsPolicyDelete DELETE /analytics/policies/{kind}  内置 / 自定义策略均可删除
 func (s *Server) analyticsPolicyDelete(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	t0 := time.Now()
 	kind := r.PathValue("kind")
@@ -414,7 +414,7 @@ func (s *Server) analyticsPolicyDelete(w http.ResponseWriter, r *http.Request, p
 	return nil
 }
 
-// analyticsPolicyBatchDelete POST /analytics/policies/batch-delete {kinds:[]}  仅自定义策略可删除，含内置策略时整体拒绝
+// analyticsPolicyBatchDelete POST /analytics/policies/batch-delete {kinds:[]}  内置 / 自定义策略均可删除，任一不存在时整体拒绝
 func (s *Server) analyticsPolicyBatchDelete(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	t0 := time.Now()
 	b, err := httpx.ReadBody(r, 64<<10)

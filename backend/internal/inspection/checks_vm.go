@@ -297,6 +297,9 @@ func policyOff(in *Input, kind string) (bool, string) {
 	if ok && !p.Enabled {
 		return true, "运营中心中的「" + p.Name + "」策略已停用，本项不参与判定。"
 	}
+	if !ok && in.Policies != nil { // 策略已在运营中心被删除
+		return true, "运营中心中对应的优化策略已被删除，本项不参与判定。"
+	}
 	return false, ""
 }
 
@@ -322,7 +325,7 @@ func hitRows(h []map[string]any, max int, cols ...string) ([][]string, []string)
 
 func policyItem(in *Input, c Config, kind, label, std, advice string, cols []string, heads []string) Item {
 	if off, msg := policyOff(in, kind); off {
-		return Item{Status: NA, Value: "策略已停用", Detail: msg}
+		return Item{Status: NA, Value: "策略已停用/已删除", Detail: msg}
 	}
 	if in.Hits == nil {
 		return na("未能读取运营中心策略结果。")
