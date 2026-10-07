@@ -99,22 +99,6 @@ func worse(a, b string) string {
 	return a
 }
 
-// byLoad 按使用率给健康度：使用率阈值只产生「告警」（>=70 偏高，>=85 严重偏高），不再直接判为「异常」——
-// 「异常」仅用于严重级告警与资源自身故障（error / down / offline 等）。
-func byLoad(n *Node, label string, v *float64) {
-	if v == nil {
-		return
-	}
-	switch {
-	case *v >= 85:
-		n.Health = worse(n.Health, HWarning)
-		n.Reasons = append(n.Reasons, fmt.Sprintf("%s %.1f%%（≥85%%，严重偏高）", label, *v))
-	case *v >= 70:
-		n.Health = worse(n.Health, HWarning)
-		n.Reasons = append(n.Reasons, fmt.Sprintf("%s %.1f%%（≥70%%）", label, *v))
-	}
-}
-
 func sortNodes(ns []Node) {
 	sort.SliceStable(ns, func(i, j int) bool { return natLess(ns[i].Name, ns[j].Name) })
 }

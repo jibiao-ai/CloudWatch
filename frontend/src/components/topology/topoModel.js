@@ -55,7 +55,7 @@ export function buildModel(graph) {
   const nets = graph.nodes.filter((n) => n.type === 'network').sort((a, b) => (netPorts.get(b.id) || 0) - (netPorts.get(a.id) || 0));
   const orphans = graph.nodes.filter((n) => n.type === 'volume' && n.orphan);
 
-  /** 待处理问题：异常在前、告警在后；可定位的资源带上所在宿主机 / 虚拟机 */
+  /** 异常资源：异常在前、警示在后；可定位的资源带上所在宿主机 / 虚拟机 */
   const problems = graph.nodes.filter((n) => bad(n.health) && n.type !== 'network' && !(n.type === 'volume' && n.orphan)).map((n) => {
     let vm = null; let host = null;
     if (n.type === 'vm') vm = n.id;
@@ -64,7 +64,7 @@ export function buildModel(graph) {
     else if (n.type === 'host') host = n.id;
     else if (n.type === 'phys') host = [...physOfHost.entries()].find(([, p]) => p === n.id)?.[0] || null;
     return { node: n, vm, host };
-  }).sort((a, b) => HEALTH_RANK[b.node.health] - HEALTH_RANK[a.node.health] || b.node.alerts.critical - a.node.alerts.critical);
+  }).sort((a, b) => HEALTH_RANK[b.node.health] - HEALTH_RANK[a.node.health]);
 
   return { byId, hosts, hostById: new Map(hosts.map((h) => [h.id, h])), physOnly, pools, nets, orphans, problems,
     volsOfVm, portsOfVm, hostOfVm, vmOfChild, poolOfVol, netOfPort, poolVms, poolVols, netVms, netPorts };

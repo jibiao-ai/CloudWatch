@@ -70,10 +70,6 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 	if err != nil {
 		return nil, err
 	}
-	alerts, err := b.Monitor.ListAlerts(ctx, monitor.AlertQuery{ProviderID: p.ID, Status: "firing"})
-	if err != nil {
-		return nil, err
-	}
 
 	x := &g{idx: map[string]int{}}
 	// 监控中心的指标：节点 / 云主机 CPU 与内存使用率
@@ -133,8 +129,6 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 			n.Health = worse(n.Health, HWarning)
 			n.Reasons = append(n.Reasons, "计算服务已禁用"+reasonSuffix(s(r, "disabledReason")))
 		}
-		byLoad(&n, "CPU 使用率", cpu)
-		byLoad(&n, "内存使用率", mem)
 		n.Attrs = [][2]string{{"管理 IP", s(r, "hostIp")}, {"运行状态", s(r, "stateText")}, {"服务状态", s(r, "enabledText")}, {"vCPU 已用/容量", fmt.Sprintf("%.0f / %.0f", fv(r, "vcpusUsed"), fv(r, "vcpusCap"))},
 			{"内存 已用/容量", mbText(fv(r, "memoryMbUsed")) + " / " + mbText(fv(r, "memoryMbCap"))}, {"CPU 使用率（监控）", pctPtr(cpu)}, {"内存使用率（监控）", pctPtr(mem)}, {"运行云主机", s(r, "runningVms")}, {"虚拟化", s(r, "hypervisorType")}}
 		x.add(n)
@@ -166,8 +160,6 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		if m, ok := monVM[id]; ok {
 			n.CPU, n.Mem = m.CPUPercent, m.MemPercent
 			if n.Health == HOK {
-				byLoad(&n, "CPU 使用率", n.CPU)
-				byLoad(&n, "内存使用率", n.Mem)
 			}
 		}
 		spec := ""
@@ -196,7 +188,6 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		}
 		up := f(r, "usedPercent")
 		n.Mem = up
-		byLoad(&n, "存储使用率", up)
 		n.Sub = fmt.Sprintf("%s / %s", gbText(fv(r, "usedGb")), gbText(fv(r, "totalGb")))
 		n.Attrs = [][2]string{{"后端名称", s(r, "backendName")}, {"存储池", s(r, "poolName")}, {"协议", s(r, "protocolText")}, {"总容量", gbText(fv(r, "totalGb"))}, {"已用容量", gbText(fv(r, "usedGb"))}, {"存储使用率", pctPtr(up)}}
 		x.add(n)
@@ -276,33 +267,6 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		}
 	}
 
-	// ---- 告警中心：把未恢复告警关联到节点 ----
-	items := make([]AlertItem, 0, len(alerts.List))
-	var tot Alerts
-	seen, reasonAt := map[string]int{}, map[string]int{} // 同一资源的同名告警合并为「×N」
-	for _, a := range alerts.List {
-		nid := attach(a, physByName, physByIP, hostByName, vmByID)
-		items = append(items, AlertItem{ID: a.ID, Title: a.Name, Severity: a.Severity, Type: a.Type, NodeName: a.NodeName, HostIP: a.HostIP, NodeID: nid, FiredAt: a.FiredAt, Acked: a.Acked})
-		bump(&tot, a.Severity)
-		if n := x.get(nid); n != nil {
-			bump(&n.Alerts, a.Severity)
-			switch a.Severity {
-			case "critical": // 严重告警 → 异常
-				n.Health = worse(n.Health, HDanger)
-			case "warning": // 警告 → 告警；提示级（info）不改变健康度
-				if rank(n.Health) < rank(HWarning) || n.Health == HOff {
-					n.Health = worse(n.Health, HWarning)
-				}
-			}
-			seen[nid+"|"+a.Name]++
-			if seen[nid+"|"+a.Name] == 1 {
-				n.Reasons = append(n.Reasons, "告警："+a.Name)
-				reasonAt[nid+"|"+a.Name] = len(n.Reasons) - 1
-			} else {
-				n.Reasons[reasonAt[nid+"|"+a.Name]] = fmt.Sprintf("告警：%s（×%d）", a.Name, seen[nid+"|"+a.Name])
-			}
-		}
-	}
 	// 父级健康度向上汇总：计算节点承载的云主机异常 → 计算节点 warning 提示（不覆盖自身状态）
 	childBad := map[string]int{}
 	for _, e := range x.edges {
@@ -319,7 +283,7 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 		}
 	}
 
-	out := &Graph{Nodes: x.nodes, Edges: x.edges, Alerts: items, Counts: map[string]Count{}, Total: tot}
+	out := &Graph{Nodes: x.nodes, Edges: x.edges, Counts: map[string]Count{}}
 	if out.Nodes == nil {
 		out.Nodes = []Node{}
 	}
@@ -347,7 +311,7 @@ func (b *Builder) Build(ctx context.Context, p *provider.Provider) (*Graph, erro
 	}
 	out.Usage = usageOf(hosts, pools)
 	out.Orphan = orphanOf(out.Nodes, time.Now())
-	out.Platform = platformOf(p, meta, snap, tot, out)
+	out.Platform = platformOf(p, meta, out)
 	return out, nil
 }
 
@@ -414,18 +378,17 @@ func usageOf(hosts, pools []capacity.Row) Usage {
 	return Usage{VCPU: p(vu, vc), Mem: p(mu, mc), Storage: p(pu, pt)}
 }
 
-func platformOf(p *provider.Provider, meta *capacity.Meta, snap *monitor.Snapshot, tot Alerts, gr *Graph) Platform {
-	pl := Platform{ID: p.ID, Name: p.Name, EnvType: p.EnvType, ConsoleIP: p.ConsoleIP, Status: p.Status, AlertFiring: tot.Total(),
-		AssetAt: meta.CollectedAt, AssetOK: meta.OK, MonitorAt: snap.CollectedAt, MonitorOK: snap.OK}
+func platformOf(p *provider.Provider, meta *capacity.Meta, gr *Graph) Platform {
+	pl := Platform{ID: p.ID, Name: p.Name, EnvType: p.EnvType, ConsoleIP: p.ConsoleIP, Status: p.Status, AssetAt: meta.CollectedAt, AssetOK: meta.OK}
 	h := HOK
 	switch {
-	case meta.CollectedAt == nil && snap.CollectedAt == nil:
+	case meta.CollectedAt == nil:
 		h = HUnknown
-	case p.Status == "error", tot.Critical > 0, gr.hasDanger():
+	case p.Status == "error", gr.hasDanger():
 		h = HDanger
 	}
 	if h == HOK {
-		if (meta.CollectedAt != nil && !meta.OK) || (snap.CollectedAt != nil && !snap.OK) || p.Status == "warning" || tot.Total() > 0 {
+		if !meta.OK || p.Status == "warning" {
 			h = HWarning
 		}
 		for _, c := range gr.Counts {
@@ -446,38 +409,9 @@ func (b *Builder) Overview(ctx context.Context, list []*provider.Provider) ([]Ov
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, OverviewItem{Platform: gr.Platform, Counts: gr.Counts, Usage: gr.Usage, Alerts: gr.Total, Hosts: hostCells(gr), Orphan: gr.Orphan})
+		out = append(out, OverviewItem{Platform: gr.Platform, Counts: gr.Counts, Usage: gr.Usage, Hosts: hostCells(gr), Orphan: gr.Orphan})
 	}
 	return out, nil
-}
-
-// attach 把告警关联到拓扑节点：标签里带云主机 UUID → 云主机；否则按节点名 / 主机 IP 关联物理节点或计算节点
-// （标题含「计算节点 / 云主机 / 虚拟机」的优先计算节点，其余优先物理节点）。
-func attach(a *monitor.Alert, physByName, physByIP, hostByName, vmByID map[string]string) string {
-	for _, v := range a.Labels {
-		if id, ok := vmByID[v]; ok {
-			return id
-		}
-	}
-	name := short(first(a.NodeName, a.Labels["node_name"], a.Labels["nodename"], a.Labels["node"], a.Labels["hostname"]))
-	pid := first(physByName[name], physByIP[a.HostIP])
-	hid := hostByName[name]
-	t := a.Name + a.Summary
-	if strings.Contains(t, "计算节点") || strings.Contains(t, "云主机") || strings.Contains(t, "虚拟机") {
-		return first(hid, pid)
-	}
-	return first(pid, hid)
-}
-
-func bump(a *Alerts, sev string) {
-	switch sev {
-	case "critical":
-		a.Critical++
-	case "warning":
-		a.Warning++
-	default:
-		a.Info++
-	}
 }
 
 func first(v ...string) string {

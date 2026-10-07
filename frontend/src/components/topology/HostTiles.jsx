@@ -11,7 +11,7 @@ function Tile({ h, fs, q, selected, onDrill, onPickVm }) {
   if (h.phys && (h.phys.health === 'danger' || h.phys.health === 'warning')) tags.push([h.phys.health, `物理${label(h.phys.health)}`, h.phys.reasons[0]]);
   if (h.host.health === 'danger' || h.host.health === 'warning') tags.push([h.host.health, `计算${label(h.host.health)}`, h.host.reasons[0]]);
   if (h.c.danger) tags.push(['danger', `${h.c.danger} 台虚拟机异常`]);
-  if (h.c.warning) tags.push(['warning', `${h.c.warning} 台虚拟机告警`]);
+  if (h.c.warning) tags.push(['warning', `${h.c.warning} 台虚拟机警示`]);
   if (h.c.off) tags.push(['off', `${h.c.off} 台停止`]);
   const dim = fs && !h.vms.some((v) => fs.has(v.id));
   const ql = q.toLowerCase();
@@ -52,7 +52,7 @@ export default function HostTiles({ hosts, total, fs, q, selected, onDrill, onPi
       ) : <div className="py-10 text-center text-sm text-fg-muted">没有符合条件的宿主机</div>}
       {hosts.length > n && <div className="mt-3 text-center"><button type="button" className="btn-default btn-sm" onClick={() => setN(n + PAGE)}><ChevronDown size={14} />再显示 {Math.min(PAGE, hosts.length - n)} 台宿主机</button></div>}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-fg-muted">
-        {[['danger', '异常'], ['warning', '告警'], ['off', '已停止'], ['ok', '正常（刻意降饱和）']].map(([k, l]) => <span key={k} className="inline-flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded-[3px] ${CELL[k]}`} />{l}</span>)}
+        {[['danger', '异常'], ['warning', '警示'], ['off', '已停止'], ['ok', '正常（刻意降饱和）']].map(([k, l]) => <span key={k} className="inline-flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded-[3px] ${CELL[k]}`} />{l}</span>)}
         <span className="text-fg-subtle">点击卡片下钻 · 点击方块直达虚拟机</span>
       </div>
     </section>

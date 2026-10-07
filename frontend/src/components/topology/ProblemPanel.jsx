@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { BellRing } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import { TYPES, HEALTH } from './topoUtil';
 
 const SHOW = 12;
 
-/** 待处理问题：严重优先，点击直达（宿主机 / 虚拟机 / 存储池） */
+/** 异常资源（资源自身状态异常）：严重优先，点击直达（宿主机 / 虚拟机 / 存储池） */
 export default function ProblemPanel({ problems, onPick }) {
   const [all, setAll] = useState(false);
   const list = all ? problems : problems.slice(0, SHOW);
   return (
-    <section className="card p-3" id="topo-problems" aria-label="待处理问题">
-      <h3 className="text-sm font-semibold text-fg flex items-center gap-1.5 mb-2"><BellRing size={14} />待处理问题<span className="text-xs text-fg-subtle font-normal">共 {problems.length} · 异常优先</span></h3>
-      {problems.length === 0 ? <div className="text-sm text-fg-muted py-4 text-center">当前没有异常或告警</div> : (
+    <section className="card p-3" id="topo-problems" aria-label="异常资源">
+      <h3 className="text-sm font-semibold text-fg flex items-center gap-1.5 mb-2"><CircleAlert size={14} />异常资源<span className="text-xs text-fg-subtle font-normal">共 {problems.length} · 异常优先</span></h3>
+      {problems.length === 0 ? <div className="text-sm text-fg-muted py-4 text-center">当前没有状态异常的资源</div> : (
         <ul className="max-h-[420px] overflow-y-auto">
           {list.map((p) => {
             const h = HEALTH[p.node.health] || HEALTH.unknown;

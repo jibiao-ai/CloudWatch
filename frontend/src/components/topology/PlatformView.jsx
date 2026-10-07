@@ -25,7 +25,7 @@ import RelationLines from './RelationLines';
 
 const TITLE = { phys: '物理节点', nodes: '计算节点', vms: '虚拟机', volumes: '云硬盘', ports: '虚拟网卡', pools: '集群存储' };
 const KPIS = [['phys', '物理节点', Server], ['host', '计算节点', Cpu], ['vm', '虚拟机', Monitor], ['volume', '云硬盘', HardDrive], ['port', '虚拟网卡', Cable], ['pool', '集群存储', Database], ['network', '网络', Network]];
-const FILTERS = [{ value: 'all', label: '全部' }, { value: 'bad', label: '仅异常 / 告警' }, { value: 'off', label: '含已停止' }];
+const FILTERS = [{ value: 'all', label: '全部' }, { value: 'bad', label: '仅异常 / 警示' }, { value: 'off', label: '含已停止' }];
 const bad = (h) => h === 'danger' || h === 'warning';
 
 /** 平台拓扑：平台 → 宿主机热力块（嵌套 物理 → 计算 → 虚拟机）→ 宿主机下钻 → 虚拟机 1 跳关系图；存储池 / 网络为汇聚带，连线仅对选中对象按需开启 */

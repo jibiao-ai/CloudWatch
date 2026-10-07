@@ -30,7 +30,7 @@ export default function OrphanSection({ orphans, summary, providerId }) {
         <Link to={`/capacity?tab=volumes&providerId=${encodeURIComponent(providerId)}`} className="btn-default btn-sm ml-auto"><ExternalLink size={13} />到配置中心处理</Link>
       </div>
       <div className="flex flex-wrap gap-2 mt-2.5">
-        {chip('all', '全部', summary.count)}{chip('30', '闲置 > 30 天', summary.idle30)}{chip('90', '闲置 > 90 天', summary.idle90)}{chip('bad', '状态异常 / 告警', summary.danger + summary.warning)}
+        {chip('all', '全部', summary.count)}{chip('30', '闲置 > 30 天', summary.idle30)}{chip('90', '闲置 > 90 天', summary.idle90)}{chip('bad', '状态异常 / 警示', summary.danger + summary.warning)}
       </div>
       {open && (
         <div className="mt-3">

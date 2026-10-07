@@ -16,7 +16,7 @@ function Mini({ s }) {
     <span className="inline-flex items-center gap-2 text-xs whitespace-nowrap">
       <span className="text-fg-muted">{s.total} 台宿主机</span>
       {s.danger > 0 && <span className="inline-flex items-center gap-1 text-danger"><span className="w-1.5 h-1.5 rounded-full bg-danger" />异常 {s.danger}</span>}
-      {s.warning > 0 && <span className="inline-flex items-center gap-1 text-warning"><span className="w-1.5 h-1.5 rounded-full bg-warning" />告警 {s.warning}</span>}
+      {s.warning > 0 && <span className="inline-flex items-center gap-1 text-warning"><span className="w-1.5 h-1.5 rounded-full bg-warning" />警示 {s.warning}</span>}
       {!s.danger && !s.warning && <span className="inline-flex items-center gap-1 text-success"><span className="w-1.5 h-1.5 rounded-full bg-success" />全部正常</span>}
     </span>
   );
@@ -30,7 +30,7 @@ function Cells({ item, onOpen }) {
       {item.hosts.map((h) => (
         <button key={h.nodeId} type="button" data-heat={h.nodeId} onClick={() => onOpen(p.id, h.nodeId)}
           aria-label={`${p.name} ${h.name}`}
-          title={`${p.name} / ${h.name}\n虚拟机 ${h.vmTotal} 台${h.vmDanger ? `，异常 ${h.vmDanger}` : ''}${h.vmWarning ? `，告警 ${h.vmWarning}` : ''}${h.vmOff ? `，停止 ${h.vmOff}` : ''}\n点击下钻到该宿主机`}
+          title={`${p.name} / ${h.name}\n虚拟机 ${h.vmTotal} 台${h.vmDanger ? `，异常 ${h.vmDanger}` : ''}${h.vmWarning ? `，警示 ${h.vmWarning}` : ''}${h.vmOff ? `，停止 ${h.vmOff}` : ''}\n点击下钻到该宿主机`}
           className={`w-[18px] h-[18px] rounded-[3px] hover:outline hover:outline-2 hover:outline-fg ${CELL[h.health] || CELL.ok}`} />
       ))}
     </div>
@@ -96,7 +96,7 @@ export default function OverviewHeat({ items, onOpen }) {
       </h3>
       <div className="space-y-2">{body}</div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-fg-muted">
-        {[['danger', '异常（含严重告警）'], ['warning', '告警'], ['off', '已停止'], ['ok', '正常']].map(([k, l]) => <span key={k} className="inline-flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded-[3px] ${CELL[k]}`} />{l}</span>)}
+        {[['danger', '异常'], ['warning', '警示'], ['off', '已停止'], ['ok', '正常']].map(([k, l]) => <span key={k} className="inline-flex items-center gap-1.5"><span className={`w-3.5 h-3.5 rounded-[3px] ${CELL[k]}`} />{l}</span>)}
         <span className="text-fg-subtle">点击方块直达宿主机 · 点击平台名进入平台拓扑</span>
       </div>
     </section>

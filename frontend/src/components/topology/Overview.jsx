@@ -1,6 +1,5 @@
 import React from 'react';
-import { BellRing, Cloud, HardDrive, Monitor, Server } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Cloud, HardDrive, Monitor, Server } from 'lucide-react';
 import EmptyState from '../EmptyState';
 import { ENV_TYPES, ENV_TAG } from '../../data/dict';
 import { fromNow } from '../../utils/format';
@@ -24,7 +23,6 @@ function Usage({ label, v }) {
 function PlatformCard({ item, onOpen }) {
   const p = item.platform;
   const h = HEALTH[p.health] || HEALTH.unknown;
-  const alerts = item.alerts.critical + item.alerts.warning + item.alerts.info;
   const env = ENV_TYPES.find((e) => e.value === p.envType);
   const o = item.orphan || {};
   return (
@@ -45,7 +43,7 @@ function PlatformCard({ item, onOpen }) {
           const s = stat(item.counts, t);
           const Icon = TYPES[t].icon;
           return (
-            <div key={t} className="min-w-0" title={`${TYPES[t].label}：共 ${s.total}；异常 ${s.danger}，告警 ${s.warning}，停止 ${s.off}`}>
+            <div key={t} className="min-w-0" title={`${TYPES[t].label}：共 ${s.total}；异常 ${s.danger}，警示 ${s.warning}，停止 ${s.off}`}>
               <div className="flex items-center gap-1 text-[11px] text-fg-muted truncate"><Icon size={11} className="shrink-0" />{TYPES[t].label}</div>
               <div className="text-base font-semibold text-fg tabular-nums leading-tight mb-1">{s.total}</div>
               <StateBar s={s} />
@@ -70,10 +68,6 @@ function PlatformCard({ item, onOpen }) {
           <span className="inline-flex items-center gap-1" title={p.assetAt ? `资产采集：${p.assetOk ? '成功' : '失败'}（${fromNow(p.assetAt)}）` : '资产尚未采集'}>
             <span className={`w-1.5 h-1.5 rounded-full ${!p.assetAt ? 'bg-fg-subtle' : p.assetOk ? 'bg-success' : 'bg-danger'}`} />资产
           </span>
-          <span className="inline-flex items-center gap-1" title={p.monitorAt ? `监控采集：${p.monitorOk ? '成功' : '失败'}（${fromNow(p.monitorAt)}）` : '监控尚未采集'}>
-            <span className={`w-1.5 h-1.5 rounded-full ${!p.monitorAt ? 'bg-fg-subtle' : p.monitorOk ? 'bg-success' : 'bg-danger'}`} />监控
-          </span>
-          <span className={`inline-flex items-center gap-1 ${alerts ? (item.alerts.critical ? 'text-danger' : 'text-warning') : ''}`}><BellRing size={12} />{alerts ? `${alerts} 条告警` : '无告警'}</span>
         </span>
         <button type="button" className="btn-default btn-sm shrink-0" onClick={() => onOpen(p.id)}>查看拓扑</button>
       </footer>
@@ -86,24 +80,15 @@ export default function Overview({ items, onOpen }) {
   if (!items.length) return <div className="card"><EmptyState title="暂无云平台" description="请先在「系统管理 → 平台管理」中对接云平台" /></div>;
   const agg = (t) => items.reduce((a, i) => { const s = stat(i.counts, t); return { total: a.total + s.total, danger: a.danger + s.danger, warning: a.warning + s.warning, off: a.off + s.off, ok: a.ok + s.ok }; }, { total: 0, danger: 0, warning: 0, off: 0, ok: 0 });
   const orphan = items.reduce((a, i) => ({ count: a.count + (i.orphan?.count || 0), sizeGb: a.sizeGb + (i.orphan?.sizeGb || 0), idle90: a.idle90 + (i.orphan?.idle90 || 0) }), { count: 0, sizeGb: 0, idle90: 0 });
-  const critical = items.reduce((a, i) => a + i.alerts.critical, 0);
-  const alerts = items.reduce((a, i) => a + i.alerts.critical + i.alerts.warning + i.alerts.info, 0);
-  const bad = items.filter((i) => i.platform.health === 'danger' || i.platform.health === 'warning').length;
   const platS = { total: items.length, danger: items.filter((i) => i.platform.health === 'danger').length, warning: items.filter((i) => i.platform.health === 'warning').length, off: 0 };
   platS.ok = platS.total - platS.danger - platS.warning;
   return (
     <div className="space-y-4" id="topo-overview">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard icon={Cloud} label="云平台" s={platS} unit="个" />
         <KpiCard icon={Server} label="物理节点" s={agg('phys')} unit="个" />
         <KpiCard icon={Server} label="计算节点" s={agg('host')} unit="个" />
         <KpiCard icon={Monitor} label="虚拟机" s={agg('vm')} unit="台" />
-        <div className="card px-3 py-2.5 min-w-0">
-          <div className="flex items-center gap-1.5 text-xs text-fg-muted"><BellRing size={13} />未恢复告警</div>
-          <div className="text-2xl font-semibold text-fg tabular-nums leading-tight mt-0.5">{alerts}<span className="text-xs font-normal text-fg-subtle ml-1">条</span></div>
-          <div className={`text-xs mt-2 ${critical ? 'text-danger' : alerts ? 'text-warning' : 'text-success'}`}>{critical ? `严重 ${critical} 条` : alerts ? '无严重告警' : '无告警'}{bad ? ` · ${bad} 个平台需关注` : ''}</div>
-          <Link to="/alerts" className="text-xs text-primary-text mt-1 inline-block hover:underline">告警中心</Link>
-        </div>
       </div>
       <OverviewHeat items={items} onOpen={onOpen} />
       {orphan.count > 0 && (

@@ -1,11 +1,11 @@
 import React from 'react';
 
-/** 状态堆叠条：异常 / 告警 / 已停止 / 正常，按数量占比 */
+/** 状态堆叠条：异常 / 警示 / 已停止 / 正常，按数量占比 */
 export function StateBar({ s }) {
   const t = s.total || 1;
   const seg = [['bg-danger', s.danger], ['bg-warning', s.warning], ['bg-fg-subtle/50', s.off], ['bg-success', s.ok]];
   return (
-    <div className="flex h-1.5 rounded-full overflow-hidden bg-muted" role="img" aria-label={`异常 ${s.danger}，告警 ${s.warning}，已停止 ${s.off}，正常 ${s.ok}`}>
+    <div className="flex h-1.5 rounded-full overflow-hidden bg-muted" role="img" aria-label={`异常 ${s.danger}，警示 ${s.warning}，已停止 ${s.off}，正常 ${s.ok}`}>
       {seg.map(([c, n]) => (n ? <span key={c} className={`block h-full ${c}`} style={{ width: `${(n / t) * 100}%` }} /> : null))}
     </div>
   );
@@ -15,7 +15,7 @@ export function StateBar({ s }) {
 export function StateLine({ s, okText = '全部正常', className = '' }) {
   const items = [];
   if (s.danger) items.push(['text-danger', 'bg-danger', `异常 ${s.danger}`]);
-  if (s.warning) items.push(['text-warning', 'bg-warning', `告警 ${s.warning}`]);
+  if (s.warning) items.push(['text-warning', 'bg-warning', `警示 ${s.warning}`]);
   if (s.off) items.push(['text-fg-muted', 'bg-fg-subtle', `停止 ${s.off}`]);
   if (!items.length) items.push(['text-success', 'bg-success', okText]);
   return (
@@ -37,7 +37,7 @@ export function KpiCard({ icon: Icon, label, s, unit = '个' }) {
   );
 }
 
-/** 方块颜色：正常刻意降饱和，异常 / 告警保持满色，让问题一眼可见 */
+/** 方块颜色：正常刻意降饱和，异常 / 警示保持满色，让问题一眼可见 */
 export const CELL = { ok: 'bg-success/30', off: 'bg-fg-subtle/40', warning: 'bg-warning', danger: 'bg-danger', unknown: 'bg-fg-subtle/20' };
 export const STRIPE = { danger: 'border-l-danger', warning: 'border-l-warning', ok: 'border-l-success', off: 'border-l-line-strong', unknown: 'border-l-line-strong' };
 
