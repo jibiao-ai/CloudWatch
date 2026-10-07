@@ -27,7 +27,7 @@ function PlatformCard({ item, onOpen }) {
   return (
     <article className="card p-4 flex flex-col gap-3" data-platform={p.id}>
       <header className="flex items-start gap-2.5">
-        <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${p.health === 'danger' ? 'bg-danger-soft text-danger' : p.health === 'warning' ? 'bg-warning-soft text-warning' : 'bg-primary-soft text-primary-text'}`}><Cloud size={18} /></span>
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-primary-soft text-primary-text"><Cloud size={18} /></span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="text-sm font-semibold text-fg truncate" title={p.name}>{p.name}</h3>
