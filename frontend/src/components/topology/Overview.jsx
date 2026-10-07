@@ -3,7 +3,7 @@ import { Cloud, HardDrive, Monitor, Server } from 'lucide-react';
 import EmptyState from '../EmptyState';
 import { ENV_TYPES, ENV_TAG } from '../../data/dict';
 import { fromNow } from '../../utils/format';
-import { HEALTH, pctTone, TYPES } from './topoUtil';
+import { pctTone, TYPES } from './topoUtil';
 import { KpiCard, StateBar, StateLine } from './StatusUi';
 import { stat } from './topoModel';
 import OverviewHeat from './OverviewHeat';
@@ -22,7 +22,6 @@ function Usage({ label, v }) {
 
 function PlatformCard({ item, onOpen }) {
   const p = item.platform;
-  const h = HEALTH[p.health] || HEALTH.unknown;
   const env = ENV_TYPES.find((e) => e.value === p.envType);
   const o = item.orphan || {};
   return (
@@ -36,7 +35,6 @@ function PlatformCard({ item, onOpen }) {
           </div>
           <div className="text-xs text-fg-muted mt-0.5 font-mono">{p.consoleIp || '—'}</div>
         </div>
-        <span className={h.tag}>{h.label}</span>
       </header>
       <div className="grid grid-cols-3 gap-x-3 gap-y-2.5">
         {ORDER.map((t) => {
