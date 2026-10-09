@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Play } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
@@ -21,15 +21,20 @@ import { formatDateTime, fromNow } from '../utils/format';
 export default function CapacityPage() {
   const toast = useToast();
   const canCollect = useCan('capacity:collect');
-  const ov = useAsync(() => capacityApi.getOverview(), []);
+  const [pid, setPid] = useState(''); // 总览「全部云平台」：只汇总所选平台
   const [sp] = useSearchParams();
   const [tab, setTab] = useState(['overview', 'steps', ...KINDS.map((k) => k.key)].includes(sp.get('tab')) ? sp.get('tab') : 'overview'); // ?tab= 供运营中心等页面跳转到指定页签
   const spKey = sp.toString();
   useEffect(() => { const t = sp.get('tab'); if (['overview', 'steps', ...KINDS.map((k) => k.key)].includes(t)) setTab(t); }, [spKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const effPid = tab === 'overview' ? pid : '';
+  const ov = useAsync(() => capacityApi.getOverview(effPid), [effPid]);
+  const allRef = useRef(null); // 未按平台过滤时的完整总览：状态条 / 页签计数 / 平台下拉始终用全部平台
+  if (!effPid && ov.data) allRef.current = ov.data;
   const prefill = { keyword: sp.get('keyword') || '', providerId: sp.get('providerId') || '', open: sp.get('open') || '' }; // 全局搜索 / 概览跳转
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const d = ov.data;
+  const full = allRef.current || d;
   const reload = useCallback(() => { ov.reload(); setTick((x) => x + 1); }, [ov]);
 
   const collect = async () => {
@@ -43,10 +48,10 @@ export default function CapacityPage() {
     } catch (e) { toast.error('采集失败', e.message); } finally { setBusy(false); }
   };
 
-  const total = d ? d.platforms.length : 0;
-  const okN = d ? d.platforms.filter((p) => p.collectedAt && p.ok).length : 0;
-  const last = d ? d.platforms.map((p) => p.collectedAt).filter(Boolean).sort().pop() : null;
-  const tabs = [{ key: 'overview', label: '总览' }, ...KINDS.map((k) => ({ key: k.key, label: k.label, count: d ? d.totals[k.count] : undefined })), { key: 'steps', label: '采集明细' }];
+  const total = full ? full.platforms.length : 0;
+  const okN = full ? full.platforms.filter((p) => p.collectedAt && p.ok).length : 0;
+  const last = full ? full.platforms.map((p) => p.collectedAt).filter(Boolean).sort().pop() : null;
+  const tabs = [{ key: 'overview', label: '总览' }, ...KINDS.map((k) => ({ key: k.key, label: k.label, count: full ? full.totals[k.count] : undefined })), { key: 'steps', label: '采集明细' }];
 
   return (
     <div className="bg-bg">
@@ -64,7 +69,7 @@ export default function CapacityPage() {
           </div>
           <Tabs items={tabs} value={tab} onChange={setTab} className="mb-4" idPrefix="cap" />
           <div id="cap-panel" role="tabpanel" aria-labelledby={`cap-${tab}`}>
-            {tab === 'overview' ? <OverviewTab ov={d} onJump={setTab} /> : tab === 'steps' ? <StepsPanel platforms={d.platforms} /> : <ResourceTab key={tab} kind={tab} platforms={d.platforms} refreshKey={tick} prefill={prefill} />}
+            {tab === 'overview' ? <OverviewTab ov={d} onJump={setTab} pid={pid} onPid={setPid} platforms={full.platforms} /> : tab === 'steps' ? <StepsPanel platforms={full.platforms} /> : <ResourceTab key={tab} kind={tab} platforms={full.platforms} refreshKey={tick} prefill={prefill} />}
           </div>
         </>
       )}

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Cloud, HardDrive, Monitor, Server } from 'lucide-react';
 import EmptyState from '../EmptyState';
+import Pagination from '../Pagination';
 import { ENV_TYPES, ENV_TAG } from '../../data/dict';
 import { fromNow } from '../../utils/format';
 import { pctTone, TYPES } from './topoUtil';
@@ -74,7 +75,10 @@ function PlatformCard({ item, onOpen }) {
 }
 
 /** 第 0 层：全局总览（跨平台热力图 + 全局 KPI + 各云平台卡片） */
+const PAGE_SIZE = 6; // 底部云平台资产卡片：固定 2 行 × 3 列，每页 6 个
 export default function Overview({ items, onOpen }) {
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage((p) => Math.min(p, Math.max(1, Math.ceil(items.length / PAGE_SIZE)))); }, [items.length]);
   if (!items.length) return <div className="card"><EmptyState title="暂无云平台" description="请先在「系统管理 → 平台管理」中对接云平台" /></div>;
   const agg = (t) => items.reduce((a, i) => { const s = stat(i.counts, t); return { total: a.total + s.total, danger: a.danger + s.danger, warning: a.warning + s.warning, off: a.off + s.off, ok: a.ok + s.ok }; }, { total: 0, danger: 0, warning: 0, off: 0, ok: 0 });
   const orphan = items.reduce((a, i) => ({ count: a.count + (i.orphan?.count || 0), sizeGb: a.sizeGb + (i.orphan?.sizeGb || 0), idle90: a.idle90 + (i.orphan?.idle90 || 0) }), { count: 0, sizeGb: 0, idle90: 0 });
@@ -96,9 +100,12 @@ export default function Overview({ items, onOpen }) {
           <span className="text-xs text-fg-subtle">进入各平台拓扑，在页面底部「未挂载云硬盘」分区治理</span>
         </div>
       )}
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>
-        {items.map((it) => <PlatformCard key={it.platform.id} item={it} onOpen={onOpen} />)}
-      </div>
+      <section aria-label="云平台资产信息" id="topo-platform-cards" className="space-y-3">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          {items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((it) => <PlatformCard key={it.platform.id} item={it} onOpen={onOpen} />)}
+        </div>
+        <div className="card"><Pagination page={page} pageSize={PAGE_SIZE} total={items.length} pageSizeOptions={[PAGE_SIZE]} onChange={({ page: p }) => setPage(p)} /></div>
+      </section>
     </div>
   );
 }

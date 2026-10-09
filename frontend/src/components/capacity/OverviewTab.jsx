@@ -5,6 +5,7 @@ import CapacityBar from '../CapacityBar';
 import StatusDot from '../StatusDot';
 import DataTable from '../DataTable';
 import Carousel from '../Carousel';
+import OverviewSearch from '../search/OverviewSearch';
 import SearchInput from '../SearchInput';
 import { useClientTable } from '../../hooks/useClientTable';
 import { formatNumber, formatDateTime, fromNow, formatBytes } from '../../utils/format';
@@ -36,7 +37,7 @@ function UsageCard({ icon: Icon, label, used, total, format }) {
 }
 
 /** 总览：全部平台资产 KPI + 容量条 + 状态分布 + 各平台汇总（搜索 / 排序 / 分页）；采集明细已独立为「采集明细」页签 */
-export default function OverviewTab({ ov, onJump }) {
+export default function OverviewTab({ ov, onJump, pid, onPid, platforms }) {
   const t = ov.totals;
   const columns = useMemo(() => [
     { key: 'name', title: '所属云平台', width: 190, sortable: true, render: (p) => <PlatCell platform={p} /> },
@@ -56,6 +57,7 @@ export default function OverviewTab({ ov, onJump }) {
   const dist = Object.entries(ov.dist || {}).filter(([, l]) => l.length);
   return (
     <div className="space-y-4">
+      <OverviewSearch pid={pid} onPid={onPid} platforms={platforms} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={Layers} label="已对接云平台" value={ov.platforms.length} hint={`${ov.platforms.filter((p) => p.collectedAt && p.ok).length} 个采集正常`} />
         <StatCard icon={HardDrive} tone="info" label="物理节点" value={n0(t.phys)} hint={`CPU ${n0(t.physCores)} 核，内存 ${formatBytes((t.physMemGb || 0) * 1024 ** 3, 1)}`} />

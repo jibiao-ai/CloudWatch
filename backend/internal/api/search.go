@@ -88,7 +88,7 @@ func finish(key, label string, items []searchItem, limit int) *searchGroup {
 	return g
 }
 
-// searchGlobal GET /search?q=&limit=：跨全部云平台搜索资源。只返回当前用户有权限查看的分组。
+// searchGlobal GET /search?q=&limit=&providerId=：跨全部云平台搜索资源。只返回当前用户有权限查看的分组。
 func (s *Server) searchGlobal(w http.ResponseWriter, r *http.Request, p *auth.Principal) error {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -107,10 +107,34 @@ func (s *Server) searchGlobal(w http.ResponseWriter, r *http.Request, p *auth.Pr
 		return err
 	}
 	plats := make([]capacity.Platform, 0, len(pg.List))
+	pid := strings.TrimSpace(r.URL.Query().Get("providerId")) // 可选：只在该云平台内搜索
+	if pid != "" {
+		kept := pg.List[:0:0]
+		for _, pv := range pg.List {
+			if pv.ID == pid {
+				kept = append(kept, pv)
+			}
+		}
+		pg.List = kept
+	}
 	for _, pv := range pg.List {
 		plats = append(plats, capacity.Platform{ID: pv.ID, Name: pv.Name, EnvType: pv.EnvType, ConsoleIP: pv.ConsoleIP})
 	}
 	add := func(g *searchGroup) {
+		if g != nil && pid != "" { // 选了云平台：告警按所属平台过滤，域名映射不属于任何平台，不返回
+			if g.Key == "domain" {
+				return
+			}
+			if g.Key == "alert" {
+				kept := g.Items[:0:0]
+				for _, it := range g.Items {
+					if it.ProviderID == pid {
+						kept = append(kept, it)
+					}
+				}
+				g.Items, g.Total = kept, len(kept)
+			}
+		}
 		if g != nil && g.Total > 0 {
 			out = append(out, g)
 		}

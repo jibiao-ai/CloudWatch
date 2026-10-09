@@ -15,12 +15,26 @@ func (s *Server) capacityOverview(w http.ResponseWriter, r *http.Request, _ *aut
 	if err != nil {
 		return err
 	}
-	ov, err := s.Capacity.Store.Overview(r.Context(), plats)
+	ov, err := s.Capacity.Store.Overview(r.Context(), onlyPlatform(plats, r.URL.Query().Get("providerId")))
 	if err != nil {
 		return err
 	}
 	httpx.OK(w, ov)
 	return nil
+}
+
+// onlyPlatform 按 providerId 过滤平台（为空返回全部）；总览页「全部云平台」下拉据此把汇总范围收窄到单个平台。
+func onlyPlatform(plats []capacity.Platform, pid string) []capacity.Platform {
+	if pid == "" {
+		return plats
+	}
+	out := make([]capacity.Platform, 0, 1)
+	for _, p := range plats {
+		if p.ID == pid {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // capacityList GET /capacity/{kind}?keyword=&providerId=&status=&sortKey=&sortOrder=&page=&pageSize=

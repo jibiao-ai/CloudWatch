@@ -35,13 +35,13 @@ func anQuery(r *http.Request) analytics.ListQuery {
 	return q
 }
 
-// analyticsOverview GET /analytics/overview
+// analyticsOverview GET /analytics/overview?providerId=（可选，只汇总该平台）
 func (s *Server) analyticsOverview(w http.ResponseWriter, r *http.Request, _ *auth.Principal) error {
 	ps, err := s.plats(r)
 	if err != nil {
 		return err
 	}
-	o, err := s.Analytics.Overview(r.Context(), ps)
+	o, err := s.Analytics.Overview(r.Context(), onlyPlatform(ps, r.URL.Query().Get("providerId")))
 	if err != nil {
 		return err
 	}

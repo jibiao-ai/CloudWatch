@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Tabs from './Tabs';
 
 /**
- * Carousel —— 横向轮播：slides[{key,label,node}]；按 interval（默认 10 秒）自动切换到下一页，
+ * Carousel —— 横向轮播：slides[{key,label,node}]；按 interval（默认 10 秒）自动切换到下一页，不显示倒计时进度条与滚动条（内部表格 / 标签条仍可用滚轮、触摸、Shift+滚轮滚动），
  * 支持上一页 / 下一页按钮、点击标签与 ←/→ 键翻页；鼠标悬停或键盘聚焦在内容上时暂停，离开后重新计时。
  * 容器高度跟随当前页内容；非当前页 aria-hidden + inert，不会被 Tab 键聚焦。
  */
@@ -40,7 +40,7 @@ export default function Carousel({ slides, interval = 10000, ariaLabel = '轮播
   const items = slides.map((s) => ({ key: s.key, label: s.label }));
 
   return (
-    <section className={className} aria-roledescription="carousel" aria-label={ariaLabel}>
+    <section className={`carousel-root ${className}`} aria-roledescription="carousel" aria-label={ariaLabel}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <Tabs idPrefix={idPrefix} items={items} value={slides[cur].key} onChange={(k) => go(slides.findIndex((s) => s.key === k))} className="!border-b-0" />
         <div className="flex items-center gap-2">
@@ -49,11 +49,6 @@ export default function Carousel({ slides, interval = 10000, ariaLabel = '轮播
           <button type="button" className="btn-icon !w-8 !h-8 border border-line" onClick={() => go(cur + 1)} disabled={n < 2} aria-label="下一页"><ChevronRight size={16} /></button>
         </div>
       </div>
-      {n > 1 && (
-        <div className="h-0.5 mb-3 rounded-full bg-muted overflow-hidden" aria-hidden="true">
-          <div key={`${cur}-${epoch}`} className="h-full bg-primary carousel-progress" style={{ animationDuration: `${interval}ms`, animationPlayState: paused ? 'paused' : 'running' }} />
-        </div>
-      )}
       <div className="overflow-hidden" style={{ height: h == null ? undefined : h, transition: 'height .3s ease' }}
         onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)} onFocus={() => setPause(true)} onBlur={() => setPause(false)}>
         <div className="flex items-start transition-transform duration-500 ease-out" style={{ transform: `translateX(-${cur * 100}%)` }}>

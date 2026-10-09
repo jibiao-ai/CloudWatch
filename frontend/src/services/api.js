@@ -249,7 +249,7 @@ export const monitorApi = {
 };
 /* ============================ 配置中心（第6章：Nova / Cinder / Neutron） ============================ */
 export const capacityApi = {
-  getOverview: () => get('/capacity/overview'),
+  getOverview: (providerId) => get('/capacity/overview', providerId ? { providerId } : undefined),
   /** kind: nodes | vms | volumes | ports | pools；全部平台聚合，服务端搜索 / 排序 / 分页 */
   list: (kind, params) => get(`/capacity/${kind}`, params),
   getDetail: (kind, providerId, id) => get(`/capacity/${kind}/${encodeURIComponent(providerId)}/${encodeURIComponent(id)}`, undefined, { skipErrorToast: true }),
@@ -267,7 +267,7 @@ export const topologyApi = {
 
 /* ============================ 运营中心 ============================ */
 export const analyticsApi = {
-  getOverview: () => get('/analytics/overview'),
+  getOverview: (providerId) => get('/analytics/overview', providerId ? { providerId } : undefined),
   getTrend: (params) => get('/analytics/trend', params),
   getBase: (params) => get('/analytics/base', params),
   getBaseBands: (params) => get('/analytics/base/bands', params),
@@ -321,7 +321,7 @@ export const dashboardApi = {
 };
 
 export const searchApi = {
-  search: (q, limit = 6) => get('/search', { q, limit }, { skipErrorToast: true }),
+  search: (q, limit = 6, providerId) => get('/search', { q, limit, providerId }, { skipErrorToast: true }),
 };
 
 export default http;

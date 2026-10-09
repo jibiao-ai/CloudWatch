@@ -147,9 +147,9 @@ input:-webkit-autofill {
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
-/* 轮播倒计时进度条 */
-.carousel-progress { width: 0; animation: carousel-progress linear forwards; }
-@keyframes carousel-progress { from { width: 0; } to { width: 100%; } }
+/* 轮播：内部（含表格 / 标签条）所有横向、纵向滚动条一律隐藏，内容仍可滚轮 / 触摸 / Shift+滚轮滚动 */
+.carousel-root, .carousel-root * { scrollbar-width: none; -ms-overflow-style: none; scrollbar-color: transparent transparent; }
+.carousel-root::-webkit-scrollbar, .carousel-root *::-webkit-scrollbar { display: none; width: 0; height: 0; background: transparent; }
 
 /* 品牌渐变（登录页/概览 Banner）—— 跟随主色 */
 .brand-gradient {

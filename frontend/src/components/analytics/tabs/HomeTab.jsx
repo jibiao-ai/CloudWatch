@@ -1,15 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layers, MonitorCog, HardDrive, Server, Database, ChevronRight } from 'lucide-react';
 import StatCard from '../../StatCard';
 import Panel from '../Panel';
 import Carousel from '../../Carousel';
 import PlatformTable from '../PlatformTable';
+import OverviewSearch from '../../search/OverviewSearch';
+import Skeleton from '../../Skeleton';
+import { analyticsApi } from '../../../services/api';
+import { useAsync } from '../../../hooks/useAsync';
 import { AllocPanel, UsePanel, TrendPanel } from '../Blocks';
 import { RES_GROUPS, RES_UNIT } from '../util';
 import { formatNumber } from '../../../utils/format';
 
 /** HomeTab —— 运营中心 · 总览：资源数量、分配率与使用率；虚拟机趋势 / 优化建议 / 各云平台资源汇总以横向轮播展示（每 60 秒自动切换） */
-export default function HomeTab({ d, tick, onOpt, keyword }) {
+export default function HomeTab({ d: full, tick, onOpt, keyword }) {
+  const [pid, setPid] = useState(''); // 全部云平台：选中后总览只汇总该平台
+  const sc = useAsync(() => (pid ? analyticsApi.getOverview(pid) : Promise.resolve(null)), [pid, tick]);
+  const d = pid && sc.data ? sc.data : full;
   const t = d.totals;
   const okN = d.platforms.filter((p) => p.collectedAt && p.ok).length;
   const suggest = (
@@ -39,12 +46,14 @@ export default function HomeTab({ d, tick, onOpt, keyword }) {
     </Panel>
   );
   const slides = [
-    { key: 'trend', label: '虚拟机趋势', node: <TrendPanel title="虚拟机趋势" kind="vm" suffix=" 台" refreshKey={tick} /> },
+    { key: 'trend', label: '虚拟机趋势', node: <TrendPanel title="虚拟机趋势" kind="vm" suffix=" 台" providerId={pid} refreshKey={tick} /> },
     { key: 'suggest', label: '优化建议', node: suggest },
     { key: 'platforms', label: '各云平台资源汇总', node: <PlatformTable platforms={d.platforms} keyword={keyword} /> },
   ];
   return (
     <>
+      <OverviewSearch pid={pid} onPid={setPid} platforms={full.platforms.map((p) => ({ id: p.providerId, name: p.name }))} placeholder="输入云平台 / 虚拟机 / 节点 / 云硬盘 / 存储 名称、IP、序列号…" />
+      {pid && sc.loading ? <Skeleton.Cards count={5} /> : <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatCard icon={Layers} label="已对接云平台" value={formatNumber(t.platforms)} hint={`${okN} 个采集正常`} />
         <StatCard icon={MonitorCog} tone="success" label="虚拟机" value={formatNumber(t.vms)} />
@@ -57,6 +66,7 @@ export default function HomeTab({ d, tick, onOpt, keyword }) {
         <UsePanel rates={d.rates} />
       </div>
       <Carousel ariaLabel="总览分页" idPrefix="home-slide" interval={10000} slides={slides} />
+      </>}
     </>
   );
 }

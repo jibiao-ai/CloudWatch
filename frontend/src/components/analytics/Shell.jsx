@@ -17,7 +17,7 @@ import { formatDateTime, fromNow } from '../../utils/format';
  * 属性：title / description / tabs[{key,label,count|countKey}] 或 (总览数据) => tabs[] / tab / onTab / idPrefix / actions(页头附加按钮) /
  *       onRefresh(页面自身数据的刷新) / children(ov, tick, reloadOv, keyword, clearKeyword) —— ov 为总览数据，tick 每次点击刷新自增（子图表据此重新加载），reloadOv 重新拉取总览（忽略建议后刷新页签计数），
  *       keyword 为刷新按钮右侧「全局搜索」框的关键字（切换页签自动清空，各页签按自身数据解释）
- *       searchPlaceholder 全局搜索框的占位文字（随页签变化）
+ *       searchPlaceholder 全局搜索框的占位文字（随页签变化；传空则不显示页头搜索框，如「总览」页自带全局搜索卡片）
  */
 export default function AnalyticsShell({ title, description, tabs, tab, onTab, idPrefix, actions, onRefresh, searchPlaceholder = '搜索', children }) {
   const ov = useAsync(() => analyticsApi.getOverview(), []);
@@ -39,7 +39,7 @@ export default function AnalyticsShell({ title, description, tabs, tab, onTab, i
         actions={<>
           {actions}
           <LoadingButton icon={RefreshCw} loading={ov.refreshing} onClick={reload}>刷新</LoadingButton>
-          <SearchInput value={kw} onChange={setKw} placeholder={searchPlaceholder} width={260} aria-label="全局搜索" />
+          {searchPlaceholder && <SearchInput value={kw} onChange={setKw} placeholder={searchPlaceholder} width={260} aria-label="全局搜索" />}
         </>} />
       {ov.loading ? <Skeleton.Cards count={4} /> : ov.error ? <div className="card"><ErrorState error={ov.error} onRetry={ov.reload} /></div> : d && (
         <>
