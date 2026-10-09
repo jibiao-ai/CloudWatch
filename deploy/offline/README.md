@@ -2,7 +2,7 @@
 
 适用于**不能联网拉取镜像 / 不能在目标机编译**的环境：在能联网的机器下载镜像包，拷贝到目标机，导入后一键启动。
 
-- 镜像包：`CloudWatch-7.1-x86.tar.gz`（约 127 MB，`linux/amd64`），内含 3 个镜像
+- 镜像包：`CloudWatch-7.1-x86.tar.gz`（约 129 MB，`linux/amd64`），内含 3 个镜像
   - `cloudwatch-backend`（Go 后端，alpine 基础镜像，静态编译）
   - `cloudwatch-web`（nginx + 前端静态文件，已含 `/api` 反代配置）
   - `mariadb:10.11`（数据库，官方镜像原样打包）
