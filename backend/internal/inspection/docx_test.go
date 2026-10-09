@@ -61,15 +61,31 @@ func TestBuildDocx(t *testing.T) {
 		}
 	}
 	s := all.String()
-	for _, bad := range []string{"许可", "维保"} {
+	for _, bad := range []string{"许可", "维保", "综合评估"} {
 		if strings.Contains(s, bad) {
 			t.Fatalf("报告不应包含 %q", bad)
 		}
+	}
+	if !strings.Contains(s, "健康评分") {
+		t.Fatal("缺少健康评分")
 	}
 	if !strings.Contains(s, "云平台自动巡检报告") {
 		t.Fatal("缺少封面标题")
 	}
 	if p := os.Getenv("DOCX_OUT"); p != "" {
 		_ = os.WriteFile(p, data, 0o644)
+	}
+}
+
+func TestCleanSummary(t *testing.T) {
+	cases := map[string]string{
+		"共 21 个检查项：正常 15。综合评估：平台整体运行【预警】，健康评分 86。": "共 21 个检查项：正常 15。健康评分 86。",
+		"未采集 1。综合评估：【异常】，平均健康评分 63。":               "未采集 1。平均健康评分 63。",
+		"无法给出综合评估。请先采集。":                           "无法给出健康评分。请先采集。",
+	}
+	for in, want := range cases {
+		if got := CleanSummary(in); got != want {
+			t.Fatalf("CleanSummary(%q)=%q 期望 %q", in, got, want)
+		}
 	}
 }

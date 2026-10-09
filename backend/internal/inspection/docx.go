@@ -176,7 +176,7 @@ func cover(r *Report, b Brand, hasLogo bool, lw, lh int) string {
 	}}}}}
 	s.WriteString(table(w, band))
 	s.WriteString(spacer(500))
-	s.WriteString(para{align: "center", after: 120, runs: []run{{text: "综合评估：", size: 28}, {text: StatusText[r.Overall], bold: true, color: statusColor(r.Overall), size: 32}, {text: fmt.Sprintf("    健康评分：%d", r.Score), bold: true, color: colNavy, size: 28}}}.xml())
+	s.WriteString(para{align: "center", after: 120, runs: []run{{text: "健康评分：", size: 28}, {text: fmt.Sprint(r.Score), bold: true, color: statusColor(r.Overall), size: 40}}}.xml())
 	s.WriteString(para{align: "center", after: 60, runs: []run{{text: "巡检日期：" + r.dateText(), size: 26}}}.xml())
 	trig := "手动发起"
 	if r.Trigger == "schedule" {
@@ -196,26 +196,25 @@ func overview(r *Report) string {
 	var s strings.Builder
 	s.WriteString(para{after: 120, runs: []run{{text: r.Summary}}}.xml())
 	tr := []trow{
-		{cells: []cell{{text: "巡检结果统计", fill: colNavy, color: "FFFFFF", bold: true, span: 6, size: 19}}, header: true},
-		{cells: []cell{{text: "综合评估", fill: colHead, bold: true, align: "center"}, {text: "健康评分", fill: colHead, bold: true, align: "center"}, {text: "正常", fill: colHead, bold: true, align: "center"}, {text: "预警", fill: colHead, bold: true, align: "center"}, {text: "异常", fill: colHead, bold: true, align: "center"}, {text: "未采集", fill: colHead, bold: true, align: "center"}}},
+		{cells: []cell{{text: "巡检结果统计", fill: colNavy, color: "FFFFFF", bold: true, span: 5, size: 19}}, header: true},
+		{cells: []cell{{text: "健康评分", fill: colHead, bold: true, align: "center"}, {text: "正常", fill: colHead, bold: true, align: "center"}, {text: "预警", fill: colHead, bold: true, align: "center"}, {text: "异常", fill: colHead, bold: true, align: "center"}, {text: "未采集", fill: colHead, bold: true, align: "center"}}},
 	}
 	cs := countsRow(r.Counts)
 	tr = append(tr, trow{height: 460, cells: []cell{
-		{text: StatusText[r.Overall], bold: true, color: statusColor(r.Overall), align: "center", size: 24},
-		{text: fmt.Sprint(r.Score), bold: true, color: colNavy, align: "center", size: 24},
+		{text: fmt.Sprint(r.Score), bold: true, color: statusColor(r.Overall), align: "center", size: 24},
 		{text: cs[0], bold: true, color: colOK, align: "center", size: 24},
 		{text: cs[1], bold: true, color: colWarn, align: "center", size: 24},
 		{text: cs[2], bold: true, color: colBad, align: "center", size: 24},
 		{text: cs[3], bold: true, color: colNA, align: "center", size: 24},
 	}})
-	s.WriteString(table(scale(1, 1, 1, 1, 1, 1), tr))
+	s.WriteString(table(scale(1, 1, 1, 1, 1), tr))
 	s.WriteString(spacer(120))
 	if len(r.Platforms) > 1 {
 		var rows [][]string
 		for _, p := range r.Platforms {
-			rows = append(rows, []string{p.Name, firstNonEmpty(envText[p.EnvType], p.EnvType), StatusText[p.Overall], fmt.Sprint(p.Score), fmt.Sprint(p.Counts.OK), fmt.Sprint(p.Counts.Warn), fmt.Sprint(p.Counts.Bad)})
+			rows = append(rows, []string{p.Name, firstNonEmpty(envText[p.EnvType], p.EnvType), fmt.Sprint(p.Score), fmt.Sprint(p.Counts.OK), fmt.Sprint(p.Counts.Warn), fmt.Sprint(p.Counts.Bad)})
 		}
-		s.WriteString(titledTable("各云平台巡检结果", []string{"云平台", "环境", "综合评估", "评分", "正常", "预警", "异常"}, rows, []int{26, 10, 14, 10, 10, 10, 10}, "", 2))
+		s.WriteString(titledTable("各云平台巡检结果", []string{"云平台", "环境", "健康评分", "正常", "预警", "异常"}, rows, []int{32, 14, 18, 12, 12, 12}, "", 2))
 	}
 	// 需关注事项
 	var focus [][]string

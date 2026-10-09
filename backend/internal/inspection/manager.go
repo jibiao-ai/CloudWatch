@@ -222,7 +222,7 @@ func (m *Manager) run(taskID string, plats []capacity.Platform, trigger, operato
 		m.setTask(taskID, "failed", 100, "保存巡检报告失败："+err.Error())
 		return
 	}
-	m.setTask(taskID, "success", 100, fmt.Sprintf("巡检完成：综合评估【%s】，健康评分 %d（报告 #%d）", StatusText[rep.Overall], rep.Score, id))
+	m.setTask(taskID, "success", 100, fmt.Sprintf("巡检完成：健康评分 %d（报告 #%d）", rep.Score, id))
 }
 
 // refresh 巡检前实时采集（监控 + 资产并行）；失败不终止巡检，仅记录提示，随后使用库中已有数据。

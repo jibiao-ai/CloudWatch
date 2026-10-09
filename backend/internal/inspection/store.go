@@ -102,10 +102,10 @@ func trunc(s string, n int) string {
 
 // ListQuery 报告列表查询条件。
 type ListQuery struct {
-	Keyword, Overall, Trigger, TaskID string
-	From, To                          time.Time
-	SortKey, SortOrder                string
-	Page, PageSize                    int
+	Keyword, Trigger, TaskID string
+	From, To                 time.Time
+	SortKey, SortOrder       string
+	Page, PageSize           int
 }
 
 type Page struct {
@@ -115,7 +115,7 @@ type Page struct {
 	PageSize int   `json:"pageSize"`
 }
 
-var sortCols = map[string]string{"finishedAt": "finished_at", "score": "score", "overall": "FIELD(overall,'bad','warn','ok','na')", "title": "title", "trigger": "trigger_type"}
+var sortCols = map[string]string{"finishedAt": "finished_at", "score": "score", "title": "title", "trigger": "trigger_type"}
 
 func (s *Store) List(ctx context.Context, q ListQuery) (*Page, error) {
 	if q.Page < 1 {
@@ -129,10 +129,6 @@ func (s *Store) List(ctx context.Context, q ListQuery) (*Page, error) {
 		like := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q.Keyword) + "%"
 		w = append(w, "(title LIKE ? OR scope LIKE ? OR operator_name LIKE ? OR operator LIKE ?)")
 		args = append(args, like, like, like, like)
-	}
-	if q.Overall != "" {
-		w = append(w, "overall=?")
-		args = append(args, q.Overall)
 	}
 	if q.Trigger != "" {
 		w = append(w, "trigger_type=?")
@@ -207,6 +203,10 @@ func (s *Store) Get(ctx context.Context, id int64) (*Report, error) {
 	}
 	r.ID = id
 	r.StartedAt, r.FinishedAt = r.StartedAt.UTC(), r.FinishedAt.UTC()
+	r.Summary = CleanSummary(r.Summary)
+	for i := range r.Platforms {
+		r.Platforms[i].Summary = CleanSummary(r.Platforms[i].Summary)
+	}
 	return &r, nil
 }
 
@@ -279,4 +279,16 @@ func (s *Store) Rescore(ctx context.Context) (int, error) {
 		}
 	}
 	return len(todo), nil
+}
+
+var (
+	oldOverallPlat = regexp.MustCompile(`综合评估：平台整体运行【[^】]*】，`)
+	oldOverallAll  = regexp.MustCompile(`综合评估：【[^】]*】，`)
+)
+
+// CleanSummary 去掉历史报告摘要里已取消的「综合评估」文字，只保留健康评分。
+func CleanSummary(s string) string {
+	s = oldOverallPlat.ReplaceAllString(s, "")
+	s = oldOverallAll.ReplaceAllString(s, "")
+	return strings.ReplaceAll(s, "无法给出综合评估", "无法给出健康评分")
 }

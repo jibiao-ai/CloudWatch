@@ -25,7 +25,7 @@ func inspID(r *http.Request) (int64, error) {
 
 func inspQuery(r *http.Request) inspection.ListQuery {
 	g := func(k string) string { return strings.TrimSpace(r.URL.Query().Get(k)) }
-	q := inspection.ListQuery{Keyword: g("keyword"), Overall: g("overall"), Trigger: g("trigger"), TaskID: g("taskId"), SortKey: g("sortKey"), SortOrder: g("sortOrder")}
+	q := inspection.ListQuery{Keyword: g("keyword"), Trigger: g("trigger"), TaskID: g("taskId"), SortKey: g("sortKey"), SortOrder: g("sortOrder")}
 	q.Page, _ = strconv.Atoi(g("page"))
 	q.PageSize, _ = strconv.Atoi(g("pageSize"))
 	day := func(v string, end bool) time.Time {

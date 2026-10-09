@@ -106,7 +106,7 @@ const (
 )
 
 // scoreOf 健康评分（0~100）：已采集检查项的加权通过率。
-// 为保证评分与综合评估一致：存在异常项时最高 89 分，存在预警项时最高 94 分；
+// 为保证评分与各项检查结果一致：存在异常项时最高 89 分，存在预警项时最高 94 分；
 // 有采集数据时最低 1 分，没有任何已采集项时为 0（无法评估）。
 func scoreOf(c Counts) int {
 	n := c.OK + c.Warn + c.Bad
@@ -172,10 +172,10 @@ func summaryOf(in *Input, pr PlatformReport) string {
 			}
 		}
 	}
-	sb := fmt.Sprintf("本次于 %s 对云平台「%s」进行自动巡检（只读），共 %d 个检查项：正常 %d、预警 %d、异常 %d、未采集 %d。综合评估：平台整体运行【%s】，健康评分 %d。",
-		cst(in.Now), in.Plat.Name, len(pr.Items), pr.Counts.OK, pr.Counts.Warn, pr.Counts.Bad, pr.Counts.NA, StatusText[pr.Overall], pr.Score)
+	sb := fmt.Sprintf("本次于 %s 对云平台「%s」进行自动巡检（只读），共 %d 个检查项：正常 %d、预警 %d、异常 %d、未采集 %d。健康评分 %d。",
+		cst(in.Now), in.Plat.Name, len(pr.Items), pr.Counts.OK, pr.Counts.Warn, pr.Counts.Bad, pr.Counts.NA, pr.Score)
 	if pr.Overall == NA {
-		sb = fmt.Sprintf("本次于 %s 对云平台「%s」进行自动巡检，但尚未采集到有效的监控数据，无法给出综合评估。请先在监控中心完成一次数据采集。", cst(in.Now), in.Plat.Name)
+		sb = fmt.Sprintf("本次于 %s 对云平台「%s」进行自动巡检，但尚未采集到有效的监控数据，无法给出健康评分。请先在监控中心完成一次数据采集。", cst(in.Now), in.Plat.Name)
 	} else if len(focus) > 0 {
 		sb += "需关注：" + joinMax(focus, 8) + "。"
 	}
@@ -207,8 +207,8 @@ func Merge(r *Report) {
 		names = append(names, p.Name)
 	}
 	sort.Strings(names)
-	r.Summary = fmt.Sprintf("本次共巡检 %d 个云平台（%s），合计 %d 个检查项：正常 %d、预警 %d、异常 %d、未采集 %d。综合评估：【%s】，平均健康评分 %d。",
-		len(r.Platforms), strings.Join(names, "、"), r.Counts.OK+r.Counts.Warn+r.Counts.Bad+r.Counts.NA, r.Counts.OK, r.Counts.Warn, r.Counts.Bad, r.Counts.NA, StatusText[r.Overall], r.Score)
+	r.Summary = fmt.Sprintf("本次共巡检 %d 个云平台（%s），合计 %d 个检查项：正常 %d、预警 %d、异常 %d、未采集 %d。平均健康评分 %d。",
+		len(r.Platforms), strings.Join(names, "、"), r.Counts.OK+r.Counts.Warn+r.Counts.Bad+r.Counts.NA, r.Counts.OK, r.Counts.Warn, r.Counts.Bad, r.Counts.NA, r.Score)
 	if len(r.Platforms) == 0 {
 		r.Summary = "没有可巡检的云平台，请先在「平台管理」中对接云平台。"
 	}
