@@ -5,7 +5,6 @@ export const STATUS = {
   bad: { label: '异常', tag: 'tag-danger' },
   na: { label: '未采集', tag: 'tag-default' },
 };
-export const OVERALL_OPTIONS = [{ value: 'ok', label: '正常' }, { value: 'warn', label: '预警' }, { value: 'bad', label: '异常' }];
 export const TRIGGER = { manual: '手动发起', schedule: '定时巡检' };
 export const TRIGGER_OPTIONS = [{ value: 'manual', label: '手动发起' }, { value: 'schedule', label: '定时巡检' }];
 export const MONTH_DAYS = Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: `${i + 1} 日` }));

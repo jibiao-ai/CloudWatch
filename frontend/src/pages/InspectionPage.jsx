@@ -8,11 +8,10 @@ import DatePicker from '../components/DatePicker';
 import StatCard from '../components/StatCard';
 import ConfirmModal from '../components/ConfirmModal';
 import LoadingButton from '../components/LoadingButton';
-import StatusTag from '../components/inspection/StatusTag';
 import RunModal from '../components/inspection/RunModal';
 import ReportDrawer from '../components/inspection/ReportDrawer';
 import SettingsModal from '../components/inspection/SettingsModal';
-import { OVERALL_OPTIONS, TRIGGER, TRIGGER_OPTIONS } from '../components/inspection/common';
+import { TRIGGER, TRIGGER_OPTIONS } from '../components/inspection/common';
 import { inspectionApi } from '../services/api';
 import { useListQuery } from '../hooks/useListQuery';
 import { useAsync } from '../hooks/useAsync';
@@ -21,7 +20,9 @@ import { useToast } from '../hooks/useToast';
 import { formatDateTime } from '../utils/format';
 import { downloadBlob } from '../utils/download';
 
-const toParams = (q) => ({ keyword: q.keyword, overall: q.overall, trigger: q.trigger, from: q.from, to: q.to, sortKey: q.sort?.key, sortOrder: q.sort?.order });
+/** 健康评分文字色（随该次巡检的整体结果着色，不单独展示综合评估） */
+const SCORE_TEXT = { ok: 'text-success', warn: 'text-warning', bad: 'text-danger', na: 'text-fg-muted' };
+const toParams = (q) => ({ keyword: q.keyword, trigger: q.trigger, from: q.from, to: q.to, sortKey: q.sort?.key, sortOrder: q.sort?.order });
 const docName = (r) => {
   const d = new Date(r.finishedAt);
   const p = (n) => String(n).padStart(2, '0');
@@ -38,7 +39,7 @@ export default function InspectionPage() {
   const canExport = useCan('inspection:export');
   const canConfig = useCan('inspection:config');
   const canDelete = useCan('inspection:delete');
-  const list = useListQuery('inspection', (q) => inspectionApi.list({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 10, keyword: '', overall: '', trigger: '', from: '', to: '', sort: { key: 'finishedAt', order: 'desc' } });
+  const list = useListQuery('inspection', (q) => inspectionApi.list({ ...toParams(q), page: q.page, pageSize: q.pageSize }), { page: 1, pageSize: 10, keyword: '', trigger: '', from: '', to: '', sort: { key: 'finishedAt', order: 'desc' } });
   const { query, setQuery } = list;
   const cfg = useAsync(() => inspectionApi.getConfig(), []);
   const [runOpen, setRunOpen] = useState(false);
@@ -64,9 +65,8 @@ export default function InspectionPage() {
 
   const latest = list.rows[0];
   const columns = [
-    { key: 'overall', title: '综合评估', width: 100, sortable: true, render: (r) => <StatusTag value={r.overall} /> },
+    { key: 'score', title: '健康评分', width: 100, sortable: true, render: (r) => <span className={`tabular-nums text-base font-semibold ${SCORE_TEXT[r.overall] || 'text-fg'}`} title="已采集检查项的加权通过率，满分 100">{r.score}</span> },
     { key: 'title', title: '报告', width: 280, sortable: true, render: (r) => <div><div className="font-medium truncate max-w-[270px]" title={r.title}>{r.title}</div><div className="text-xs text-fg-subtle truncate max-w-[270px]" title={r.scope}>{r.scope}</div></div> },
-    { key: 'score', title: '健康评分', width: 100, sortable: true, render: (r) => <span className="tabular-nums font-medium">{r.score}</span> },
     { key: 'counts', title: '正常 / 预警 / 异常 / 未采集', width: 210, render: (r) => <span className="tabular-nums text-[13px]"><span className="text-success">{r.counts.ok}</span> / <span className="text-warning">{r.counts.warn}</span> / <span className="text-danger">{r.counts.bad}</span> / <span className="text-fg-muted">{r.counts.na}</span></span> },
     { key: 'trigger', title: '发起方式', width: 100, sortable: true, render: (r) => <span className="tag-default">{TRIGGER[r.trigger] || r.trigger}</span> },
     { key: 'operatorName', title: '发起人', width: 110, render: (r) => <span className="text-[13px]">{r.operatorName || r.operator || '-'}</span> },
@@ -88,7 +88,7 @@ export default function InspectionPage() {
       </>} />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard icon={ClipboardCheck} tone="primary" label="历史报告" value={list.total} hint={cfg.data?.config.schedule.enabled ? `定时巡检：${scheduleText(cfg.data.config.schedule)}` : '定时巡检未启用'} />
-        <StatCard icon={latest?.overall === 'bad' ? AlertOctagon : latest?.overall === 'warn' ? AlertTriangle : CheckCircle2} tone={{ bad: 'danger', warn: 'warning', ok: 'success' }[latest?.overall] || 'info'} label="最近一次评估" value={latest ? ({ ok: '正常', warn: '预警', bad: '异常', na: '未采集' }[latest.overall]) : '-'} hint={latest && formatDateTime(latest.finishedAt)} />
+        <StatCard icon={latest?.overall === 'bad' ? AlertOctagon : latest?.overall === 'warn' ? AlertTriangle : CheckCircle2} tone={{ bad: 'danger', warn: 'warning', ok: 'success' }[latest?.overall] || 'info'} label="最近一次健康评分" value={latest ? latest.score : '-'} hint={latest && formatDateTime(latest.finishedAt)} />
         <StatCard icon={AlertOctagon} tone="danger" label="最近一次异常项" value={latest ? latest.counts.bad : '-'} />
         <StatCard icon={AlertTriangle} tone="warning" label="最近一次预警项" value={latest ? latest.counts.warn : '-'} />
       </div>
@@ -97,7 +97,6 @@ export default function InspectionPage() {
         sort={query.sort} onSortChange={(sort) => setQuery({ sort: sort || { key: 'finishedAt', order: 'desc' } })} onRowClick={open}
         toolbar={<>
           <SearchInput value={query.keyword} onChange={(keyword) => setQuery({ keyword })} placeholder="关键字（报告 / 平台 / 发起人）" width={240} />
-          <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="综合评估" aria-label="综合评估" value={query.overall} onChange={(overall) => setQuery({ overall })} options={OVERALL_OPTIONS} /></div>
           <div className="w-[120px]"><CustomSelect size="sm" clearable placeholder="发起方式" aria-label="发起方式" value={query.trigger} onChange={(trigger) => setQuery({ trigger })} options={TRIGGER_OPTIONS} /></div>
           <DatePicker width={150} clearable placeholder="开始日期" aria-label="开始日期" value={query.from} max={query.to || undefined} onChange={(from) => setQuery({ from })} />
           <DatePicker width={150} clearable placeholder="结束日期" aria-label="结束日期" value={query.to} min={query.from || undefined} onChange={(to) => setQuery({ to })} />

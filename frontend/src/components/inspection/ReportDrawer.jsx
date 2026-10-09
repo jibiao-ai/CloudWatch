@@ -99,7 +99,7 @@ export default function ReportDrawer({ report, groups, onClose, footer }) {
   const its = p && cur !== OVERVIEW ? p.items.filter((i) => i.group === cur) : [];
   const switchPlat = (k) => { setPi(+k); setTab(OVERVIEW); };
   return (
-    <Drawer open={!!report} title={report?.title || '巡检报告'} subtitle={report && `综合评估：${STATUS[report.overall]?.label} · 健康评分 ${report.score}`} width={860} onClose={onClose} footer={footer}>
+    <Drawer open={!!report} title={report?.title || '巡检报告'} subtitle={report && `健康评分 ${report.score}`} width={860} onClose={onClose} footer={footer}>
       {report && (
         <div className="space-y-4">
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
